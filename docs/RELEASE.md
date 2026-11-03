@@ -29,6 +29,8 @@ Outputs: `apps/desktop/src-tauri/target/**/bundle/dmg/*.dmg`, `…/bundle/nsis/*
 2. Merge it, then tag that commit on `main`: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. The release gets `Agentville_universal.dmg` and `Agentville_x64-setup.exe`. File names carry no version, so `https://github.com/GibsonChenDev/Agentville/releases/latest/download/Agentville_universal.dmg` (and `…_x64-setup.exe`) always downloads the newest build.
 
+To rebuild an existing release with the current workflow (e.g. after a workflow fix), use Actions → Release → Run workflow on `main` with the tag: the workflow file comes from `main`, the code from the tag. Delete the release's old assets afterwards if their names changed.
+
 A tag pushed before the bump builds installers that call themselves the previous version. To redo it: delete that release's assets, move the tag to the bumped commit (`git tag -f vX.Y.Z <commit> && git push -f origin vX.Y.Z`), and the workflow rebuilds and uploads to the same release.
 
 ## Updating an installed app
