@@ -76,7 +76,10 @@ describe('office layout editing', () => {
     const doc = JSON.parse(JSON.stringify(toLayoutDoc(r.scene)));
     expect(fromLayoutDoc(doc, loft).furniture).toHaveLength(loft.furniture.length + 1);
     expect(fromLayoutDoc({ ...doc, version: 2 }, loft)).toBe(loft);
-    expect(fromLayoutDoc({ ...doc, furniture: [...doc.furniture, { id: 'x', kind: 'rocket', x: 1, y: 5 }] }, loft)).toBe(loft);
+    // Unknown kinds (e.g. a decoration from a newer app version) are dropped, keeping the rest of the layout.
+    const withRocket = fromLayoutDoc({ ...doc, furniture: [...doc.furniture, { id: 'x', kind: 'rocket', x: 1, y: 5 }] }, loft);
+    expect(withRocket.furniture).toHaveLength(loft.furniture.length + 1);
+    expect(withRocket.furniture.some((f) => f.kind === 'rocket')).toBe(false);
     expect(fromLayoutDoc({ ...doc, furniture: [...doc.furniture, { id: 'x', kind: 'sofa', x: 4, y: 10 }] }, loft)).toBe(loft);
     expect(fromLayoutDoc(null, loft)).toBe(loft);
   });

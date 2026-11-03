@@ -3,7 +3,7 @@ import { WHITE } from './palette';
 import type { Activity } from '../animations/intent';
 
 /** 11×12 pixel speech-bubble icons that float above characters. */
-export type IconKind = 'think' | 'read' | 'type' | 'test' | 'plan' | 'raise' | 'cheer' | 'slump' | 'talk' | 'delegate' | 'exec';
+export type IconKind = 'think' | 'read' | 'type' | 'test' | 'plan' | 'raise' | 'cheer' | 'slump' | 'talk' | 'delegate' | 'exec' | 'phone';
 
 const GLYPHS: Record<IconKind, { color: Color; rows: string[] }> = {
   think: { color: '#6c7a96', rows: ['.......', '.......', 'x.x.x..', '.......'] },
@@ -17,11 +17,14 @@ const GLYPHS: Record<IconKind, { color: Color; rows: string[] }> = {
   talk: { color: '#2b8a8a', rows: ['xxxxx', '.....', 'xxx..'] },
   delegate: { color: '#7a55b5', rows: ['x....', 'xxxx.', 'x..xx', 'xxxx.', 'x....'] },
   exec: { color: '#4c6c99', rows: ['x....', '.x...', 'x..xx'] },
+  phone: { color: '#e2557a', rows: ['xx.xx', 'xxxxx', '.xxx.', '..x..'] },
 };
 
 export function iconForActivity(activity: Activity, screen?: string): IconKind | null {
   switch (activity) {
     case 'idle':
+    case 'stretch':
+    case 'nap': // the napping sprite has its own z's
       return null;
     case 'type':
       return screen === 'terminal' ? 'exec' : 'type';

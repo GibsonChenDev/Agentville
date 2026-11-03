@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { LayoutDocWire, ServerMessage } from '../../../packages/team-protocol/src/index.ts';
+import type { ChatMessage, LayoutDocWire, ServerMessage } from '../../../packages/team-protocol/src/index.ts';
 import { CLOSE, RoomCore, random, sha256, type Conn, type RoomMeta, type RoomStore, type StoredMember } from './roomCore';
 
 function memoryStore(): RoomStore {
   let meta: RoomMeta | null = null;
   const members = new Map<string, StoredMember>();
   const layouts = new Map<string, LayoutDocWire>();
+  let chat: ChatMessage[] = [];
   return {
     meta: () => meta,
     setMeta: (m) => (meta = m),
@@ -14,7 +15,12 @@ function memoryStore(): RoomStore {
     deleteMember: (id) => void members.delete(id),
     layouts: () => Object.fromEntries(layouts),
     putLayout: (t, d) => (d ? layouts.set(t, d) : layouts.delete(t)),
+    chat: () => chat,
+    putChat: (m, keep, since) => {
+      chat = [...chat, m].filter((x) => x.at > since).slice(-keep);
+    },
     clear: () => {
+      chat = [];
       meta = null;
       members.clear();
       layouts.clear();

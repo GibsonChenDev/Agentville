@@ -32,7 +32,7 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 
 ## Feature summary
 
-- **Office**: three themed pixel offices, layered characters, pathfinding, lighting, monitor screens, editor for furniture with walkability rules.
+- **Office**: five themed pixel offices, layered characters, pathfinding, lighting, monitor screens, editor for furniture with walkability rules.
 - **Monitor Mode**: built-in Rust receiver (127.0.0.1, token-authenticated, observe-only), opt-in reversible hooks (15 events, never `WorktreeCreate`), deterministic replay on reconnect.
 - **Setup & teaching**: first-run welcome → one-click setup (install Claude Code if missing, start receiver, connect hooks, sign-in guidance); Settings checklist with per-step fixes; in-app guide (getting started with commands for macOS/Windows, bubble legend, teams & worktrees, FAQ incl. privacy, cost and uninstall).
 - **Cowork (observed)**: agent-team task board, lead/teammate roles, handoff animations, subagent reports, repository/branch/worktree grouping, edit-conflict warnings.
@@ -46,6 +46,44 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Phase 3 — in-app control of agents (Agent SDK; needs an API key).
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
+
+## Team chat (2026-11-03)
+
+- 💬 group chat in team offices: a window with the conversation history and an unread count, messages popping up over the sender's head.
+- The relay keeps the newest 50 messages for 7 days (SQLite in the Room object); messages keep the sender's nickname and stay after they leave; deleting the office deletes them.
+- 300 characters max, ~1 message/s (burst 5), control/format characters stripped (emoji joiners kept); Enter while an input method is composing doesn't send.
+- Tests: relay chat suite (delivery, history 50, 7-day expiry, validation, flood limit, names after leaving, deletion) and client merge/cleaning tests.
+
+## Dice table, reconnect fixes, seat checks (2026-11-03)
+
+- **Dice table** in every built-in office (also sold, max 2): 壓大小 and 擲骰子比點數, rolled by the relay, bets 1/2/5/10, ±100 coins per day, one roll per 1.2 s.
+- **Work bubble** shortened to 「工作 12 分 3 秒…」.
+- **Fixed — agents lost after a reconnect**: after an app restart, a receiver restart, or 5 silent minutes (a long build), a working agent stayed "departed" until its next prompt. Now its next hook brings it back (`integration/reconnect.test.ts`).
+- **Fixed — slow walking in a background window**: movement used Pixi's capped frame time (100 ms), so at ~1 frame/s people walked 10× too slowly.
+- **Seats, checked in the browser pane**: desk chair, both sofa cushions, beanbag and dice table — walk there and sit/stand ✓; get up by clicking the seat again, E, WASD, or clicking the floor ✓; switching cushions frees the old one ✓; an agent's desk or a teammate's cushion is refused ✓.
+
+| Check | Result |
+|---|---|
+| Tests (vitest) | ✅ 206 passed |
+| `scripts/team-smoke.mjs` on local relay | ✅ all checks, incl. dice (big bet refused, roll, rate limit) |
+| Browser pane | ✅ dice table click → dialog, both games roll and settle coins |
+
+## Slacking, work-time bubbles, 5 maps, bigger shop, welcomes, edge cases (2026-11-03)
+
+- **Slacking off**: an agent idle at its desk for 45 s rotates through scrolling its phone, stretching and napping (Zzz), with the badge saying so; any real work wakes it at once. Re-proposing the same status no longer restarts a finished agent's celebration.
+- **Work time**: the reducer tracks working stretches (`busySince`/`workedMs`; waiting for permission doesn't count). Clicking an agent shows a speech bubble with the current stretch and the total.
+- **Maps**: Sunny Greenhouse Garden and Seaside Beach House join Loft, Studio and Midnight Lab (new shiplap wall, sea and garden window scenery).
+- **Shop**: 44 items (15 accessories, 8 colours, 21 decorations) with per-person limits, enforced by the relay and when placing.
+- **Team**: confetti, a banner and a hello bubble when a teammate comes in; arcade best scores shared per office; ghost-connection sweep on the relay.
+
+| Check | Result |
+|---|---|
+| TypeScript (`tsc -b`, relay `tsc --noEmit`) | ✅ clean |
+| Tests (vitest) | ✅ 195 passed (incl. relay and client edge-case suites, purchase limits, waiting spots, slacking, work time) |
+| Translation check | ✅ parity |
+| Local relay (`wrangler dev`) | ✅ `scripts/team-smoke.mjs` all checks (updated: a look can't be bought twice; decorations can); buy cactus ×5 then `limit_reached`; scripted teammate join → welcome banner/confetti/hello, 3 agents seated, scores on the arcade board after they left; their agents walk out on disconnect |
+| Browser pane | ✅ 46 agents for 10 desks: own agents seated first, 35 waiting on distinct tiles; both new maps render; sprite sheets for every new pose, accessory and decoration checked |
+| Not verified | Ghost sweep on deployed Cloudflare (alarm + auto-response timestamps run only on the real runtime; logic is unit-tested); Tauri desktop build |
 
 ## Lobby, accounts, coins, shop, arcade, tour (2026-11-03)
 

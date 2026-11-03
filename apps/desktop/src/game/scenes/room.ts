@@ -154,6 +154,19 @@ function drawWall(pc: PixelCanvas, t: ThemeStyle, W: number, wallH: number) {
     for (let i = 0; i < 500; i++) pc.px(Math.floor(rand() * W), Math.floor(rand() * wallH), alt, 0.5);
     // colour-block band
     pc.rect(0, wallH - 22, W, 14, shade(t.accent, 0.35), 0.35);
+  } else if (t.wall.kind === 'shiplap') {
+    // Painted horizontal boards with a shadow line under each one.
+    for (let y = 4; y < wallH - 6; y += 6) {
+      pc.rect(0, y, W, 6, (y / 6) % 2 ? base : alt);
+      pc.hline(0, y + 5, W, mortar);
+      for (let i = 0; i < 4; i++) pc.px(Math.floor(rand() * W), y + 2, shade(base, -0.05));
+    }
+    // a rope-trimmed band, beach-house style
+    for (let x = 0; x < W; x += 4) {
+      pc.px(x, wallH - 24, '#c9a46a');
+      pc.px(x + 1, wallH - 23, '#b08850');
+      pc.px(x + 2, wallH - 24, '#c9a46a');
+    }
   } else {
     for (let x = 0; x < W; x += 24) {
       pc.rect(x, 4, 24, wallH - 10, x % 48 === 0 ? base : alt);
@@ -194,6 +207,28 @@ function drawWindow(pc: PixelCanvas, t: ThemeStyle, x: number, w: number, panes:
       for (let wy = y + h - bh + 2; wy < y + h - 2; wy += 3) for (let wx = bx + 1; wx < bx + bw - 1; wx += 2) if (rand() < 0.35) pc.px(wx, wy, '#dce6f2');
       bx += bw;
     }
+  } else if (t.window.scenery === 'sea') {
+    // Sunset over the sea: low sun, glittering water, a sailboat, a strip of sand.
+    const horizon = y + Math.round(h * 0.55);
+    pc.ellipse(x + Math.round(w * 0.65), horizon - 2, 6, 6, '#fff1c1');
+    pc.rect(x, horizon, w, y + h - horizon, '#3d7fa6');
+    for (let i = 0; i < w; i += 3) pc.px(x + i + Math.floor(rand() * 3), horizon + 2 + Math.floor(rand() * (y + h - horizon - 6)), rand() < 0.5 ? '#ffd9a0' : '#7fc2e0');
+    pc.hline(x + Math.round(w * 0.65) - 5, horizon + 1, 10, '#ffd9a0');
+    const bx = x + Math.round(w * 0.25);
+    pc.rect(bx, horizon - 1, 7, 2, '#f4f7f8');
+    pc.vline(bx + 3, horizon - 8, 7, '#5a4030');
+    for (let i = 0; i < 5; i++) pc.hline(bx + 4, horizon - 7 + i, 1 + Math.floor(i / 2), '#f4f7f8');
+    pc.rect(x, y + h - 3, w, 3, '#e8d2a0');
+  } else if (t.window.scenery === 'garden') {
+    // Greenhouse glass onto a garden: hedges, flower beds, a fruit tree.
+    pc.round(x + 10, y + 5, 12, 4, WHITE, 0.85);
+    pc.rect(x, y + h - 12, w, 12, '#5f9a4e');
+    for (let i = 0; i < w; i += 4) pc.round(x + i, y + h - 15 + Math.floor(rand() * 3), 5, 5, rand() < 0.5 ? '#4e8a42' : '#69a957');
+    for (let i = 0; i < w; i += 3) pc.px(x + i + Math.floor(rand() * 2), y + h - 5 - Math.floor(rand() * 4), ['#ff9db0', '#ffd166', '#f4f7f8', '#c7a3ff'][Math.floor(rand() * 4)]!);
+    const tx = x + Math.round(w * 0.7);
+    pc.vline(tx, y + h - 22, 10, '#6e4a30');
+    pc.round(tx - 7, y + h - 32, 15, 12, '#4e8a42');
+    for (let i = 0; i < 5; i++) pc.px(tx - 5 + Math.floor(rand() * 11), y + h - 30 + Math.floor(rand() * 8), '#ff7f5f');
   } else if (t.window.scenery === 'hills') {
     pc.round(x + w - 30, y + 5, 14, 4, WHITE, 0.9);
     for (let i = 0; i < w; i++) {

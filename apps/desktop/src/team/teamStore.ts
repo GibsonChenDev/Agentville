@@ -1,4 +1,4 @@
-import type { MemberView, RoomRef, RoomView } from '@agentville/team-protocol';
+import { LIMITS, type ChatMessage, type MemberView, type RoomRef, type RoomView } from '@agentville/team-protocol';
 import { create } from 'zustand';
 import { useAccount } from '../account/accountStore';
 import { normalizeServer, type TeamApiError } from './api';
@@ -26,12 +26,20 @@ export interface TeamState {
   error?: TeamError;
   room?: RoomView;
   members: Record<string, MemberView>;
+  /** The office's chat: recent history from the relay plus what arrived since, oldest first. */
+  chat: ChatMessage[];
+  chatOpen: boolean;
+  /** Teammates' messages that arrived while the chat window was closed. */
+  chatUnread: number;
+  /** Why your last message didn't go out, until you send again. */
+  chatNotice?: 'offline' | 'rate_limited';
   dialog?: 'create' | 'join';
   setServer: (server: string) => void;
   setRooms: (rooms: RoomRef[], opts?: { sync?: boolean }) => void;
   /** Makes `roomId` the current team office (undefined: none). */
   setActive: (roomId?: string) => void;
   openDialog: (dialog?: 'create' | 'join') => void;
+  setChatOpen: (open: boolean) => void;
 }
 
 /** Built-in relay (server/relay, deployed from main by Cloudflare). Users can enter their own. */
@@ -71,6 +79,9 @@ export const useTeam = create<TeamState>((set, get) => ({
   ...load(),
   status: 'idle',
   members: {},
+  chat: [],
+  chatOpen: false,
+  chatUnread: 0,
   setServer: (server) => {
     set({ server });
     persist(get());
@@ -78,7 +89,7 @@ export const useTeam = create<TeamState>((set, get) => ({
   setRooms: (rooms, opts) => {
     const active = get().membership;
     const still = active && rooms.find((r) => r.roomId === active.roomId);
-    if (active && !still) set({ membership: undefined, room: undefined, members: {}, status: 'idle' });
+    if (active && !still) set({ membership: undefined, room: undefined, members: {}, status: 'idle', chat: [], chatUnread: 0 });
     else if (active && still) set({ membership: { ...still, server: active.server } });
     set({ rooms });
     persist(get());
@@ -87,10 +98,18 @@ export const useTeam = create<TeamState>((set, get) => ({
   setActive: (roomId) => {
     const ref = roomId ? get().rooms.find((r) => r.roomId === roomId) : undefined;
     const server = normalizeServer(get().server) ?? DEFAULT_TEAM_SERVER;
-    set(ref ? { membership: { ...ref, server } } : { membership: undefined, room: undefined, members: {}, status: 'idle' });
+    set(ref ? { membership: { ...ref, server }, chat: [], chatUnread: 0 } : { membership: undefined, room: undefined, members: {}, status: 'idle', chat: [], chatUnread: 0 });
   },
   openDialog: (dialog) => set({ dialog, error: undefined }),
+  setChatOpen: (chatOpen) => set(chatOpen ? { chatOpen, chatUnread: 0 } : { chatOpen }),
 }));
+
+/** Adds messages to the chat list: no duplicates (a reconnect resends history), in time order, newest 50 kept. */
+export function mergeChat(list: ChatMessage[], add: ChatMessage[]): ChatMessage[] {
+  const byId = new Map(list.map((m) => [m.id, m]));
+  for (const m of add) byId.set(m.id, m);
+  return [...byId.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1)).slice(-LIMITS.chatHistory);
+}
 
 /** Teammates (not you) who are in the office right now. */
 export function onlinePeers(s: Pick<TeamState, 'members' | 'membership' | 'status'>): MemberView[] {

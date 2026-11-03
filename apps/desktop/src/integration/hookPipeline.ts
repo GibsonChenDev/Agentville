@@ -17,8 +17,24 @@ export function createHookPipeline(deps: PipelineDeps) {
   /** Sessions seen during this app run (a restored session is revived on its first event). */
   const seen = new Set<string>();
   const lastCwd = new Map<string, string>();
+  // Hook numbers restart whenever the receiver restarts (ids are `<boot>-<seq>`).
+  // Events from a newer boot are numbered after everything seen so far, so the
+  // store's ordering check never drops them as "older".
+  let boot: string | undefined;
+  let base = 0;
+  let top = 0;
 
   return function process(hook: RawHook): DomainEvent | null {
+    const hookBoot = hook.id.slice(0, Math.max(0, hook.id.lastIndexOf('-')));
+    if (hookBoot !== boot) {
+      if (boot !== undefined) base = top;
+      boot = hookBoot;
+    }
+    const seq = (k: 0 | 1) => {
+      const v = base + hook.seq * 2 + k;
+      top = Math.max(top, v);
+      return v;
+    };
     let n = 0;
     const result = normalizeHookPayload(hook.body, {
       receivedAt: hook.receivedAt,
@@ -41,12 +57,12 @@ export function createHookPipeline(deps: PipelineDeps) {
           source: 'hook',
           agentId,
           sessionId: result.sessionId,
-          seq: hook.seq * 2,
+          seq: seq(0),
           payload: { kind: 'session.started', cwd, source: 'observed' },
         });
       }
     }
-    const event: DomainEvent = { ...result.event, seq: hook.seq * 2 + 1 };
+    const event: DomainEvent = { ...result.event, seq: seq(1) };
     deps.ingest(event);
 
     if (cwd && lastCwd.get(event.agentId) !== cwd) {

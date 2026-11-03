@@ -14,6 +14,7 @@ import { PlayerEditor } from '../features/team/PlayerEditor';
 import { TeamDialog } from '../features/team/TeamDialog';
 import { ShopDialog } from '../features/shop/ShopDialog';
 import { ArcadeDialog } from '../features/arcade/ArcadeDialog';
+import { DiceDialog } from '../features/dice/DiceDialog';
 import { Tour, startTourWhenReady } from '../features/tour/Tour';
 import { team } from '../team/teamClient';
 import { startPlace } from '../world/placeStore';
@@ -59,6 +60,7 @@ export function App() {
       <PlayerEditor />
       <ShopDialog />
       <ArcadeDialog />
+      <DiceDialog />
       <Tour />
     </div>
   );

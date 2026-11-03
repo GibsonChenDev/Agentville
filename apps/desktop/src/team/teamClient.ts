@@ -1,12 +1,13 @@
 import { OFFICE_THEMES, type OfficeTheme } from '@agentville/domain';
-import { PROTOCOL_VERSION, normalizeInviteCode, type ClientMessage, type Presence, type RoomView, type ServerMessage } from '@agentville/team-protocol';
+import { PROTOCOL_VERSION, normalizeInviteCode, type ChatMessage, type ClientMessage, type MemberView, type Presence, type RoomView, type ServerMessage } from '@agentville/team-protocol';
+import { useAccount } from '../account/accountStore';
 import { worldApi } from '../features/office/worldApi';
 import { fromLayoutDoc, toLayoutDoc } from '../game/scenes/editing';
 import { DEFAULT_SCENES, type SceneDefinition } from '../game/scenes/layouts';
 import { layoutSink, useApp, type AppState } from '../state/store';
 import { TeamApiError, normalizeServer, socketUrl, teamApi } from './api';
 import { usePlayer } from './playerStore';
-import { useTeam, type Membership, type TeamError } from './teamStore';
+import { mergeChat, useTeam, type Membership, type TeamError } from './teamStore';
 
 /**
  * Keeps this app in its team office: one WebSocket to the relay, reconnecting
@@ -19,6 +20,8 @@ const CLOSE_VERSION = 4002;
 const CLOSE_REPLACED = 4003;
 const CLOSE_REMOVED = 4004;
 const KEEPALIVE_MS = 30_000;
+/** A teammate back within this long after dropping off (a network blip) isn't welcomed again. */
+const REWELCOME_MS = 60_000;
 
 let ws: WebSocket | undefined;
 let retries = 0;
@@ -27,6 +30,8 @@ let keepalive: ReturnType<typeof setInterval> | undefined;
 let agentsTimer: ReturnType<typeof setTimeout> | undefined;
 let sentAgents = -1;
 let started = false;
+/** When each teammate last went offline, to tell a real arrival from a reconnect. */
+const offlineAt = new Map<string, number>();
 
 function send(m: ClientMessage) {
   if (ws?.readyState === WebSocket.OPEN && useTeam.getState().status === 'online') ws.send(JSON.stringify(m));
@@ -97,7 +102,7 @@ function handle(msg: ServerMessage, m: Membership) {
   switch (msg.t) {
     case 'welcome': {
       retries = 0;
-      useTeam.setState({ status: 'online', error: undefined, room: msg.room, members: Object.fromEntries(msg.members.map((x) => [x.id, x])) });
+      useTeam.setState({ status: 'online', error: undefined, room: msg.room, members: Object.fromEntries(msg.members.map((x) => [x.id, x])), chat: mergeChat(team.chat, msg.chat ?? []) });
       // Joined with a code: the office's real name arrives here.
       const ref = team.rooms.find((r) => r.roomId === m.roomId);
       if (ref && ref.name !== msg.room.name) useTeam.getState().setRooms(team.rooms.map((r) => (r.roomId === m.roomId ? { ...r, name: msg.room.name } : r)));
@@ -110,12 +115,24 @@ function handle(msg: ServerMessage, m: Membership) {
       if (player.name && (me?.name !== player.name || JSON.stringify(me?.appearance) !== JSON.stringify(player.appearance))) sendProfile();
       const p = worldApi.current?.presence();
       if (p) send({ t: 'presence', p });
+      sendScores();
       return;
     }
-    case 'member':
+    case 'member': {
+      const before = team.members[msg.member.id];
       useTeam.setState({ members: { ...team.members, [msg.member.id]: msg.member } });
+      const left = offlineAt.get(msg.member.id);
+      if (msg.member.online && !before?.online && msg.member.id !== m.memberId && (left === undefined || Date.now() - left > REWELCOME_MS)) teamEvents.onArrive?.(msg.member);
       return;
+    }
+    case 'chat': {
+      const mine = msg.m.from === m.memberId;
+      useTeam.setState({ chat: mergeChat(team.chat, [msg.m]), chatUnread: team.chatOpen || mine ? team.chatUnread : team.chatUnread + 1 });
+      teamEvents.onChat?.(msg.m, mine);
+      return;
+    }
     case 'offline': {
+      offlineAt.set(msg.id, Date.now());
       const x = team.members[msg.id];
       if (x) useTeam.setState({ members: { ...team.members, [msg.id]: { ...x, online: false, agents: 0, presence: undefined } } });
       return;
@@ -154,6 +171,8 @@ function handle(msg: ServerMessage, m: Membership) {
       return;
     case 'error':
       if (msg.code === 'removed') leaveLocally('removed');
+      // Chat is the only thing people send fast enough by hand to hit a limit.
+      if (msg.code === 'rate_limited') useTeam.setState({ chatNotice: 'rate_limited' });
       return;
     case 'pong':
       return;
@@ -177,13 +196,23 @@ function syncAgents(now = false) {
   else agentsTimer = setTimeout(push, 400);
 }
 
+/** Your arcade best scores, so teammates can see them on the cabinet. */
+function sendScores() {
+  const scores = useAccount.getState().account?.scores;
+  if (scores && Object.keys(scores).length) send({ t: 'scores', s: { ...scores } });
+}
+
 function sendProfile() {
   const { name, appearance } = usePlayer.getState();
   if (name) send({ t: 'profile', name, appearance: { ...appearance } });
 }
 
-/** Called when you're no longer in the current team office (left, removed, or it was deleted). */
-export const teamEvents: { onLeft?: (roomId: string) => void } = {};
+/**
+ * `onLeft`: you're no longer in the current team office (left, removed, or it was deleted).
+ * `onArrive`: a teammate just came into the office you're in.
+ * `onChat`: a chat message arrived (`mine`: you sent it).
+ */
+export const teamEvents: { onLeft?: (roomId: string) => void; onArrive?: (member: MemberView) => void; onChat?: (m: ChatMessage, mine: boolean) => void } = {};
 
 /** Disconnects; with `forget`, also drops the office from your list (left or removed). */
 function leaveLocally(error?: TeamError, forget = true) {
@@ -234,6 +263,9 @@ export const team = {
     });
     usePlayer.subscribe((s, prev) => {
       if (s.name !== prev.name || s.appearance !== prev.appearance) sendProfile();
+    });
+    useAccount.subscribe((s, prev) => {
+      if (JSON.stringify(s.account?.scores) !== JSON.stringify(prev.account?.scores)) sendScores();
     });
     window.addEventListener('online', () => {
       if (useTeam.getState().status === 'reconnecting') connect();
@@ -294,5 +326,16 @@ export const team = {
 
   sendPresence(p: Presence) {
     send({ t: 'presence', p });
+  },
+
+  /** Sends a chat message to the office; false when not connected (the message isn't queued). */
+  sendChat(text: string): boolean {
+    if (useTeam.getState().status !== 'online' || ws?.readyState !== WebSocket.OPEN) {
+      useTeam.setState({ chatNotice: 'offline' });
+      return false;
+    }
+    useTeam.setState({ chatNotice: undefined });
+    send({ t: 'chat', text });
+    return true;
   },
 };

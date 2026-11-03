@@ -14,6 +14,17 @@ export function formatRelative(at: number, now: number, locale: string, justNow:
   return rtf.format(Math.round(diff / 3600), 'hour');
 }
 
+/** "1h 5m", "12m 3s", "40s" — a span of work, rounded down. */
+export function formatDuration(ms: number, t: TFunction): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h) return t('agents:duration.hm', { h, m });
+  if (m) return t('agents:duration.ms', { m, s });
+  return t('agents:duration.s', { s });
+}
+
 /** Display-safe detail for an event. Returned as plain text; never rendered as HTML. */
 export function eventDetail(e: DomainEvent, t: TFunction): string {
   const p = e.payload;

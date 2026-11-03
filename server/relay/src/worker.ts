@@ -19,7 +19,10 @@ import {
   newAccount,
   normalizeRecoveryCode,
   recordScore,
+  dieFrom,
+  playDice,
   type AccountDoc,
+  type ChatMessage,
 } from '../../../packages/team-protocol/src/index.ts';
 import { RoomCore, hex, random, sha256, type Conn, type ConnState, type RoomMeta, type RoomStore, type StoredMember } from './roomCore.ts';
 
@@ -29,8 +32,10 @@ export interface Env {
   ACCOUNT: DurableObjectNamespace<Account>;
 }
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const DEFAULT_THEME = 'loft';
+/** How often a room with open sockets checks for ghost connections. */
+const SWEEP_MS = 60_000;
 /** Wrong invite codes allowed per client IP per window before joins are refused. */
 const JOIN_FAILURES = { max: 10, windowMs: 10 * 60_000 };
 /** New accounts per client IP per hour. */
@@ -138,7 +143,7 @@ async function me(req: Request, env: Env, rest: string[]) {
   if (req.method !== 'POST') return error('not_found', 404);
   const body = await readJson(req);
   const r = await stub.act(action, body);
-  if (typeof r === 'string') return error(r as ApiErrorCode, r === 'unauthorized' ? 401 : r === 'not_found' ? 404 : 400);
+  if (typeof r === 'string') return error(r as ApiErrorCode, r === 'unauthorized' ? 401 : r === 'not_found' ? 404 : r === 'rate_limited' ? 429 : 400);
   return ok(r);
 }
 
@@ -292,6 +297,13 @@ export class Account extends DurableObject<Env> {
         next = { ...doc, rooms };
         break;
       }
+      case 'dice': {
+        const r = playDice(doc, body?.game, body?.bet, body?.pick, dieFrom(random), Date.now());
+        if (!r.ok) return r.error;
+        next = r.doc;
+        extra = { result: r.result };
+        break;
+      }
       case 'score': {
         const r = recordScore(doc, String(body?.game ?? ''), body?.score);
         if (!r) return 'bad_request';
@@ -317,7 +329,8 @@ export class Room extends DurableObject<Env> {
     const sql = ctx.storage.sql;
     sql.exec(`CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS members (id TEXT PRIMARY KEY, doc TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS layouts (theme TEXT PRIMARY KEY, doc TEXT NOT NULL)`);
+      CREATE TABLE IF NOT EXISTS layouts (theme TEXT PRIMARY KEY, doc TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS chat (id TEXT PRIMARY KEY, at INTEGER NOT NULL, doc TEXT NOT NULL)`);
     const store: RoomStore = {
       meta: () => {
         const row = sql.exec<{ v: string }>("SELECT v FROM meta WHERE k = 'room'").toArray()[0];
@@ -332,9 +345,14 @@ export class Room extends DurableObject<Env> {
         if (doc) sql.exec('INSERT OR REPLACE INTO layouts (theme, doc) VALUES (?, ?)', theme, JSON.stringify(doc));
         else sql.exec('DELETE FROM layouts WHERE theme = ?', theme);
       },
-      clear: () => void sql.exec('DELETE FROM meta; DELETE FROM members; DELETE FROM layouts'),
+      chat: () => sql.exec<{ doc: string }>('SELECT doc FROM chat ORDER BY at, id').toArray().map((r) => JSON.parse(r.doc) as ChatMessage),
+      putChat: (m, keep, since) => {
+        sql.exec('INSERT OR REPLACE INTO chat (id, at, doc) VALUES (?, ?, ?)', m.id, m.at, JSON.stringify(m));
+        sql.exec('DELETE FROM chat WHERE at <= ? OR id NOT IN (SELECT id FROM chat ORDER BY at DESC, id DESC LIMIT ?)', since, keep);
+      },
+      clear: () => void sql.exec('DELETE FROM meta; DELETE FROM members; DELETE FROM layouts; DELETE FROM chat'),
     };
-    this.core = new RoomCore(store, () => ctx.getWebSockets().map(adapt), { random, sha256 });
+    this.core = new RoomCore(store, () => ctx.getWebSockets().map((ws) => adapt(ws, ctx)), { random, sha256 });
     // Keep-alive pings are answered by the runtime without waking the object.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
   }
@@ -368,8 +386,14 @@ export class Room extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ connId: hex(random(8)), agents: 0 } satisfies ConnState);
+    server.serializeAttachment({ connId: hex(random(8)), agents: 0, openedAt: Date.now() } satisfies ConnState);
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** Every so often while anyone is connected: drop ghost connections (see STALE_MS). */
+  async alarm() {
+    if (this.core.sweep()) await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
@@ -377,22 +401,23 @@ export class Room extends DurableObject<Env> {
       ws.close(1003, 'text only');
       return;
     }
-    await this.core.onMessage(adapt(ws), message);
+    await this.core.onMessage(adapt(ws, this.ctx), message);
   }
 
   webSocketClose(ws: WebSocket) {
-    this.core.onClose(adapt(ws));
+    this.core.onClose(adapt(ws, this.ctx));
   }
 
   webSocketError(ws: WebSocket) {
-    this.core.onClose(adapt(ws));
+    this.core.onClose(adapt(ws, this.ctx));
   }
 }
 
-function adapt(ws: WebSocket): Conn {
+function adapt(ws: WebSocket, ctx: DurableObjectState): Conn {
   const state = (ws.deserializeAttachment() as ConnState | null) ?? { connId: 'unknown', agents: 0 };
   return {
     state,
+    lastPing: () => ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime(),
     save: () => ws.serializeAttachment(state),
     send: (raw) => ws.send(raw),
     close: (code, reason) => {

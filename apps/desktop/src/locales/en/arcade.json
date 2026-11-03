@@ -24,5 +24,37 @@
       "name": "2048",
       "how": "Arrow keys or WASD to slide; equal tiles merge."
     }
+  },
+  "teamBoard": "Team best scores",
+  "you": "{{name}} (you)",
+  "teamRank": "#{{rank}} of {{count}} in this office",
+  "dice": {
+    "title": "Dice table",
+    "bigsmall": "Big / Small",
+    "duel": "Dice duel",
+    "bigsmallHow": "Three dice. 4–10 is small, 11–17 is big. Any triple goes to the house. Pays 1:1.",
+    "duelHow": "You and the dealer roll two dice each. Higher total wins 1:1; a tie gives your bet back.",
+    "big": "Big",
+    "small": "Small",
+    "bet": "Bet",
+    "roll": "Roll 🎲",
+    "rolling": "Rolling…",
+    "you": "You",
+    "dealer": "Dealer",
+    "total": "{{total}}",
+    "win": "You win +{{n}} 🪙",
+    "lose": "You lose −{{n}} 🪙",
+    "push": "Tie — bet returned",
+    "today": "Today at the table: {{net}} (limit ±{{cap}})",
+    "note": "Tiny bets only ({{bets}} coins) and at most ±{{cap}} a day, so nobody gets rich or goes broke. Coins only buy things in Agentville.",
+    "offline": "The dice table needs the server. Try again when you're back online.",
+    "error": {
+      "daily_limit": "That's enough for today — the table opens again tomorrow.",
+      "rate_limited": "Easy — one roll at a time.",
+      "insufficient_funds": "Not enough coins for that bet.",
+      "bad_request": "That bet isn't allowed.",
+      "network": "Couldn't reach the server.",
+      "server": "The server had a problem. Try again."
+    }
   }
 }

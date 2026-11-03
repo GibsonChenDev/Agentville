@@ -5,7 +5,7 @@ import { THEMES } from '../../game/assets/themes';
 import { FURNITURE, drawDesk } from '../../game/furniture/furniture';
 import { EDITABLE_KINDS } from '../../game/scenes/editing';
 import { owns, useAccount } from '../../account/accountStore';
-import { useEditor } from './editorStore';
+import { allowanceFor, useEditor } from './editorStore';
 
 const thumbs = new Map<string, string>();
 function thumb(theme: OfficeTheme, kind: string) {
@@ -71,22 +71,29 @@ export function OfficeEditor() {
 
       <div className="scroll-thin flex gap-1.5 overflow-x-auto px-3 py-2" role="listbox" aria-label={t('editor.palette')}>
         {EDITABLE_KINDS.map((kind) => {
-          // Shop decorations can be placed once bought; until then they open the shop.
+          // Shop decorations can be placed once bought, one piece per copy owned; until then they open the shop.
           const locked = !owns(inventory, 'furniture', kind);
+          const copies = locked ? null : allowanceFor(ed.draft!, kind);
+          const usedUp = copies?.left === 0;
           return (
             <button
               key={kind}
               role="option"
               aria-selected={ed.placing === kind}
-              onClick={() => (locked ? useAccount.getState().openShop(true) : ed.setPlacing(ed.placing === kind ? undefined : kind))}
+              onClick={() => (locked || usedUp ? useAccount.getState().openShop(true) : ed.setPlacing(ed.placing === kind ? undefined : kind))}
               className={`relative flex w-[76px] shrink-0 flex-col items-center gap-1 rounded-lg p-1.5 text-center transition-colors ${ed.placing === kind ? 'bg-amber/15 ring-1 ring-amber/60' : 'hover:bg-panel-2'}`}
-              title={locked ? t('shop:lockedHint') : t(`furniture.${kind}`)}
+              title={locked ? t('shop:lockedHint') : usedUp ? t('editor.error.over_limit') : t(`furniture.${kind}`)}
             >
               <span className={`grid h-[44px] w-full place-items-center ${locked ? 'opacity-40 grayscale' : ''}`}>
                 <img src={thumb(theme, kind)} alt="" className="pixelated max-h-[44px] max-w-[60px] object-contain" style={{ zoom: 1 }} />
               </span>
               <span className="w-full truncate text-[10.5px] text-muted">{t(`furniture.${kind}`)}</span>
               {locked && <span className="absolute top-1 right-1 text-[10px]" aria-label={t('shop:locked')}>🔒</span>}
+              {copies && (
+                <span className={`absolute top-1 right-1 rounded px-1 text-[9.5px] font-semibold tabular-nums ${usedUp ? 'bg-coral/20 text-coral' : 'bg-amber/20 text-amber'}`} title={usedUp ? t('editor.error.over_limit') : undefined}>
+                  {t('editor.copies', { used: copies.used, owned: copies.owned })}
+                </span>
+              )}
             </button>
           );
         })}

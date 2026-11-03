@@ -47,6 +47,11 @@
     "invalid_code": "代碼無效。",
     "room_full": "已滿。",
     "forbidden": "沒有權限。",
-    "not_found": "找不到。"
-  }
+    "not_found": "找不到。",
+    "limit_reached": "已達每人可擁有的上限。",
+    "daily_limit": "今天玩夠囉，明天再來！"
+  },
+  "ownedOf": "已擁有 {{count}} / {{max}}",
+  "buyAnother": "再買一個",
+  "limitNote": "每人限購：造型各 1 件；裝飾每項 1–5 個。"
 }

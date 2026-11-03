@@ -12,8 +12,8 @@ export const SHOES = ['sneakers', 'boots', 'loafers', 'hightops'] as const;
 const BASE_ACCESSORIES = ['none', 'glasses', 'headphones', 'cap', 'beanie', 'scarf', 'lanyard'] as const;
 const BASE_OUTFIT_COLORS = ['coral', 'mustard', 'sage', 'teal', 'navy', 'plum', 'charcoal', 'cream', 'denim', 'forest'] as const;
 /** Bought in the shop (see CATALOG in team-protocol); never chosen for auto-generated looks. */
-export const PREMIUM_ACCESSORIES = ['flower', 'cat_ears', 'wizard_hat', 'crown'] as const;
-export const PREMIUM_OUTFIT_COLORS = ['neon', 'gold'] as const;
+export const PREMIUM_ACCESSORIES = ['flower', 'cat_ears', 'wizard_hat', 'crown', 'bow', 'sunglasses', 'party_hat', 'bunny_ears', 'chef_hat', 'santa_hat', 'antenna', 'devil_horns', 'top_hat', 'viking', 'halo'] as const;
+export const PREMIUM_OUTFIT_COLORS = ['neon', 'gold', 'sakura', 'mint', 'sky', 'lavender', 'ruby', 'onyx'] as const;
 export const ACCESSORIES = [...BASE_ACCESSORIES, ...PREMIUM_ACCESSORIES] as const;
 export const OUTFIT_COLORS = [...BASE_OUTFIT_COLORS, ...PREMIUM_OUTFIT_COLORS] as const;
 export const EQUIPMENT = ['laptop', 'monitor', 'dual_monitor', 'desktop_tower', 'tablet', 'debug_rig'] as const;

@@ -18,6 +18,12 @@ export const LIMITS = {
   agentsPerMember: 32,
   furniture: 300,
   workstations: 150,
+  /** Characters in one chat message. */
+  chatLength: 300,
+  /** Chat messages a team office keeps for people who come in later... */
+  chatHistory: 50,
+  /** ...and for how long. */
+  chatKeepMs: 7 * 24 * 60 * 60 * 1000,
 } as const;
 
 export type Facing = 'up' | 'down' | 'left' | 'right';
@@ -48,6 +54,20 @@ export interface MemberView {
   /** Number of the member's agents currently in the office. */
   agents: number;
   presence?: Presence;
+  /** Arcade best scores the member shared with this office. */
+  scores?: Scores;
+}
+
+/** Best score per arcade game. */
+export type Scores = Partial<Record<GameId, number>>;
+
+/** One message in a team office's chat. `name` is the sender's nickname when they sent it. */
+export interface ChatMessage {
+  id: string;
+  from: string;
+  name: string;
+  text: string;
+  at: number;
 }
 
 export interface LayoutDocWire {
@@ -73,12 +93,16 @@ export type ClientMessage =
   | { t: 'profile'; name: string; appearance: Appearance }
   | { t: 'theme'; theme: string }
   | { t: 'layout'; theme: string; doc: LayoutDocWire | null }
+  | { t: 'scores'; s: Scores }
+  | { t: 'chat'; text: string }
   | { t: 'ping' };
 
 export type ErrorCode = 'unauthorized' | 'bad_message' | 'too_large' | 'version' | 'rate_limited' | 'removed';
 
 export type ServerMessage =
-  | { t: 'welcome'; you: string; room: RoomView; members: MemberView[] }
+  /** `chat`: the office's recent messages, oldest first (absent from relays without chat). */
+  | { t: 'welcome'; you: string; room: RoomView; members: MemberView[]; chat?: ChatMessage[] }
+  | { t: 'chat'; m: ChatMessage }
   | { t: 'member'; member: MemberView }
   | { t: 'offline'; id: string }
   | { t: 'removed'; id: string }
@@ -108,7 +132,7 @@ export interface MembershipResponse {
   token: string;
   owner: boolean;
 }
-export type ApiErrorCode = 'invalid_code' | 'room_full' | 'rate_limited' | 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'unknown_item' | 'owned' | 'insufficient_funds';
+export type ApiErrorCode = 'invalid_code' | 'room_full' | 'rate_limited' | 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'unknown_item' | 'owned' | 'limit_reached' | 'insufficient_funds' | 'daily_limit';
 
 // ───────────────────────────────── validation
 
@@ -155,6 +179,24 @@ export function cleanPresence(v: unknown): Presence | null {
   const p: Presence = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, facing: facing as Facing, pose: pose as PoseKind };
   if (seat !== undefined) p.seat = seat;
   return p;
+}
+
+/**
+ * A chat message as typed: control and format characters removed (except the emoji joiner), line breaks
+ * and runs of spaces collapsed, trimmed, at most `LIMITS.chatLength` characters.
+ * Null when nothing is left.
+ */
+export function cleanChat(v: unknown): string | null {
+  if (typeof v !== 'string' || v.length > LIMITS.chatLength * 4) return null;
+  const s = v
+    .replace(/\p{Cc}/gu, ' ')
+    // Format characters can reorder or hide text; the zero-width joiner stays so emoji like 👩‍💻 survive.
+    .replace(/(?!\u200d)\p{Cf}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s) return null;
+  const chars = [...s];
+  return chars.length > LIMITS.chatLength ? null : s;
 }
 
 /** Shape check only; the app applies the full furniture and reachability rules. */
@@ -209,6 +251,14 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       const doc = cleanLayoutDoc(m.doc);
       return doc ? { t: 'layout', theme: m.theme, doc } : null;
     }
+    case 'scores': {
+      const scores = cleanScores(m.s);
+      return scores ? { t: 'scores', s: scores } : null;
+    }
+    case 'chat': {
+      const text = cleanChat(m.text);
+      return text ? { t: 'chat', text } : null;
+    }
     case 'ping':
       return { t: 'ping' };
     default:
@@ -245,3 +295,4 @@ export function isInviteCode(v: unknown): v is string {
 }
 
 export * from './account';
+import { cleanScores, type GameId } from './account';

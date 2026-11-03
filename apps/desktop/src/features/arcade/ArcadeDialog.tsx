@@ -3,11 +3,35 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { create } from 'zustand';
 import { useAccount } from '../../account/accountStore';
+import { usePlayer } from '../../team/playerStore';
+import { useTeam } from '../../team/teamStore';
 import { GAME_LIST, H, W, type Game, type Input } from './games';
 
 export const useArcade = create<{ open: boolean; setOpen: (open: boolean) => void }>((set) => ({ open: false, setOpen: (open) => set({ open }) }));
 
 const SCALE = 2;
+
+interface Rank {
+  name: string;
+  score: number;
+  you: boolean;
+}
+
+/** Best scores in the team office you're in (you included), highest first. Empty outside a team office. */
+function useTeamBoard(): (g: GameId) => Rank[] {
+  const members = useTeam((s) => (s.membership ? s.members : undefined));
+  const me = useTeam((s) => s.membership?.memberId);
+  const mine = useAccount((s) => s.account?.scores);
+  const myName = usePlayer((s) => s.name);
+  return (g) => {
+    if (!members) return [];
+    const list: Rank[] = Object.values(members)
+      .filter((m) => m.id !== me && (m.scores?.[g] ?? 0) > 0)
+      .map((m) => ({ name: m.name, score: m.scores![g]!, you: false }));
+    if ((mine?.[g] ?? 0) > 0) list.push({ name: myName, score: mine![g]!, you: true });
+    return list.sort((a, b) => b.score - a.score);
+  };
+}
 const GAME_KEYS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', ' ', 'enter']);
 
 /** The arcade cabinet's screen: pick a game, play with keyboard or mouse, best scores kept in your account. */
@@ -20,6 +44,7 @@ export function ArcadeDialog() {
   const [gameId, setGameId] = useState<GameId>();
   const [over, setOver] = useState<{ score: number; best: boolean }>();
   const [round, setRound] = useState(0);
+  const board = useTeamBoard();
 
   useEffect(() => {
     const d = dialog.current;
@@ -148,6 +173,20 @@ export function ArcadeDialog() {
                   <div className="font-pixel text-[18px] text-fg">{t(`game.${g.id}.name`)}</div>
                   <div className="mt-1 text-[12px] text-muted">{t(`game.${g.id}.how`)}</div>
                   <div className="mt-3 text-[11.5px] text-amber">{t('best', { score: scores?.[g.id] ?? 0 })}</div>
+                  {board(g.id).length > 0 && (
+                    <ol className="mt-2 space-y-0.5 border-t border-white/10 pt-1.5 text-[11px]" aria-label={t('teamBoard')}>
+                      {board(g.id)
+                        .slice(0, 3)
+                        .map((r, i) => (
+                          <li key={`${r.name}-${i}`} className={`flex justify-between gap-2 ${r.you ? 'text-amber' : 'text-muted'}`}>
+                            <span className="truncate">
+                              {['🥇', '🥈', '🥉'][i]} {r.you ? t('you', { name: r.name }) : r.name}
+                            </span>
+                            <span className="tabular-nums">{r.score.toLocaleString()}</span>
+                          </li>
+                        ))}
+                    </ol>
+                  )}
                 </button>
               ))}
             </div>
@@ -160,6 +199,9 @@ export function ArcadeDialog() {
                     <div className="font-pixel text-[28px] text-coral">{t('gameOver')}</div>
                     <div className="mt-1 text-[14px]">{t('score', { score: over.score })}</div>
                     {over.best && <div className="mt-1 text-[13px] text-amber">★ {t('newBest')}</div>}
+                    {gameId && board(gameId).length > 1 && (
+                      <div className="mt-1 text-[12.5px] text-fg">{t('teamRank', { rank: board(gameId).filter((r) => !r.you && r.score > Math.max(over.score, scores?.[gameId] ?? 0)).length + 1, count: board(gameId).length })}</div>
+                    )}
                     <div className="mt-3 text-[12px] text-muted">{t('again')}</div>
                   </div>
                 </div>

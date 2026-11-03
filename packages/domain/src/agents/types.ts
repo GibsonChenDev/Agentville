@@ -133,6 +133,16 @@ export interface AgentRuntime {
   /** Status to restore after a permission decision. */
   statusBeforePermission?: AgentStatus;
   completedAt?: number;
+  /** When the current stretch of work began (a turn in progress); undefined while not working. */
+  busySince?: number;
+  /** Time spent working in finished stretches; add `now - busySince` for the total so far. */
+  workedMs?: number;
+  /**
+   * Disconnected only because nothing was heard for a while (stale, or restored
+   * from history after a restart), not because the session ended: any sign of
+   * activity brings it back.
+   */
+  presumedGone?: boolean;
 }
 
 export const initialRuntime = (): AgentRuntime => ({ status: 'disconnected', openTools: [] });

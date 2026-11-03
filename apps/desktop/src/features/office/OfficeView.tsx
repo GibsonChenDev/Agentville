@@ -5,6 +5,7 @@ import { inMode, useApp } from '../../state/store';
 import { demoRunner } from '../demo/DemoRunner';
 import { GameCanvas } from './GameCanvas';
 import { OfficeEditor } from './OfficeEditor';
+import { TeamChat } from '../team/TeamChat';
 import { useEditor } from './editorStore';
 import { useGuide } from '../guide/guideStore';
 import { worldApi } from './worldApi';
@@ -25,6 +26,8 @@ export function OfficeView() {
   const editing = useEditor((s) => s.active);
   // In a team office the floor is shared; the setup card would cover teammates.
   const inTeam = useTeam((s) => s.status === 'online');
+  // The chat stays on screen while reconnecting (it says it can't send), not only while online.
+  const inTeamOffice = useTeam((s) => !!s.membership);
   const inLobby = usePlace((s) => s.place.kind === 'lobby');
   const fading = usePlace((s) => s.fading);
 
@@ -55,6 +58,7 @@ export function OfficeView() {
 
         <OfficeEditor />
         {!editing && <WalkHints />}
+        {inTeamOffice && !inLobby && !editing && <TeamChat />}
         {inLobby && (
           <div className="pointer-events-none absolute top-14 left-1/2 -translate-x-1/2 rounded-lg bg-panel/90 px-3 py-1.5 text-[12px] text-muted shadow-lg ring-1 ring-line-strong backdrop-blur">
             <span className="font-semibold text-fg">{t('team:place.lobby')}</span> · {t('team:place.lobbyHint')}

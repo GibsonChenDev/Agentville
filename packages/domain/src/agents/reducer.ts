@@ -26,12 +26,44 @@ function busyStatus(openTools: ActiveTool[]): AgentStatus {
   return latest ? STATUS_FOR_CATEGORY[latest.category] : 'thinking';
 }
 
+/** Statuses that count as working time (waiting for the user's permission doesn't). */
+const WORKING: ReadonlySet<AgentStatus> = new Set(['planning', 'thinking', 'reading', 'writing', 'executing_tool', 'collaborating']);
+
 /**
  * Pure state machine: applies one normalized event to an agent's runtime.
  * Out-of-order events (lower `seq` than already applied) are ignored for status
  * but callers should still log them.
  */
 export function applyEvent(state: AgentRuntime, event: DomainEvent): AgentRuntime {
+  const next = transition(revive(state, event), event);
+  if (next === state) return state;
+  return trackWork(next.presumedGone && next.status !== 'disconnected' ? { ...next, presumedGone: undefined } : next, event.at);
+}
+
+/** Events that prove a session is still running. */
+const ALIVE: ReadonlySet<DomainEvent['payload']['kind']> = new Set(['tool.started', 'tool.finished', 'tool.failed', 'permission.requested', 'turn.completed', 'run.completed', 'subagent.started', 'collaboration.started']);
+
+/** A session only presumed gone (silent too long, or restored after a restart) resumes on its next sign of activity. */
+function revive(state: AgentRuntime, event: DomainEvent): AgentRuntime {
+  if (state.status !== 'disconnected' || !state.presumedGone || !ALIVE.has(event.payload.kind)) return state;
+  // Its old numbering may be from before a restart; ordering starts over from here.
+  return { ...state, status: 'thinking', presumedGone: undefined, lastSeq: undefined };
+}
+
+/** Opens a working stretch when work starts and banks it when work stops. */
+function trackWork(r: AgentRuntime, at: number): AgentRuntime {
+  const working = WORKING.has(r.status);
+  if (working && r.busySince === undefined) return { ...r, busySince: at };
+  if (!working && r.busySince !== undefined) return { ...r, busySince: undefined, workedMs: (r.workedMs ?? 0) + Math.max(0, at - r.busySince) };
+  return r;
+}
+
+/** Total time an agent has spent working, including the stretch in progress. */
+export function workedMs(r: Pick<AgentRuntime, 'busySince' | 'workedMs'>, now: number): number {
+  return (r.workedMs ?? 0) + (r.busySince === undefined ? 0 : Math.max(0, now - r.busySince));
+}
+
+function transition(state: AgentRuntime, event: DomainEvent): AgentRuntime {
   if (event.seq !== undefined && state.lastSeq !== undefined && event.seq <= state.lastSeq) {
     return state;
   }
@@ -52,7 +84,7 @@ export function applyEvent(state: AgentRuntime, event: DomainEvent): AgentRuntim
 
     case 'tool.started': {
       if (TERMINAL.has(state.status)) return base;
-      if (state.pendingPermission) return applyEvent(implicitlyResolved(base), event);
+      if (state.pendingPermission) return transition(implicitlyResolved(base), event);
       const tool: ActiveTool = {
         toolUseId: p.toolUseId,
         toolName: p.toolName,
@@ -69,7 +101,7 @@ export function applyEvent(state: AgentRuntime, event: DomainEvent): AgentRuntim
     case 'tool.failed': {
       // Hooks never report the user's answer to a permission prompt; the gated
       // tool finishing (or failing, when denied) is the observable resolution.
-      if (state.pendingPermission?.toolName === p.toolName) return applyEvent(implicitlyResolved(base), event);
+      if (state.pendingPermission?.toolName === p.toolName) return transition(implicitlyResolved(base), event);
       const openTools = removeTool(base.openTools, p.toolUseId, p.toolName);
       const failure = p.kind === 'tool.failed' ? { lastToolFailure: { toolName: p.toolName, at: event.at } } : {};
       if (TERMINAL.has(state.status) || state.status === 'completed' || state.status === 'idle') {
@@ -106,7 +138,7 @@ export function applyEvent(state: AgentRuntime, event: DomainEvent): AgentRuntim
 
     case 'session.ended':
     case 'session.disconnected':
-      return { ...base, status: 'disconnected', openTools: [], pendingPermission: undefined };
+      return { ...base, status: 'disconnected', openTools: [], pendingPermission: undefined, presumedGone: p.kind === 'session.disconnected' && p.reason === 'stale' };
 
     case 'collaboration.started':
       if (TERMINAL.has(state.status)) return base;
