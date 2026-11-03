@@ -112,7 +112,8 @@
       "shoes": "鞋子",
       "shoesColor": "鞋子顏色",
       "accessory": "配件",
-      "equipment": "桌面設備"
+      "equipment": "桌面設備",
+      "gender": "性別"
     },
     "hairStyle": {
       "short": "短髮",
@@ -122,7 +123,9 @@
       "curly": "捲髮",
       "buzz": "平頭",
       "ponytail": "馬尾",
-      "mohawk": "莫霍克"
+      "mohawk": "莫霍克",
+      "twintails": "雙馬尾",
+      "undercut": "削邊油頭"
     },
     "hairColor": {
       "espresso": "深咖啡",
@@ -154,14 +157,22 @@
       "shirt": "襯衫",
       "blazer": "西裝外套",
       "sweater": "毛衣",
-      "vest": "背心"
+      "vest": "背心",
+      "polo": "Polo 衫",
+      "suit": "西裝領帶",
+      "blouse": "女襯衫",
+      "cardigan": "針織開衫",
+      "camisole": "細肩帶上衣",
+      "dress": "連身裙"
     },
     "bottom": {
       "jeans": "牛仔褲",
       "chinos": "卡其褲",
       "skirt": "裙子",
       "shorts": "短褲",
-      "joggers": "慢跑褲"
+      "joggers": "慢跑褲",
+      "cargo": "工作褲",
+      "pleated": "百褶裙"
     },
     "shoes": {
       "sneakers": "球鞋",
@@ -220,6 +231,15 @@
       "lavender": "薰衣草紫",
       "ruby": "紅寶石",
       "onyx": "曜石黑"
+    },
+    "gender": {
+      "male": "男性",
+      "female": "女性"
+    },
+    "group": {
+      "male": "♂ 男",
+      "female": "♀ 女",
+      "any": "中性"
     }
   },
   "editor": {

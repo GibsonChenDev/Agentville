@@ -26,14 +26,12 @@ import { useShortcuts } from './useShortcuts';
 export function App() {
   useShortcuts();
   useEffect(() => {
-    void useApp
-      .getState()
-      .hydrate()
-      .then(() => startHistory());
+    const hydrated = useApp.getState().hydrate();
+    void hydrated.then(() => startHistory());
     void bridge.start();
     startAlerts();
     team.start();
-    startPlace();
+    startPlace(hydrated);
     void useAccount.getState().start();
     startEarning();
     startTourWhenReady();

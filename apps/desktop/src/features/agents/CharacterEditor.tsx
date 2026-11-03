@@ -3,6 +3,9 @@ import {
   APPEARANCE_OPTIONS,
   appearanceFromSeed,
   profileKeyFor,
+  styleGender,
+  withGender,
+  type Gender,
   type AgentRole,
   type CharacterAppearance,
 } from '@agentville/domain';
@@ -34,6 +37,11 @@ const SWATCHES: Partial<Record<keyof CharacterAppearance, Record<string, string>
   bottomColor: OUTFIT,
   shoesColor: OUTFIT,
 };
+
+/** Applies one editor choice; choosing a gender also swaps the other gender's hair and clothes to defaults. */
+export function changeField<K extends keyof CharacterAppearance>(a: CharacterAppearance, field: K, v: CharacterAppearance[K]): CharacterAppearance {
+  return field === 'gender' ? withGender(a, v as Gender) : { ...a, [field]: v };
+}
 
 /** Colour swatches share one label set per kind (all outfit colours use `color`). */
 const swatchNs = (field: keyof CharacterAppearance) => (field === 'skin' ? 'skin' : field === 'hairColor' ? 'hairColor' : 'color');
@@ -81,7 +89,15 @@ function EquipmentPreview({ appearance }: { appearance: CharacterAppearance }) {
   return <img src={url} width={34 * 3} height={40 * 3} alt="" className="pixelated" />;
 }
 
-export function OptionRow<K extends keyof CharacterAppearance>({ field, value, onChange }: { field: K; value: CharacterAppearance[K]; onChange: (v: CharacterAppearance[K]) => void }) {
+/** Fields whose options come in men's, women's and unisex groups. */
+const GENDERED = new Set<keyof CharacterAppearance>(['hairStyle', 'top', 'bottom']);
+
+/**
+ * One appearance field. Hair styles, tops and bottoms are shown in men's,
+ * women's and unisex groups, the character's own gender first — every option
+ * stays selectable.
+ */
+export function OptionRow<K extends keyof CharacterAppearance>({ field, value, onChange, gender }: { field: K; value: CharacterAppearance[K]; onChange: (v: CharacterAppearance[K]) => void; gender?: Gender }) {
   const { t } = useTranslation('agents');
   const inventory = useAccount((s) => s.account?.inventory);
   // Shop items show a lock until bought; choosing one opens the shop instead.
@@ -89,6 +105,33 @@ export function OptionRow<K extends keyof CharacterAppearance>({ field, value, o
   const lock = (opt: CharacterAppearance[K]) => lockedOption(inventory, field, opt as string);
   const options = APPEARANCE_OPTIONS[field] as readonly CharacterAppearance[K][];
   const swatch = SWATCHES[field];
+  if (GENDERED.has(field) && gender) {
+    const order: (Gender | 'any')[] = gender === 'female' ? ['female', 'any', 'male'] : ['male', 'any', 'female'];
+    const groups = order.map((g) => ({ g, opts: options.filter((o) => styleGender(field as 'top', o as string) === g) })).filter((x) => x.opts.length);
+    return (
+      <div className="grid grid-cols-[84px_1fr] items-start gap-2">
+        <span className="pt-1 text-[12px] text-muted">{t(`appearance.field.${field}`)}</span>
+        <div className="space-y-1" role="radiogroup" aria-label={t(`appearance.field.${field}`)}>
+          {groups.map(({ g, opts }) => (
+            <div key={g} className="flex flex-wrap items-center gap-1">
+              <span className="w-9 shrink-0 text-[10.5px] text-faint">{t(`appearance.group.${g}`)}</span>
+              {opts.map((opt) => (
+                <button
+                  key={opt}
+                  role="radio"
+                  aria-checked={value === opt}
+                  onClick={() => pick(opt)}
+                  className={`rounded-md px-2 py-1 text-[11.5px] ${value === opt ? 'bg-amber/15 text-amber ring-1 ring-amber/50' : 'text-muted ring-1 ring-line hover:bg-panel-3 hover:text-fg'}`}
+                >
+                  {t(`appearance.${field}.${opt}`)}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-[84px_1fr] items-start gap-2">
       <span className="pt-1 text-[12px] text-muted">{t(`appearance.field.${field}`)}</span>
@@ -127,7 +170,7 @@ export function OptionRow<K extends keyof CharacterAppearance>({ field, value, o
 }
 
 export const FIELD_GROUPS: (keyof CharacterAppearance)[][] = [
-  ['hairStyle', 'hairColor', 'skin', 'face'],
+  ['gender', 'hairStyle', 'hairColor', 'skin', 'face'],
   ['top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'shoesColor', 'accessory'],
 ];
 
@@ -192,7 +235,7 @@ export function CharacterEditor() {
     setWorkstationId(base.workstationId ?? '');
   };
 
-  const set = <K extends keyof CharacterAppearance>(field: K) => (v: CharacterAppearance[K]) => setAppearance((a) => ({ ...a, [field]: v }));
+  const set = <K extends keyof CharacterAppearance>(field: K) => (v: CharacterAppearance[K]) => setAppearance((a) => changeField(a, field, v));
 
   return (
     <dialog
@@ -267,7 +310,7 @@ export function CharacterEditor() {
                 <section key={i} className="space-y-2.5">
                   <h3 className="text-[11px] font-semibold tracking-wide text-faint uppercase">{t(i === 0 ? 'editor.groupLook' : 'editor.groupOutfit')}</h3>
                   {group.map((field) => (
-                    <OptionRow key={field} field={field} value={appearance[field]} onChange={set(field)} />
+                    <OptionRow key={field} field={field} value={appearance[field]} onChange={set(field)} gender={appearance.gender} />
                   ))}
                 </section>
               ))}

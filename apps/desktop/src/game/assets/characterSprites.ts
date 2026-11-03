@@ -1,5 +1,5 @@
 import type { CharacterAppearance } from '@agentville/domain';
-import { PixelCanvas, shade, type Color } from '../engine/pixel';
+import { PixelCanvas, mix, shade, type Color } from '../engine/pixel';
 import { BLUSH, HAIR, INK, OUTFIT, SKIN, WHITE } from './palette';
 
 /**
@@ -90,18 +90,22 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   const b0 = bottom;
   const b1 = shade(bottom, -0.18);
   const b2 = shade(bottom, -0.32);
-  const kind = r.a.bottom;
   const top = 26 + dy;
   const legLen = 7;
+  // A dress's skirt replaces whatever is chosen below; a pleated skirt is a skirt with pleats.
+  const dress = r.a.top === 'dress';
+  const kind = dress || r.a.bottom === 'pleated' ? 'skirt' : r.a.bottom;
+  const skirt = dress ? r.top : b0;
+  const skirtLen = dress ? 5 : 4;
 
   if (pose.sit) {
     // Seated: short thighs facing camera / hidden behind.
     if (pose.view === 'front') {
-      pc.rect(8, top, 8, 4, b0);
-      pc.vline(11, top + 1, 3, b1);
-      pc.rect(8, top + 3, 8, 1, b1);
+      pc.rect(8, top, 8, 4, dress ? skirt : b0);
+      pc.vline(11, top + 1, 3, shade(dress ? skirt : b0, -0.18));
+      pc.rect(8, top + 3, 8, 1, shade(dress ? skirt : b0, -0.18));
     } else if (pose.view === 'back') {
-      pc.rect(8, top, 8, 3, b1);
+      pc.rect(8, top, 8, 3, shade(dress ? skirt : b0, -0.18));
     }
     return;
   }
@@ -126,7 +130,7 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.rect(lx - 1, top + legLen, 5, 2, col === b2 ? shade(shoes, -0.25) : shoes);
       pc.hline(lx - 1, top + legLen + 2, 5, shade(shoes, -0.4));
     }
-    if (kind === 'skirt') pc.rect(8, top, 8, 4, b0);
+    if (kind === 'skirt') pc.rect(8, top, 8, skirtLen, skirt);
     return;
   }
 
@@ -146,6 +150,7 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.vline(inner, top + 2, h - 2, b1);
       if (kind === 'jeans') pc.px(x + (inner === x ? 3 : 0), top + h - 1, shade(b0, 0.15));
       if (kind === 'joggers') pc.hline(x, top + h - 1, 4, b1);
+      if (kind === 'cargo') pc.rect(inner === x ? x : x + 3, top + 2, 1, 3, b2); // side pocket
     }
     const sy = top + h;
     pc.rect(x - 1, sy, 5, 2, shoes);
@@ -158,10 +163,14 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   leg(12, liftR, 12);
   if (kind !== 'shorts' && kind !== 'skirt') pc.hline(8, top, 8, b1);
   if (kind === 'skirt') {
-    pc.rect(7, top, 10, 4, b0);
-    pc.hline(7, top + 3, 10, b1);
-    pc.px(10, top + 1, b1);
-    pc.px(13, top + 1, b1);
+    const s1 = shade(skirt, -0.18);
+    pc.rect(7, top, 10, skirtLen, skirt);
+    pc.hline(7, top + skirtLen - 1, 10, s1);
+    if (r.a.bottom === 'pleated' && !dress) for (let i = 8; i < 17; i += 2) pc.vline(i, top + 1, skirtLen - 1, s1);
+    else {
+      pc.px(10, top + 1, s1);
+      pc.px(13, top + 1, s1);
+    }
   }
 }
 
@@ -183,6 +192,12 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   pc.vline(x + w - 2, y + 2, h - 4, t1, 0.5);
   pc.hline(x + 1, y + h - 1, w - 2, t2); // hem shadow
   pc.hline(x + 1, y, w - 3, hi);
+
+  // A slightly narrower waist on women's characters (front and back).
+  if (r.a.gender === 'female' && !side && r.a.top !== 'dress') {
+    pc.clear(x, y + 5, 1, 3);
+    pc.clear(x + w - 1, y + 5, 1, 3);
+  }
 
   // Neck
   if (pose.view === 'front') {
@@ -226,6 +241,47 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.vline(12, y + 2, h - 3, shade('#ece5d6', -0.15));
       pc.px(11, y + 4, t2);
       pc.px(11, y + 6, t2);
+    } else if (kind === 'polo') {
+      // Collar points and a short placket
+      pc.px(10, y, hi);
+      pc.px(13, y, hi);
+      pc.px(10, y + 1, t2);
+      pc.px(13, y + 1, t2);
+      pc.vline(12, y + 1, 3, t2);
+      pc.px(12, y + 2, WHITE, 0.8);
+    } else if (kind === 'suit') {
+      // White shirt, tie and lapels
+      pc.rect(10, y, 4, 6, WHITE);
+      pc.rect(11, y + 1, 2, 5, '#c0233f');
+      pc.px(11, y + 6, '#c0233f');
+      pc.vline(9, y, 7, t2);
+      pc.vline(14, y, 7, t2);
+      pc.px(12, y + 8, hi);
+    } else if (kind === 'blouse') {
+      // Round collar and small buttons
+      pc.hline(9, y, 6, WHITE);
+      pc.px(9, y + 1, WHITE);
+      pc.px(14, y + 1, WHITE);
+      for (let i = 2; i < 8; i += 2) pc.px(12, y + i, shade(t0, 0.3));
+    } else if (kind === 'cardigan') {
+      // Open knit over a light tee
+      pc.rect(11, y, 2, h - 1, '#f4efe6');
+      pc.vline(10, y, h - 1, t2);
+      pc.vline(13, y, h - 1, t2);
+      for (let i = 2; i < 8; i += 2) pc.px(10, y + i, hi);
+      for (let i = 0; i < w - 2; i += 2) pc.px(x + 1 + i, y + h - 1, t1);
+    } else if (kind === 'camisole') {
+      // Bare shoulders with thin straps
+      pc.rect(x, y, w, 2, r.skin);
+      pc.rect(x + 1, y + 2, w - 2, 1, shade(r.skin, -0.08));
+      pc.vline(9, y, 3, t0);
+      pc.vline(14, y, 3, t0);
+      pc.hline(9, y + 3, 6, hi);
+    } else if (kind === 'dress') {
+      // Bodice with a waist seam; the skirt is drawn with the legs.
+      pc.hline(10, y, 4, t2);
+      pc.hline(x + 1, y + 6, w - 2, t2);
+      pc.px(11, y + 2, hi);
     } else {
       // tee
       pc.hline(10, y, 4, t2);
@@ -248,10 +304,11 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
 
 // ───────────────────────────────── arms
 
-const SHORT_SLEEVES = new Set(['tee', 'vest']);
+const SHORT_SLEEVES = new Set(['tee', 'vest', 'polo', 'dress']);
+const SLEEVELESS = new Set(['camisole']);
 
 function drawArms(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number, layer: 'behind' | 'front') {
-  const sleeve = r.a.top === 'vest' ? '#ece5d6' : r.top;
+  const sleeve = r.a.top === 'vest' ? '#ece5d6' : r.a.top === 'camisole' ? r.skin : r.top;
   const s1 = shade(sleeve, -0.18);
   const skin = r.skin;
   const sk1 = shade(skin, -0.14);
@@ -259,11 +316,12 @@ function drawArms(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number, layer: '
   const y = 17 + dy;
 
   /** Draws a vertical arm segment from (x, y0) of length len; sleeve covers the top part. */
+  const sleeveless = SLEEVELESS.has(r.a.top);
   const arm = (x: number, y0: number, len: number, shadeSide: boolean) => {
-    const sleeveLen = shortSleeve ? 3 : len - 2;
+    const sleeveLen = sleeveless ? 0 : shortSleeve ? 3 : len - 2;
     pc.rect(x, y0, 2, sleeveLen, shadeSide ? s1 : sleeve);
     pc.rect(x, y0 + sleeveLen, 2, len - sleeveLen, shadeSide ? sk1 : skin);
-    if (!shortSleeve) pc.hline(x, y0 + sleeveLen - 1, 2, shade(sleeve, -0.3));
+    if (!shortSleeve && !sleeveless) pc.hline(x, y0 + sleeveLen - 1, 2, shade(sleeve, -0.3));
   };
   const hand = (x: number, yy: number) => {
     pc.rect(x, yy, 2, 2, skin);
@@ -476,6 +534,7 @@ function drawHead(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.rect(x0 + 1, eyeY, 2, 2, INK);
       pc.px(x0 + 1, eyeY, WHITE);
     }
+    if (r.a.gender === 'female') pc.px(x0 + 3, eyeY - 1, INK);
     pc.px(x0 + 3, y0 + 9, BLUSH, 0.55);
     pc.px(x0 + 1, y0 + 10, shade(skin, -0.35));
   }
@@ -510,6 +569,15 @@ function drawFace(pc: PixelCanvas, r: Resolved, pose: Pose, x0: number, y0: numb
   if (pose.eyes === 'focused' || face === 'focused') {
     pc.hline(lx, ey - 2, 2, shade(r.hair, -0.1));
     pc.hline(rx, ey - 2, 2, shade(r.hair, -0.1));
+  } else if (r.a.gender === 'male') {
+    // Heavier brows
+    pc.hline(lx, ey - 2, 2, shade(r.hair, -0.25), 0.85);
+    pc.hline(rx, ey - 2, 2, shade(r.hair, -0.25), 0.85);
+  }
+  if (r.a.gender === 'female') {
+    // Lashes at the outer corners
+    pc.px(lx - 1, ey, INK);
+    pc.px(rx + 2, ey, INK);
   }
   // blush
   pc.px(x0 + 1, y0 + 8, BLUSH, face === 'cheerful' ? 0.8 : 0.45);
@@ -517,7 +585,8 @@ function drawFace(pc: PixelCanvas, r: Resolved, pose: Pose, x0: number, y0: numb
   // mouth
   const mouth = pose.mouth ?? (face === 'focused' ? 'flat' : 'smile');
   const my = y0 + 9;
-  const mc = shade(r.skin, -0.45);
+  // Women's characters get a hint of lip colour.
+  const mc = r.a.gender === 'female' ? mix(shade(r.skin, -0.35), '#c4566a', 0.8) : shade(r.skin, -0.45);
   if (mouth === 'open') {
     pc.rect(x0 + 5, my, 2, 2, '#7a2f3a');
     pc.px(x0 + 5, my, WHITE);
@@ -566,6 +635,12 @@ function drawHair(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       headShape(pc, x0, y0, c1);
       pc.hline(x0 + 3, y0 + 10, 6, shade(r.skin, -0.1));
       pc.hline(x0 + 2, y0 + 11, 8, r.skin);
+    } else if (style === 'undercut') {
+      // Longer on top, clipped short at the back and sides
+      headShape(pc, x0, y0, shade(c1, 0.05));
+      pc.rect(x0 + 1, y0, 10, 5, c);
+      pc.hline(x0 + 3, y0, 4, hi);
+      pc.hline(x0 + 2, y0 + 11, 8, shade(r.skin, -0.05));
     } else if (style === 'mohawk') {
       headShape(pc, x0, y0, shade(r.skin, -0.08));
       pc.rect(x0 + 4, y0 - 3, 4, 13, c);
@@ -594,6 +669,12 @@ function drawHair(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.vline(x0 + 7, y0 + 10, 7, c1);
       pc.px(x0 + 6, y0 + 17, c1);
     }
+    if (style === 'twintails') {
+      for (const tx of [x0 - 2, x0 + 12]) {
+        pc.rect(tx, y0 + 3, 2, 9, tx < x0 ? c : c1);
+        pc.px(tx, y0 + 3, '#ff5f8f');
+      }
+    }
     return;
   }
 
@@ -608,6 +689,12 @@ function drawHair(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       case 'mohawk':
         pc.rect(x0 + 2, y0 - 3, 9, 3, c);
         pc.hline(x0 + 2, y0 - 3, 6, hi);
+        break;
+      case 'undercut':
+        pc.hline(x0 + 2, y0 - 2, 8, c);
+        pc.rect(x0, y0 - 1, 11, 3, c);
+        pc.hline(x0 + 2, y0 - 2, 5, hi);
+        pc.rect(x0 + 9, y0 + 2, 3, 3, c2);
         break;
       default: {
         pc.hline(x0 + 2, y0 - 1, 8, c);
@@ -632,6 +719,11 @@ function drawHair(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
           pc.rect(x0 + 13, y0 + 4, 3, 7, c);
           pc.vline(x0 + 15, y0 + 5, 6, c1);
         }
+        if (style === 'twintails') {
+          pc.px(x0 + 12, y0 + 3, '#ff5f8f');
+          pc.rect(x0 + 12, y0 + 4, 2, 9, c);
+          pc.vline(x0 + 13, y0 + 5, 7, c1);
+        }
       }
     }
     return;
@@ -652,6 +744,15 @@ function drawHair(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.hline(x0 + 4, y0 - 3, 2, hi);
       pc.px(x0, y0 + 4, shade(r.skin, -0.2));
       pc.px(x0 + 11, y0 + 4, shade(r.skin, -0.2));
+      break;
+    case 'undercut':
+      // Swept-back top, short sides
+      pc.hline(x0 + 2, y0 - 2, 8, c);
+      pc.rect(x0 + 1, y0 - 1, 10, 3, c);
+      pc.hline(x0 + 3, y0 - 2, 4, hi);
+      pc.rect(x0 + 1, y0 + 2, 5, 1, c1);
+      pc.rect(x0, y0 + 1, 1, 4, c2);
+      pc.rect(x0 + 11, y0 + 1, 1, 4, c2);
       break;
     case 'curly': {
       pc.rect(x0 - 1, y0 - 1, 14, 5, c);
@@ -704,6 +805,13 @@ function drawHair(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       }
       if (style === 'ponytail') {
         pc.rect(x0 + 12, y0 + 4, 2, 6, c1);
+      }
+      if (style === 'twintails') {
+        for (const tx of [x0 - 2, x0 + 12]) {
+          pc.px(tx + (tx < x0 ? 1 : 0), y0 + 3, '#ff5f8f');
+          pc.rect(tx, y0 + 4, 2, 9, tx < x0 ? c : c1);
+          pc.px(tx + (tx < x0 ? 1 : 0), y0 + 13, tx < x0 ? c1 : c2);
+        }
       }
     }
   }

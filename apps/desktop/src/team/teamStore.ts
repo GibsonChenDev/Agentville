@@ -2,6 +2,7 @@ import { LIMITS, type ChatMessage, type MemberView, type RoomRef, type RoomView 
 import { create } from 'zustand';
 import { useAccount } from '../account/accountStore';
 import { normalizeServer, type TeamApiError } from './api';
+import type { CachedOffice } from './officeCache';
 
 /**
  * Team offices you belong to, and the live state of the one you're in. The
@@ -25,6 +26,8 @@ export interface TeamState {
   status: TeamStatus;
   error?: TeamError;
   room?: RoomView;
+  /** How the office you're entering looked last time, shown until the relay sends the real thing. */
+  preview?: CachedOffice;
   members: Record<string, MemberView>;
   /** The office's chat: recent history from the relay plus what arrived since, oldest first. */
   chat: ChatMessage[];
@@ -89,7 +92,7 @@ export const useTeam = create<TeamState>((set, get) => ({
   setRooms: (rooms, opts) => {
     const active = get().membership;
     const still = active && rooms.find((r) => r.roomId === active.roomId);
-    if (active && !still) set({ membership: undefined, room: undefined, members: {}, status: 'idle', chat: [], chatUnread: 0 });
+    if (active && !still) set({ membership: undefined, room: undefined, preview: undefined, members: {}, status: 'idle', chat: [], chatUnread: 0 });
     else if (active && still) set({ membership: { ...still, server: active.server } });
     set({ rooms });
     persist(get());
@@ -98,7 +101,7 @@ export const useTeam = create<TeamState>((set, get) => ({
   setActive: (roomId) => {
     const ref = roomId ? get().rooms.find((r) => r.roomId === roomId) : undefined;
     const server = normalizeServer(get().server) ?? DEFAULT_TEAM_SERVER;
-    set(ref ? { membership: { ...ref, server }, chat: [], chatUnread: 0 } : { membership: undefined, room: undefined, members: {}, status: 'idle', chat: [], chatUnread: 0 });
+    set(ref ? { membership: { ...ref, server }, chat: [], chatUnread: 0 } : { membership: undefined, room: undefined, preview: undefined, members: {}, status: 'idle', chat: [], chatUnread: 0 });
   },
   openDialog: (dialog) => set({ dialog, error: undefined }),
   setChatOpen: (chatOpen) => set(chatOpen ? { chatOpen, chatUnread: 0 } : { chatOpen }),

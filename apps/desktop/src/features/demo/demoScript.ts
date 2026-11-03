@@ -15,6 +15,7 @@ export const DEMO_AGENTS: Omit<AgentRecord, 'createdAt'>[] = [
     kind: 'agent',
     projectPath: '~/code/storefront',
     appearance: {
+      gender: 'female',
       hairStyle: 'bob',
       hairColor: 'espresso',
       skin: 'light',
@@ -37,6 +38,7 @@ export const DEMO_AGENTS: Omit<AgentRecord, 'createdAt'>[] = [
     kind: 'agent',
     projectPath: '~/code/storefront/api',
     appearance: {
+      gender: 'male',
       hairStyle: 'short',
       hairColor: 'black',
       skin: 'tan',
@@ -59,6 +61,7 @@ export const DEMO_AGENTS: Omit<AgentRecord, 'createdAt'>[] = [
     kind: 'agent',
     projectPath: '~/code/storefront',
     appearance: {
+      gender: 'female',
       hairStyle: 'bun',
       hairColor: 'auburn',
       skin: 'porcelain',
@@ -81,6 +84,7 @@ export const DEMO_AGENTS: Omit<AgentRecord, 'createdAt'>[] = [
     kind: 'agent',
     projectPath: '~/code/storefront/web',
     appearance: {
+      gender: 'male',
       hairStyle: 'curly',
       hairColor: 'black',
       skin: 'brown',
@@ -103,6 +107,7 @@ export const DEMO_AGENTS: Omit<AgentRecord, 'createdAt'>[] = [
     kind: 'agent',
     projectPath: '~/code/storefront/web',
     appearance: {
+      gender: 'female',
       hairStyle: 'long',
       hairColor: 'black',
       skin: 'light',

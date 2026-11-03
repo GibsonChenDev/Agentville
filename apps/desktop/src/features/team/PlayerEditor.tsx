@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AnimName } from '../../game/assets/characterSprites';
 import { usePlayer } from '../../team/playerStore';
-import { FIELD_GROUPS, OptionRow, Preview } from '../agents/CharacterEditor';
+import { FIELD_GROUPS, OptionRow, Preview, changeField } from '../agents/CharacterEditor';
 
 const ANIMS: { id: string; anim: AnimName }[] = [
   { id: 'idle', anim: 'idle_front' },
@@ -35,7 +35,7 @@ export function PlayerEditor() {
   }, [open]);
 
   const close = () => usePlayer.getState().openEditor(false);
-  const set = <K extends keyof CharacterAppearance>(field: K) => (v: CharacterAppearance[K]) => setAppearance((a) => ({ ...a, [field]: v }));
+  const set = <K extends keyof CharacterAppearance>(field: K) => (v: CharacterAppearance[K]) => setAppearance((a) => changeField(a, field, v));
 
   return (
     <dialog
@@ -81,7 +81,7 @@ export function PlayerEditor() {
                 <section key={i} className="space-y-2.5">
                   <h3 className="text-[11px] font-semibold tracking-wide text-faint uppercase">{t(i === 0 ? 'agents:editor.groupLook' : 'agents:editor.groupOutfit')}</h3>
                   {group.map((field) => (
-                    <OptionRow key={field} field={field} value={appearance[field]} onChange={set(field)} />
+                    <OptionRow key={field} field={field} value={appearance[field]} onChange={set(field)} gender={appearance.gender} />
                   ))}
                 </section>
               ))}
