@@ -25,7 +25,8 @@ on:
 
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-  # File names without the version (Agentville_universal.dmg, Agentville_x64-setup.exe), so
+  # File names without the version (Agentville_universal.dmg, Agentville_x64-setup.exe), via
+  # tauri-action@v0's `assetNamePattern` (newer releases of the action call it releaseAssetNamePattern), so
   # …/releases/latest/download/<name> always points at the newest build. The version that
   # matters for upgrades is the one inside the app (tauri.conf.json), so keep bumping it.
   ASSET_NAMES: '[name]_[arch][setup][ext]'
@@ -59,7 +60,7 @@ jobs:
           tagName: ${{ env.RELEASE_TAG }}
           releaseName: Agentville ${{ env.RELEASE_TAG }}
           releaseDraft: true
-          releaseAssetNamePattern: ${{ env.ASSET_NAMES }}
+          assetNamePattern: ${{ env.ASSET_NAMES }}
           args: --target universal-apple-darwin --bundles app,dmg
 
   windows:
@@ -88,5 +89,5 @@ jobs:
           tagName: ${{ env.RELEASE_TAG }}
           releaseName: Agentville ${{ env.RELEASE_TAG }}
           releaseDraft: true
-          releaseAssetNamePattern: ${{ env.ASSET_NAMES }}
+          assetNamePattern: ${{ env.ASSET_NAMES }}
           args: --bundles nsis
