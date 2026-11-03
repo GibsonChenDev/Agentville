@@ -283,6 +283,7 @@ export class CharacterActor {
       anim = `sit_${view}_${activity}` as AnimName;
     } else if (this.standAnim) {
       anim = this.standAnim;
+      flip = this.facing === 'right' && anim.endsWith('_side');
     } else if (intent.place === 'meeting') {
       anim = sideDir ? 'stand_talk_side' : this.facing === 'up' ? 'stand_talk_back' : 'stand_talk_front';
       flip = this.facing === 'right';

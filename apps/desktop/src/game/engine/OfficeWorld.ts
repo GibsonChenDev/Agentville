@@ -13,7 +13,7 @@ import { FURNITURE, SERVER_LEDS, drawChair, drawDesk, drawEquipment } from '../f
 import { drawScreen } from '../furniture/screens';
 import { NavGrid } from '../navigation/grid';
 import { DEFAULT_SCENES, TILE, type SceneDefinition } from '../scenes/layouts';
-import { interactableAt, interactablesFor, type Interactable } from '../scenes/interactables';
+import { interactableAt, interactablesFor, withinReach, type Interactable } from '../scenes/interactables';
 import { waitingSpots } from '../scenes/crowd';
 import { clockHands } from '../scenes/clock';
 import { CAP, drawGlowLayer, drawLightmap, drawRoom, type LightSource } from '../scenes/room';
@@ -352,7 +352,7 @@ export class OfficeWorld {
     }
 
     for (const ws of scene.workstations) this.buildStation(ws, lights);
-    this.interactables = interactablesFor(scene);
+    this.interactables = interactablesFor(scene, (t) => this.nav.isWalkable(t.x, t.y));
     this.waiting = waitingSpots(scene);
 
     // window + neon light sources for the lightmap
@@ -1410,8 +1410,9 @@ export class OfficeWorld {
     h.seat = it.id;
     const a = h.actor;
     if (it.kind === 'arcade' || it.kind === 'dice') {
-      a.stand({ x: it.x, y: it.y, tile: it.approach, facing: 'up' });
-      a.standAnim = 'stand_play_back';
+      a.stand({ x: it.x, y: it.y, tile: it.approach, facing: it.facing });
+      // Facing the cabinet or table from whichever side this spot is on.
+      a.standAnim = it.facing === 'up' ? 'stand_play_back' : it.facing === 'down' ? 'stand_talk_front' : 'stand_talk_side';
       a.scheduler.current = IDLE_INTENT;
       if (id === PLAYER_ID) (it.kind === 'dice' ? this.callbacks.onDice : this.callbacks.onArcade)?.();
     } else {
@@ -1451,7 +1452,7 @@ export class OfficeWorld {
       return;
     }
     const it = interactableAt(this.interactables, tile);
-    if (it) return this.playerUse(it);
+    if (it) return this.playerUse(this.freeSpotOf(it));
     if (!this.nav.isWalkable(tile.x, tile.y)) return;
     this.vacate(h, PLAYER_ID);
     h.pending = undefined;
@@ -1593,12 +1594,26 @@ export class OfficeWorld {
       this.vacate(h, PLAYER_ID);
       return;
     }
-    const t = h.actor.tile();
-    const near = this.interactables
-      .map((it) => ({ it, d: Math.max(Math.abs(it.approach.x - t.x), Math.abs(it.approach.y - t.y)) }))
-      .filter((c) => c.d <= 1 && !this.occupantOf(c.it))
-      .sort((a, b) => a.d - b.d)[0];
-    if (near) this.playerUse(near.it);
+    // Anything you're next to, from any side; you walk round to its spot if needed.
+    const near = withinReach(this.interactables, h.actor.tile()).find((it) => this.canUse(it));
+    if (near) this.playerUse(near);
+  }
+
+  /** Free for you: nobody else (person or agent) is using it. */
+  private canUse(it: Interactable) {
+    const occupant = this.occupantOf(it);
+    return !occupant || occupant === PLAYER_ID;
+  }
+
+  /** The spot to use when you pick a shared piece (arcade, dice table): the nearest free one, else the one picked. */
+  private freeSpotOf(it: Interactable): Interactable {
+    if (!it.furnitureId || this.canUse(it)) return it;
+    const t = this.player?.actor.tile() ?? it.approach;
+    return (
+      this.interactables
+        .filter((o) => o.furnitureId === it.furnitureId && o.kind === it.kind && this.canUse(o))
+        .sort((a, b) => Math.hypot(a.approach.x - t.x, a.approach.y - t.y) - Math.hypot(b.approach.x - t.x, b.approach.y - t.y))[0] ?? it
+    );
   }
 
   private arrive(h: Human) {

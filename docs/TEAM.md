@@ -30,7 +30,7 @@ This is enforced in three places: the app only ever builds the messages in `pack
 
 Everyone shares one furniture layout: anyone can edit it, changes appear for everyone and the last save wins. The map buttons in a team office only change how it looks **to you** (floor, walls, window view, colours), remembered per office on your computer; the desks and furniture stay where they are, so everyone sees you sitting where you sit. The relay ignores map changes from older apps.
 
-Controls: `W A S D` walk · click the floor to walk there · click a chair, sofa, beanbag or arcade to use it · `E` use the nearest thing / get up · click your own character to change your look.
+Controls: `W A S D` walk (any keyboard layout or input method) · click the floor to walk there · click a chair, sofa, beanbag, arcade or dice table to use it · `E` use whatever you're next to, from any side (you walk round to its spot), or get up · click your own character to change your look. The arcade has three spots in front and the dice table six around it, so several people can play at once.
 
 ## Accounts, coins and the shop ／ 帳號、金幣與商店
 

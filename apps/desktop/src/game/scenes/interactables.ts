@@ -6,6 +6,10 @@ import { TILE, type SceneDefinition } from './layouts';
  * Things a person (you or a teammate) can use: desk chairs, sofa places,
  * beanbags, the arcade and the dice table. Ids are stable for a given layout, so a teammate's
  * "sitting on sofa:sofa:1" means the same place on every screen.
+ *
+ * The arcade and the dice table have several spots so a few people can use
+ * them at once: three in front of the cabinet, six around the table. The
+ * first spot keeps the id older versions used (`arcade:<id>`, `dice:<id>`).
  */
 export type InteractKind = 'desk' | 'sofa' | 'arcade' | 'dice';
 
@@ -24,10 +28,40 @@ export interface Interactable {
   z: number;
   /** Workstation id, for desks. */
   workstationId?: string;
+  /** The piece of furniture, when several spots share it (arcade, dice table). */
+  furnitureId?: string;
 }
 
-export function interactablesFor(scene: SceneDefinition): Interactable[] {
+/** A spot to stand at next to a piece of furniture: tile offset from its top-left, and which way you face. */
+type Spot = [dx: number, dy: number, facing: Facing];
+
+const ARCADE_SPOTS: Spot[] = [
+  [0, 1, 'up'],
+  [-1, 1, 'up'],
+  [1, 1, 'up'],
+];
+const DICE_SPOTS: Spot[] = [
+  [0, 1, 'up'],
+  [1, 1, 'up'],
+  [0, -1, 'down'],
+  [1, -1, 'down'],
+  [-1, 0, 'right'],
+  [2, 0, 'left'],
+];
+
+/**
+ * Everything usable in a scene. `isFloor` drops the extra spots of shared
+ * furniture that stand on something (a wall, another piece of furniture).
+ */
+export function interactablesFor(scene: SceneDefinition, isFloor: (t: TilePoint) => boolean = () => true): Interactable[] {
   const out: Interactable[] = [];
+  const spots = (p: { id: string; x: number; y: number }, prefix: string, kind: InteractKind, list: Spot[], hit: TilePoint[]) =>
+    list.forEach(([dx, dy, facing], i) => {
+      const approach = { x: p.x + dx, y: p.y + dy };
+      if (!isFloor(approach)) return;
+      const y = approach.y * TILE + 12;
+      out.push({ id: i ? `${prefix}:${p.id}:${i}` : `${prefix}:${p.id}`, kind, hit, approach, x: approach.x * TILE + 8, y, facing, z: y, furnitureId: p.id });
+    });
   for (const ws of scene.workstations) {
     const desk = scene.furniture.find((f) => f.id === ws.deskId);
     if (!desk) continue;
@@ -63,16 +97,15 @@ export function interactablesFor(scene: SceneDefinition): Interactable[] {
       out.push({ id: `bean:${p.id}`, kind: 'sofa', hit: [{ x: p.x, y: p.y }], approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 8, y: p.y * TILE + 12, facing: 'down', z });
     }
     if (p.kind === 'dice_table') {
-      // Stand at the front edge of the table, facing it.
       const hit = [0, 1].flatMap((dx) => [
         { x: p.x + dx, y: p.y },
         { x: p.x + dx, y: p.y - 1 },
       ]);
-      out.push({ id: `dice:${p.id}`, kind: 'dice', hit, approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 16, y: (p.y + 1) * TILE + 12, facing: 'up', z: (p.y + 1) * TILE + 12 });
+      spots(p, 'dice', 'dice', DICE_SPOTS, hit);
     }
     if (p.kind === 'arcade') {
       // The cabinet stands about three tiles tall: clicking anywhere on it counts.
-      out.push({ id: `arcade:${p.id}`, kind: 'arcade', hit: [{ x: p.x, y: p.y }, { x: p.x, y: p.y - 1 }, { x: p.x, y: p.y - 2 }], approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 8, y: (p.y + 1) * TILE + 12, facing: 'up', z: (p.y + 1) * TILE + 12 });
+      spots(p, 'arcade', 'arcade', ARCADE_SPOTS, [{ x: p.x, y: p.y }, { x: p.x, y: p.y - 1 }, { x: p.x, y: p.y - 2 }]);
     }
   }
   return out;
@@ -80,4 +113,18 @@ export function interactablesFor(scene: SceneDefinition): Interactable[] {
 
 export function interactableAt(list: Interactable[], tile: TilePoint): Interactable | undefined {
   return list.find((it) => it.hit.some((h) => h.x === tile.x && h.y === tile.y));
+}
+
+/**
+ * Things you can use from where you stand: you're on or next to (diagonals
+ * count) any tile of them or the spot in front of them, from any side.
+ * Nearest first; ties go to the one whose spot is closest.
+ */
+export function withinReach(list: Interactable[], tile: TilePoint, reach = 1): Interactable[] {
+  const cheb = (a: TilePoint) => Math.max(Math.abs(a.x - tile.x), Math.abs(a.y - tile.y));
+  return list
+    .map((it) => ({ it, d: Math.min(cheb(it.approach), ...it.hit.map(cheb)), spot: Math.hypot(it.approach.x - tile.x, it.approach.y - tile.y) }))
+    .filter((c) => c.d <= reach)
+    .sort((a, b) => a.d - b.d || a.spot - b.spot)
+    .map((c) => c.it);
 }
