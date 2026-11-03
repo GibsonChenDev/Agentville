@@ -1,0 +1,57 @@
+{
+  "theme": {
+    "loft": "Cozy Startup Loft",
+    "studio": "Silicon Valley Creative Studio",
+    "midnight": "Midnight Developer Lab"
+  },
+  "themeShort": {
+    "loft": "Loft",
+    "studio": "Studio",
+    "midnight": "Midnight Lab"
+  },
+  "camera": {
+    "zoom": "Zoom {{level}}×",
+    "following": "Following {{name}}"
+  },
+  "editOffice": "Edit office",
+  "editor": {
+    "badge": "Editing",
+    "hint": "Drag furniture to move it, or pick an item below to place it.",
+    "reset": "Restore default layout",
+    "palette": "Furniture",
+    "placing": "Click the floor to place: {{item}} · Esc to stop",
+    "idle": "Select furniture to flip or remove it. Green tiles: door · amber: seats · teal: gathering spots.",
+    "facingUp": "sitter faces the wall",
+    "facingDown": "sitter faces the camera",
+    "flip": "Flip desk",
+    "remove": "Remove",
+    "error": {
+      "unknown_kind": "Unknown furniture.",
+      "unknown_item": "That item no longer exists.",
+      "out_of_bounds": "It has to stay on the floor, away from the walls.",
+      "overlaps": "Something is already there.",
+      "blocks_door": "Keep the doorway clear.",
+      "blocks_spot": "That spot is reserved for people to stand at.",
+      "seat_blocked": "The desk's chair has no room there.",
+      "blocks_path": "That would block someone's way to a desk or the meeting area.",
+      "last_desk": "The office needs at least one desk."
+    }
+  },
+  "furniture": {
+    "desk": "Desk",
+    "plant_monstera": "Monstera",
+    "plant_fiddle": "Fiddle-leaf fig",
+    "plant_succulent": "Succulent",
+    "bookshelf": "Bookshelf",
+    "sofa": "Sofa",
+    "coffee_table": "Coffee table",
+    "coffee_bar": "Coffee bar",
+    "meeting_table": "Meeting table",
+    "whiteboard": "Whiteboard",
+    "floor_lamp": "Floor lamp",
+    "server_rack": "Server rack",
+    "water_cooler": "Water cooler",
+    "arcade": "Arcade cabinet",
+    "beanbag": "Beanbag"
+  }
+}

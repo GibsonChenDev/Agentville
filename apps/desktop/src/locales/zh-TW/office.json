@@ -1,0 +1,57 @@
+{
+  "theme": {
+    "loft": "溫馨新創閣樓",
+    "studio": "矽谷創意工作室",
+    "midnight": "午夜開發實驗室"
+  },
+  "themeShort": {
+    "loft": "閣樓",
+    "studio": "工作室",
+    "midnight": "午夜實驗室"
+  },
+  "camera": {
+    "zoom": "縮放 {{level}}×",
+    "following": "正在跟隨 {{name}}"
+  },
+  "editOffice": "編輯辦公室",
+  "editor": {
+    "badge": "編輯中",
+    "hint": "拖曳家具可移動，或從下方選擇物品來擺放。",
+    "reset": "恢復預設擺設",
+    "palette": "家具",
+    "placing": "點擊地板放置：{{item}}・按 Esc 停止",
+    "idle": "選取家具可轉向或移除。綠格：門口・琥珀格：座位・藍綠點：集合位置。",
+    "facingUp": "坐著時面向牆",
+    "facingDown": "坐著時面向鏡頭",
+    "flip": "轉向",
+    "remove": "移除",
+    "error": {
+      "unknown_kind": "未知的家具。",
+      "unknown_item": "這個物品已不存在。",
+      "out_of_bounds": "家具必須放在地板上，並離牆一格。",
+      "overlaps": "那裡已經有東西了。",
+      "blocks_door": "請保持門口暢通。",
+      "blocks_spot": "那是保留給人站立的位置。",
+      "seat_blocked": "那裡放不下辦公桌的椅子。",
+      "blocks_path": "這樣會擋住通往座位或會議區的路。",
+      "last_desk": "辦公室至少需要一張辦公桌。"
+    }
+  },
+  "furniture": {
+    "desk": "辦公桌",
+    "plant_monstera": "龜背芋",
+    "plant_fiddle": "琴葉榕",
+    "plant_succulent": "多肉植物",
+    "bookshelf": "書架",
+    "sofa": "沙發",
+    "coffee_table": "茶几",
+    "coffee_bar": "咖啡吧",
+    "meeting_table": "會議桌",
+    "whiteboard": "白板",
+    "floor_lamp": "立燈",
+    "server_rack": "伺服器機櫃",
+    "water_cooler": "飲水機",
+    "arcade": "大型電玩機台",
+    "beanbag": "懶骨頭"
+  }
+}

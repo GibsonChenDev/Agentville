@@ -1,0 +1,19 @@
+{
+  "status": {
+    "backlog": "Backlog",
+    "ready": "Ready",
+    "in_progress": "In progress",
+    "blocked": "Blocked",
+    "waiting_for_approval": "Waiting for approval",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "priority": {
+    "low": "Low",
+    "normal": "Normal",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "createTask": "Create task"
+}

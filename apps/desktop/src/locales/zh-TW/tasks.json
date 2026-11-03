@@ -1,0 +1,19 @@
+{
+  "status": {
+    "backlog": "待辦清單",
+    "ready": "準備就緒",
+    "in_progress": "進行中",
+    "blocked": "受阻",
+    "waiting_for_approval": "等待核准",
+    "completed": "已完成",
+    "failed": "失敗",
+    "cancelled": "已取消"
+  },
+  "priority": {
+    "low": "低",
+    "normal": "一般",
+    "high": "高",
+    "urgent": "緊急"
+  },
+  "createTask": "建立任務"
+}

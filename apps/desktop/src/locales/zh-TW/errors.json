@@ -1,0 +1,30 @@
+{
+  "generic": "發生錯誤。",
+  "rendererFailed": "無法繪製辦公室：{{message}}",
+  "retry": "重試",
+  "storageUnavailable": "目前環境無法儲存偏好設定，變更只會保留到關閉 App 為止。",
+  "code": {
+    "port_in_use": "此連接埠已被使用，請選擇其他連接埠。",
+    "listen_failed": "接收器無法開啟連接埠。",
+    "bridge_offline": "接收器尚未執行。",
+    "invalid_port": "請選擇 1024 到 65535 之間的連接埠。",
+    "path_not_absolute": "路徑必須是絕對路徑，例如 /opt/homebrew/bin/node。",
+    "invalid_hook_token": "Hook 權杖無效，請重新安裝 Hooks。",
+    "config_write_failed": "無法儲存設定。",
+    "settings_invalid_json": "你的 Claude Code 設定檔不是有效的 JSON，因此沒有修改它。請修正後再試一次。",
+    "settings_unreadable": "無法讀取你的 Claude Code 設定檔。",
+    "settings_not_object": "你的 Claude Code 設定檔格式不符預期，因此沒有修改它。",
+    "unknown_method": "接收器不支援此操作。",
+    "internal": "接收器發生內部錯誤。",
+    "unknown": "發生未預期的錯誤（{{code}}）。",
+    "installer_busy": "已有其他安裝正在進行。",
+    "installer_failed": "無法啟動安裝程式。",
+    "installer_unavailable": "這台 Mac 無法自動安裝此工具。",
+    "unknown_tool": "未知的工具。",
+    "unknown_link": "未知的連結。",
+    "open_failed": "無法開啟。",
+    "settings_unwritable": "無法寫入 Claude Code 的設定檔。",
+    "too_large": "請求內容過大。",
+    "invalid_json": "請求內容不是有效的 JSON。"
+  }
+}

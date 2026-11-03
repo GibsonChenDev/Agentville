@@ -1,0 +1,100 @@
+{
+  "appName": "Agentville",
+  "tagline": "你的 AI 團隊，活起來了",
+  "mode": {
+    "demo": "示範",
+    "live": "即時",
+    "demoBanner": "示範事件：用於視覺檢查的腳本資料，並非真實 Agent 活動",
+    "demoWatermark": "示範事件",
+    "liveEmpty": "尚未連線任何 Agent",
+    "liveEmptyHint": "完成監控模式設定後，Claude Code 工作階段就會出現在這裡。",
+    "switchToDemo": "執行示範",
+    "switchToLive": "切換到即時"
+  },
+  "sidebar": {
+    "workspace": "工作區",
+    "office": "辦公室",
+    "team": "團隊",
+    "activeTasks": "進行中的任務",
+    "noTasks": "目前沒有進行中的任務",
+    "settings": "設定",
+    "defaultWorkspace": "個人",
+    "guide": "使用教學"
+  },
+  "console": {
+    "title": "活動紀錄",
+    "expand": "展開活動紀錄",
+    "collapse": "收合活動紀錄",
+    "filterAll": "所有 Agent",
+    "filterTypeAll": "所有事件",
+    "empty": "目前沒有事件",
+    "clear": "清除",
+    "eventCount_one": "{{count}} 則事件",
+    "eventCount_other": "{{count}} 則事件"
+  },
+  "eventKind": {
+    "session.started": "工作階段開始",
+    "session.ended": "工作階段結束",
+    "session.disconnected": "已中斷連線",
+    "prompt.submitted": "已送出提示",
+    "assistant.message": "訊息",
+    "tool.started": "工具開始",
+    "tool.finished": "工具完成",
+    "tool.failed": "工具失敗",
+    "permission.requested": "請求權限",
+    "permission.resolved": "權限已處理",
+    "notification": "通知",
+    "turn.completed": "回合完成",
+    "run.completed": "執行完成",
+    "run.failed": "執行失敗",
+    "run.cancelled": "執行已取消",
+    "subagent.started": "子 Agent 啟動",
+    "subagent.stopped": "子 Agent 結束",
+    "collaboration.started": "開始協作",
+    "collaboration.ended": "協作結束",
+    "task.created": "建立任務",
+    "task.completed": "完成任務",
+    "teammate.idle": "隊員閒置",
+    "location.changed": "切換目錄"
+  },
+  "eventGroup": {
+    "lifecycle": "生命週期",
+    "tools": "工具",
+    "permissions": "權限",
+    "subagents": "子 Agent 與團隊",
+    "messages": "訊息"
+  },
+  "source": {
+    "demo": "示範",
+    "hook": "Hook",
+    "sdk": "SDK",
+    "app": "App"
+  },
+  "actions": {
+    "close": "關閉",
+    "cancel": "取消",
+    "save": "儲存",
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
+    "follow": "跟隨 Agent",
+    "unfollow": "停止跟隨",
+    "recenter": "鏡頭置中",
+    "pause": "暫停示範",
+    "resume": "繼續示範",
+    "restart": "重新開始示範"
+  },
+  "time": {
+    "justNow": "剛剛"
+  },
+  "shortcuts": {
+    "title": "鍵盤快速鍵",
+    "zoom": "放大／縮小",
+    "pan": "移動鏡頭",
+    "follow": "跟隨選取的 Agent",
+    "deselect": "取消選取",
+    "console": "切換活動紀錄",
+    "cycle": "選取下一位 Agent",
+    "settings": "開啟設定"
+  },
+  "loading": "正在佈置辦公室…"
+}

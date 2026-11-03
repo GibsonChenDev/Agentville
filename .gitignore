@@ -1,0 +1,46 @@
+# ── Dependencies
+node_modules/
+.pnpm-store/
+
+# ── Build output
+dist/
+*.tsbuildinfo
+coverage/
+*.tgz
+
+# ── Tauri / Rust (apps/desktop/src-tauri)
+target/
+apps/desktop/src-tauri/gen/
+# Cargo.lock is committed on purpose: this is an application, builds must be reproducible.
+
+# ── Environment & local configuration (never commit secrets or machine-specific values)
+.env
+.env.*
+*.local
+!.env.example
+!.env.*.example
+
+# ── Local data that Agentville or its tests may create
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.agentville-backup-*
+*.agentville-tmp-*
+
+# ── Logs
+*.log
+npm-debug.log*
+
+# ── Editors & tools
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.claude/
+
+# ── OS files
+.DS_Store
+._*
+Thumbs.db
+desktop.ini

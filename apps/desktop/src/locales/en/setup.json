@@ -1,0 +1,58 @@
+{
+  "step": {
+    "claude": {
+      "title": "Claude Code is installed",
+      "why": "Agentville watches Claude Code; it doesn't replace it."
+    },
+    "login": {
+      "title": "Signed in to Claude Code",
+      "why": "Claude Code needs your Claude account (Pro, Max, Team, Enterprise or Console).",
+      "how": "Open a terminal, run claude, and follow the sign-in steps in your browser."
+    },
+    "receiver": {
+      "title": "Agentville's receiver is running",
+      "why": "Built into Agentville. Listens only on this computer (127.0.0.1)."
+    },
+    "hooks": {
+      "title": "Claude Code is connected (hooks installed)",
+      "why": "Adds Agentville to your Claude Code settings so sessions report what they're doing. A backup is made first; you can remove it any time."
+    },
+    "events": {
+      "title": "A session has appeared",
+      "why": "Each claude session you start becomes a character in the office.",
+      "how": "Start a new claude session in a terminal and send any prompt."
+    }
+  },
+  "auto": {
+    "title": "Set everything up automatically",
+    "installClaude": "Install Claude Code with Anthropic's official installer:",
+    "receiver": "Start Agentville's built-in receiver.",
+    "hooks": "Connect Claude Code by adding Agentville's hooks to its settings (backup first).",
+    "login": "Then you sign in to Claude Code once — that part needs you.",
+    "start": "Set up automatically",
+    "running": "Setting up…",
+    "consent": "Nothing else on your computer is changed.",
+    "needsLogin": "Almost there: sign in to Claude Code. Click “Sign in”, then follow the steps in your browser.",
+    "done": "All set. Start claude in any project folder and watch it walk into the office."
+  },
+  "fix": {
+    "installClaude": "Install",
+    "login": "Sign in",
+    "receiver": "Start",
+    "hooks": "Connect",
+    "tryIt": "Open a terminal"
+  },
+  "install": {
+    "running": "Installing Claude Code…",
+    "done": "Claude Code installed.",
+    "failed": "Installation failed (exit code {{code}}).",
+    "stop": "Stop",
+    "manual": "You can also install it yourself by following",
+    "docs": "the official instructions"
+  },
+  "installLog": "Installer output",
+  "backup": "Backup saved: {{path}}",
+  "lastEvent": "Last activity {{time}}",
+  "guideHint": "New to Claude Code?",
+  "openGuide": "Open the guide"
+}

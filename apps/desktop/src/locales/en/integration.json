@@ -1,0 +1,99 @@
+{
+  "tabs": {
+    "general": "General",
+    "monitoring": "Monitoring setup"
+  },
+  "intro": "Monitor Mode shows the Claude Code sessions you start in a terminal or IDE as characters in the office. It uses Claude Code hooks: no API key, no extra cost, and nothing else to install besides Claude Code.",
+  "observeOnly": "Monitored sessions are view-only. Agentville can't send prompts, approve tools or stop them — do that in the terminal.",
+  "tool": {
+    "auto": "Auto-detect",
+    "choose": "Choose…",
+    "placeholder": "Auto-detect",
+    "found": "Found {{version}}",
+    "notFound": "Not found"
+  },
+  "claude": {
+    "label": "Claude Code location",
+    "hint": "Detected automatically. Set a path only if Claude Code is installed somewhere unusual."
+  },
+  "receiver": {
+    "title": "Local receiver",
+    "hint": "Built into Agentville. Listens only on 127.0.0.1 and accepts events signed with this computer's private token.",
+    "port": "Port",
+    "portHint": "Changing the port requires reinstalling the hooks.",
+    "autoStart": "Start the receiver when Agentville opens",
+    "state": {
+      "stopped": "Stopped",
+      "starting": "Starting…",
+      "running": "Running on port {{port}}",
+      "failed": "Failed to start"
+    },
+    "restart": "Restart",
+    "start": "Start",
+    "showLogs": "Show logs",
+    "hideLogs": "Hide logs",
+    "noLogs": "No log lines yet.",
+    "received": "Received {{count}}",
+    "rejected": "Rejected {{count}}"
+  },
+  "hooks": {
+    "title": "Claude Code hooks",
+    "hint": "Adds Agentville entries to your user settings. Your other settings and hooks are kept untouched, and a backup is written first.",
+    "installed": "Installed",
+    "notInstalled": "Not installed",
+    "stale": "Installed for a different port or token — reinstall to update.",
+    "file": "Settings file",
+    "preview": "Preview changes",
+    "hidePreview": "Hide preview",
+    "before": "Current",
+    "after": "After",
+    "empty": "(file doesn't exist yet)",
+    "install": "Install hooks",
+    "reinstall": "Reinstall hooks",
+    "uninstall": "Remove hooks",
+    "backup": "Backup saved: {{path}}",
+    "restartSessions": "Sessions that were already running need to be restarted to pick up the hooks.",
+    "needsReceiver": "Start the local receiver first.",
+    "noChanges": "Nothing to change.",
+    "removed": "Hooks removed."
+  },
+  "save": "Save & restart receiver",
+  "saving": "Saving…",
+  "saved": "Saved.",
+  "loading": "Checking this Mac…",
+  "desktopOnly": "Setup is available in the Agentville desktop app.",
+  "live": {
+    "offline": "Receiver offline",
+    "connecting": "Connecting…",
+    "online": "Monitoring",
+    "setupTitle": "Set up Monitor Mode",
+    "setupBody": "Connect Agentville to Claude Code so sessions you run in a terminal appear here. Takes about a minute; no API key needed.",
+    "setupCta": "Open setup",
+    "waitingTitle": "Waiting for Claude Code",
+    "waitingBody": "Start claude in a terminal and send a prompt. Each session walks into the office as its own character.",
+    "hooksMissingTitle": "Hooks aren't installed yet",
+    "hooksMissingBody": "The receiver is running, but Claude Code doesn't know about it. Install the hooks to start monitoring.",
+    "howTo": "How do I start?"
+  },
+  "notify": {
+    "permission": "{{name}} is waiting for approval: {{tool}}",
+    "failed": "{{name}} ran into an error",
+    "done": "{{name}} finished"
+  },
+  "welcome": {
+    "title": "Welcome to your AI office",
+    "body": "Agentville shows your Claude Code agents as characters in a pixel-art office, reacting to what they actually do.",
+    "next": "Next",
+    "back": "Back",
+    "chooseTitle": "How would you like to start?",
+    "liveTitle": "Monitor my Claude Code",
+    "liveBody": "Watch the sessions you run in a terminal. Free, no API key — a short checklist helps you set it up.",
+    "demoTitle": "Look around with the demo",
+    "demoBody": "Scripted characters show what the office can do. Clearly labelled; switch to Live any time.",
+    "setupTitle": "Let's connect Claude Code",
+    "readGuide": "Read the guide",
+    "finish": "Done"
+  },
+  "advanced": "Advanced",
+  "gitWindows": "Git for Windows isn't installed. Claude Code uses it to run shell commands, and Agentville uses it to show branches. Install it from"
+}

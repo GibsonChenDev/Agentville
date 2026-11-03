@@ -1,0 +1,58 @@
+{
+  "step": {
+    "claude": {
+      "title": "已安裝 Claude Code",
+      "why": "Agentville 是用來觀看 Claude Code 的，並不會取代它。"
+    },
+    "login": {
+      "title": "已登入 Claude Code",
+      "why": "Claude Code 需要你的 Claude 帳號（Pro、Max、Team、Enterprise 或 Console）。",
+      "how": "開啟終端機執行 claude，並依照瀏覽器中的步驟登入。"
+    },
+    "receiver": {
+      "title": "Agentville 接收器正在執行",
+      "why": "內建於 Agentville，只在這台電腦上（127.0.0.1）接收資料。"
+    },
+    "hooks": {
+      "title": "已連接 Claude Code（已安裝 Hooks）",
+      "why": "在 Claude Code 設定中加入 Agentville，讓工作階段回報正在做的事。寫入前會先備份，可隨時移除。"
+    },
+    "events": {
+      "title": "已有工作階段出現",
+      "why": "你啟動的每個 claude 工作階段，都會成為辦公室裡的一個角色。",
+      "how": "在終端機開啟新的 claude 工作階段，並送出任意提示。"
+    }
+  },
+  "auto": {
+    "title": "自動完成所有設定",
+    "installClaude": "使用 Anthropic 官方安裝程式安裝 Claude Code：",
+    "receiver": "啟動 Agentville 內建的接收器。",
+    "hooks": "在 Claude Code 設定中加入 Agentville 的 Hooks 以完成連接（會先備份）。",
+    "login": "最後由你登入 Claude Code 一次，這一步需要你親自完成。",
+    "start": "開始自動設定",
+    "running": "設定中…",
+    "consent": "不會變更電腦上的其他任何東西。",
+    "needsLogin": "就差一步：請登入 Claude Code。按「登入」，然後依照瀏覽器中的步驟完成。",
+    "done": "全部完成。在任何專案資料夾執行 claude，就能看到角色走進辦公室。"
+  },
+  "fix": {
+    "installClaude": "安裝",
+    "login": "登入",
+    "receiver": "啟動",
+    "hooks": "連接",
+    "tryIt": "開啟終端機"
+  },
+  "install": {
+    "running": "正在安裝 Claude Code…",
+    "done": "Claude Code 安裝完成。",
+    "failed": "安裝失敗（結束代碼 {{code}}）。",
+    "stop": "停止",
+    "manual": "你也可以依照",
+    "docs": "官方說明自行安裝"
+  },
+  "installLog": "安裝程式輸出",
+  "backup": "已建立備份：{{path}}",
+  "lastEvent": "最近活動：{{time}}",
+  "guideHint": "第一次使用 Claude Code？",
+  "openGuide": "開啟使用教學"
+}

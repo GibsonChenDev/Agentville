@@ -1,0 +1,99 @@
+{
+  "tabs": {
+    "general": "一般",
+    "monitoring": "監控設定"
+  },
+  "intro": "監控模式會把你在終端機或 IDE 中啟動的 Claude Code 工作階段，變成辦公室裡的角色。它使用 Claude Code Hooks：不需要 API 金鑰、不會產生額外費用，除了 Claude Code 之外不必再安裝任何東西。",
+  "observeOnly": "監控中的工作階段只能檢視。Agentville 無法傳送提示、核准工具或停止它們，請在終端機中操作。",
+  "tool": {
+    "auto": "自動偵測",
+    "choose": "選擇…",
+    "placeholder": "自動偵測",
+    "found": "已找到 {{version}}",
+    "notFound": "找不到"
+  },
+  "claude": {
+    "label": "Claude Code 位置",
+    "hint": "會自動偵測。只有在 Claude Code 安裝於特殊位置時才需要設定路徑。"
+  },
+  "receiver": {
+    "title": "本機接收器",
+    "hint": "內建於 Agentville，只監聽 127.0.0.1，並只接受帶有這台電腦專屬權杖的事件。",
+    "port": "連接埠",
+    "portHint": "變更連接埠後需要重新安裝 Hooks。",
+    "autoStart": "開啟 Agentville 時自動啟動接收器",
+    "state": {
+      "stopped": "已停止",
+      "starting": "啟動中…",
+      "running": "執行中（連接埠 {{port}}）",
+      "failed": "啟動失敗"
+    },
+    "restart": "重新啟動",
+    "start": "啟動",
+    "showLogs": "顯示紀錄",
+    "hideLogs": "隱藏紀錄",
+    "noLogs": "目前沒有紀錄。",
+    "received": "已接收 {{count}}",
+    "rejected": "已拒絕 {{count}}"
+  },
+  "hooks": {
+    "title": "Claude Code Hooks",
+    "hint": "在你的使用者設定中加入 Agentville 項目。其他設定與 Hooks 都會保留不變，寫入前會先建立備份。",
+    "installed": "已安裝",
+    "notInstalled": "尚未安裝",
+    "stale": "已安裝，但連接埠或權杖不同，請重新安裝以更新。",
+    "file": "設定檔",
+    "preview": "預覽變更",
+    "hidePreview": "隱藏預覽",
+    "before": "目前",
+    "after": "變更後",
+    "empty": "（檔案尚不存在）",
+    "install": "安裝 Hooks",
+    "reinstall": "重新安裝 Hooks",
+    "uninstall": "移除 Hooks",
+    "backup": "已建立備份：{{path}}",
+    "restartSessions": "已在執行中的工作階段需要重新啟動，才會套用 Hooks。",
+    "needsReceiver": "請先啟動本機接收器。",
+    "noChanges": "沒有需要變更的內容。",
+    "removed": "已移除 Hooks。"
+  },
+  "save": "儲存並重新啟動接收器",
+  "saving": "儲存中…",
+  "saved": "已儲存。",
+  "loading": "正在檢查這台 Mac…",
+  "desktopOnly": "設定功能請在 Agentville 桌面 App 中使用。",
+  "live": {
+    "offline": "接收器離線",
+    "connecting": "連線中…",
+    "online": "監控中",
+    "setupTitle": "設定監控模式",
+    "setupBody": "讓 Agentville 連接 Claude Code，你在終端機執行的工作階段就會出現在這裡。大約一分鐘即可完成，不需要 API 金鑰。",
+    "setupCta": "開啟設定",
+    "waitingTitle": "等待 Claude Code",
+    "waitingBody": "在終端機啟動 claude 並送出提示。每個工作階段都會以獨立角色走進辦公室。",
+    "hooksMissingTitle": "尚未安裝 Hooks",
+    "hooksMissingBody": "接收器已在執行，但 Claude Code 還不知道它的存在。請安裝 Hooks 以開始監控。",
+    "howTo": "該如何開始？"
+  },
+  "notify": {
+    "permission": "{{name}} 正在等待核准：{{tool}}",
+    "failed": "{{name}} 發生錯誤",
+    "done": "{{name}} 已完成"
+  },
+  "welcome": {
+    "title": "歡迎來到你的 AI 辦公室",
+    "body": "Agentville 會把你的 Claude Code Agent 變成像素辦公室裡的角色，並依照它們實際在做的事做出反應。",
+    "next": "下一步",
+    "back": "上一步",
+    "chooseTitle": "想從哪裡開始？",
+    "liveTitle": "監控我的 Claude Code",
+    "liveBody": "觀看你在終端機執行的工作階段。免費、不需要 API 金鑰，跟著簡短的檢查清單就能完成設定。",
+    "demoTitle": "先看示範",
+    "demoBody": "由腳本驅動的角色展示辦公室的功能，有清楚標示，隨時可以切換到即時模式。",
+    "setupTitle": "一起連接 Claude Code",
+    "readGuide": "閱讀使用教學",
+    "finish": "完成"
+  },
+  "advanced": "進階",
+  "gitWindows": "尚未安裝 Git for Windows。Claude Code 需要它來執行指令，Agentville 也用它來顯示分支。請從以下網站安裝："
+}

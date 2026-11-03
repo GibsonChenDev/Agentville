@@ -1,0 +1,250 @@
+{
+  "status": {
+    "disconnected": "已中斷連線",
+    "idle": "閒置",
+    "starting": "啟動中",
+    "planning": "規劃中",
+    "thinking": "工作中",
+    "reading": "閱讀中",
+    "writing": "撰寫程式碼",
+    "executing_tool": "執行工具中",
+    "waiting_for_permission": "等待核准",
+    "collaborating": "協作中",
+    "completed": "已完成",
+    "failed": "失敗",
+    "cancelled": "已取消",
+    "unknown": "未知"
+  },
+  "statusHint": {
+    "thinking": "模型回合進行中（依事件推論，無法看到模型的推理內容）。"
+  },
+  "role": {
+    "engineering_lead": "工程主管",
+    "flutter_developer": "Flutter 開發者",
+    "backend_engineer": "後端工程師",
+    "frontend_engineer": "前端工程師",
+    "qa_engineer": "QA 測試工程師",
+    "designer": "UI/UX 設計師",
+    "code_reviewer": "程式碼審查員",
+    "researcher": "研究員",
+    "devops_engineer": "DevOps 工程師",
+    "generalist": "通才"
+  },
+  "origin": {
+    "managed": "受管理",
+    "external": "外部監看",
+    "demo": "示範角色"
+  },
+  "originHint": {
+    "managed": "由 Agentville 啟動。你可以傳送提示、核准工具與取消執行。",
+    "external": "在其他地方啟動，透過 Hooks 監看。Agentville 無法控制它。",
+    "demo": "腳本化的示範角色，未連線到 Claude。"
+  },
+  "kind": {
+    "subagent": "子 Agent",
+    "subagentOf": "{{name}} 的子 Agent"
+  },
+  "category": {
+    "read": "閱讀檔案",
+    "search": "搜尋中",
+    "write": "編輯中",
+    "execute": "執行指令",
+    "test": "測試／建置",
+    "web": "瀏覽網頁",
+    "delegate": "分派工作",
+    "plan": "規劃中",
+    "other": "使用工具"
+  },
+  "inspector": {
+    "empty": "選取一位角色來檢視",
+    "emptyHint": "點擊辦公室中的任何人，或從側邊欄選擇隊友。",
+    "status": "狀態",
+    "session": "工作階段",
+    "noSession": "無已驗證的工作階段",
+    "project": "專案",
+    "noProject": "無專案",
+    "currentTool": "目前工具",
+    "noTool": "沒有執行中的工具",
+    "task": "目前任務",
+    "noTask": "尚未指派任務",
+    "recent": "最近事件",
+    "noRecent": "目前沒有事件",
+    "actions": "操作",
+    "permission": "權限請求",
+    "permissionBody": "{{tool}} 請求執行",
+    "approve": "核准",
+    "deny": "拒絕",
+    "sendPrompt": "傳送提示",
+    "cancelRun": "取消執行",
+    "customize": "自訂服裝",
+    "unavailableDemo": "示範角色無法控制。",
+    "unavailableExternal": "外部工作階段只能監看，請在執行它的終端機中回應。",
+    "lastError": "最近錯誤",
+    "lastToolFailure": "最近工具失敗：{{tool}}",
+    "workstation": "工作站",
+    "lastEvent": "最後事件",
+    "branch": "分支",
+    "team": "團隊"
+  },
+  "world": {
+    "permission": "需要核准",
+    "failed": "錯誤",
+    "done": "完成"
+  },
+  "roster": {
+    "empty": "辦公室裡還沒有人",
+    "count_one": "{{count}} 位隊友",
+    "count_other": "{{count}} 位隊友",
+    "showDeparted_one": "顯示 {{count}} 個已離開的工作階段",
+    "showDeparted_other": "顯示 {{count}} 個已離開的工作階段",
+    "hideDeparted": "隱藏已離開的工作階段"
+  },
+  "appearance": {
+    "field": {
+      "hairStyle": "髮型",
+      "hairColor": "髮色",
+      "skin": "膚色",
+      "face": "表情",
+      "top": "上衣",
+      "topColor": "上衣顏色",
+      "bottom": "下著",
+      "bottomColor": "下著顏色",
+      "shoes": "鞋子",
+      "shoesColor": "鞋子顏色",
+      "accessory": "配件",
+      "equipment": "桌面設備"
+    },
+    "hairStyle": {
+      "short": "短髮",
+      "bob": "鮑伯頭",
+      "long": "長髮",
+      "bun": "丸子頭",
+      "curly": "捲髮",
+      "buzz": "平頭",
+      "ponytail": "馬尾",
+      "mohawk": "莫霍克"
+    },
+    "hairColor": {
+      "espresso": "深咖啡",
+      "black": "黑色",
+      "auburn": "赤褐",
+      "blonde": "金色",
+      "silver": "銀色",
+      "teal": "藍綠",
+      "rose": "玫瑰粉",
+      "ginger": "薑橘"
+    },
+    "skin": {
+      "porcelain": "白皙",
+      "light": "淺膚",
+      "tan": "小麥",
+      "olive": "橄欖",
+      "brown": "棕色",
+      "deep": "深膚"
+    },
+    "face": {
+      "smile": "微笑",
+      "calm": "平靜",
+      "focused": "專注",
+      "cheerful": "開朗"
+    },
+    "top": {
+      "hoodie": "連帽衫",
+      "tee": "T 恤",
+      "shirt": "襯衫",
+      "blazer": "西裝外套",
+      "sweater": "毛衣",
+      "vest": "背心"
+    },
+    "bottom": {
+      "jeans": "牛仔褲",
+      "chinos": "卡其褲",
+      "skirt": "裙子",
+      "shorts": "短褲",
+      "joggers": "慢跑褲"
+    },
+    "shoes": {
+      "sneakers": "球鞋",
+      "boots": "靴子",
+      "loafers": "樂福鞋",
+      "hightops": "高筒鞋"
+    },
+    "accessory": {
+      "none": "無",
+      "glasses": "眼鏡",
+      "headphones": "耳機",
+      "cap": "棒球帽",
+      "beanie": "毛帽",
+      "scarf": "圍巾",
+      "lanyard": "識別證"
+    },
+    "equipment": {
+      "laptop": "筆電",
+      "monitor": "螢幕",
+      "dual_monitor": "雙螢幕",
+      "desktop_tower": "桌上型電腦",
+      "tablet": "平板",
+      "debug_rig": "除錯工作台"
+    },
+    "color": {
+      "coral": "珊瑚紅",
+      "mustard": "芥末黃",
+      "sage": "鼠尾草綠",
+      "teal": "藍綠",
+      "navy": "海軍藍",
+      "plum": "梅紫",
+      "charcoal": "炭灰",
+      "cream": "奶油白",
+      "denim": "丹寧藍",
+      "forest": "森林綠"
+    }
+  },
+  "editor": {
+    "title": "自訂角色",
+    "scopeProject": "套用到 {{path}} 的所有工作階段",
+    "scopeSubagent": "套用到所有「{{type}}」子 Agent",
+    "scopeAgent": "套用到這個角色",
+    "name": "顯示名稱",
+    "role": "職務",
+    "groupLook": "外型",
+    "groupOutfit": "服裝",
+    "groupDesk": "辦公桌",
+    "animation": "預覽動作",
+    "anim": {
+      "idle": "待機",
+      "walk": "走路",
+      "type": "打字",
+      "read": "閱讀",
+      "raise": "舉手",
+      "cheer": "歡呼",
+      "back": "背面",
+      "side": "側面"
+    },
+    "equipmentNote": "僅影響外觀，設備不會改變 Agent 能做的事。",
+    "workstation": "工作站",
+    "workstationAuto": "自動",
+    "workstationItem": "辦公桌 {{n}}・{{facing}}",
+    "facesScreen": "背對鏡頭",
+    "facesCamera": "面向鏡頭",
+    "workstationNote": "套用於目前的辦公室；若該座位有人，會改用其他空位。",
+    "randomize": "隨機",
+    "reset": "還原預設"
+  },
+  "team": {
+    "lead": "隊長",
+    "teammate": "隊員",
+    "leadOf": "帶領團隊 {{team}}",
+    "memberOf": "{{team}} 的隊員「{{name}}」",
+    "worktreeHint": "Git worktree：{{path}}",
+    "mainCheckout": "主要工作目錄",
+    "noTasks": "目前沒有 Agent 團隊任務。啟用 Claude Code 的 Agent Teams 後，共享任務清單會顯示在這裡。",
+    "doneBy": "由 {{name}} 完成",
+    "postedBy": "由 {{name}} 建立",
+    "conflictTitle": "可能的編輯衝突",
+    "conflictBody": "{{a}} 和 {{b}} 在幾分鐘內都編輯了這個檔案。",
+    "conflictHint": "他們共用同一個工作目錄。平行工作時建議使用各自的 git worktree。",
+    "sharedTree_one": "{{count}} 個工作階段共用目錄",
+    "sharedTree_other": "{{count}} 個工作階段共用目錄",
+    "sharedTreeHint": "多個進行中的工作階段寫入同一個工作目錄，使用各自的 git worktree 可避免互相覆蓋。"
+  }
+}

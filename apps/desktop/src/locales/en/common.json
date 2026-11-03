@@ -1,0 +1,100 @@
+{
+  "appName": "Agentville",
+  "tagline": "Your AI team, alive",
+  "mode": {
+    "demo": "Demo",
+    "live": "Live",
+    "demoBanner": "Demo events — scripted fixtures for visual QA, not real agent activity",
+    "demoWatermark": "DEMO EVENTS",
+    "liveEmpty": "No connected agents yet",
+    "liveEmptyHint": "Set up Monitor Mode to see Claude Code sessions here.",
+    "switchToDemo": "Run demo",
+    "switchToLive": "Go live"
+  },
+  "sidebar": {
+    "workspace": "Workspace",
+    "office": "Office",
+    "team": "Team",
+    "activeTasks": "Active tasks",
+    "noTasks": "No active tasks",
+    "settings": "Settings",
+    "defaultWorkspace": "Personal",
+    "guide": "Guide"
+  },
+  "console": {
+    "title": "Activity",
+    "expand": "Expand activity log",
+    "collapse": "Collapse activity log",
+    "filterAll": "All agents",
+    "filterTypeAll": "All events",
+    "empty": "No events yet",
+    "clear": "Clear",
+    "eventCount_one": "{{count}} event",
+    "eventCount_other": "{{count}} events"
+  },
+  "eventKind": {
+    "session.started": "Session started",
+    "session.ended": "Session ended",
+    "session.disconnected": "Disconnected",
+    "prompt.submitted": "Prompt submitted",
+    "assistant.message": "Message",
+    "tool.started": "Tool started",
+    "tool.finished": "Tool finished",
+    "tool.failed": "Tool failed",
+    "permission.requested": "Permission requested",
+    "permission.resolved": "Permission resolved",
+    "notification": "Notification",
+    "turn.completed": "Turn completed",
+    "run.completed": "Run completed",
+    "run.failed": "Run failed",
+    "run.cancelled": "Run cancelled",
+    "subagent.started": "Subagent started",
+    "subagent.stopped": "Subagent stopped",
+    "collaboration.started": "Collaboration started",
+    "collaboration.ended": "Collaboration ended",
+    "task.created": "Task created",
+    "task.completed": "Task completed",
+    "teammate.idle": "Teammate idle",
+    "location.changed": "Directory changed"
+  },
+  "eventGroup": {
+    "lifecycle": "Lifecycle",
+    "tools": "Tools",
+    "permissions": "Permissions",
+    "subagents": "Subagents & teams",
+    "messages": "Messages"
+  },
+  "source": {
+    "demo": "Demo",
+    "hook": "Hook",
+    "sdk": "SDK",
+    "app": "App"
+  },
+  "actions": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "follow": "Follow agent",
+    "unfollow": "Stop following",
+    "recenter": "Recenter camera",
+    "pause": "Pause demo",
+    "resume": "Resume demo",
+    "restart": "Restart demo"
+  },
+  "time": {
+    "justNow": "just now"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "zoom": "Zoom in / out",
+    "pan": "Pan camera",
+    "follow": "Follow selected agent",
+    "deselect": "Deselect",
+    "console": "Toggle activity log",
+    "cycle": "Select next agent",
+    "settings": "Open settings"
+  },
+  "loading": "Loading the office…"
+}

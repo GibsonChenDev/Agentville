@@ -1,0 +1,110 @@
+{
+  "title": "Agentville guide",
+  "copy": "Copy",
+  "copied": "Copied",
+  "nav": {
+    "start": "Getting started",
+    "office": "Reading the office",
+    "teams": "Teams & worktrees",
+    "help": "Questions"
+  },
+  "start": {
+    "intro": "Agentville turns the Claude Code sessions you run on this computer into characters in a pixel-art office. You keep working in the terminal as usual; Agentville shows what every session is doing. Four steps:",
+    "install": {
+      "title": "Install Claude Code",
+      "body": "Claude Code is Anthropic's coding assistant for the terminal. Install it once with the official command for your system, then open a new terminal window.",
+      "mac": "macOS (Terminal):",
+      "win": "Windows (PowerShell):",
+      "winget": "or with WinGet:",
+      "gitWindows": "On Windows, also install Git for Windows so Claude Code can run shell commands.",
+      "orButton": "Or let Agentville install it for you →"
+    },
+    "login": {
+      "title": "Sign in",
+      "body": "Run claude in a terminal. The first time, it opens your browser so you can sign in.",
+      "plans": "Claude Code needs a Claude Pro, Max, Team or Enterprise plan, or an Anthropic Console account. The free plan doesn't include Claude Code.",
+      "button": "Open a terminal for me"
+    },
+    "connect": {
+      "title": "Connect Agentville",
+      "body": "In Settings → Monitoring setup, click “Set up automatically”. Agentville adds a small, reversible entry to Claude Code's settings so sessions report their activity. Sessions that were already open need to be restarted once.",
+      "button": "Open Monitoring setup"
+    },
+    "work": {
+      "title": "Work as usual",
+      "body": "Go to your project folder and start Claude Code. A character walks into the office and acts out what Claude is doing.",
+      "many": "Every terminal session is its own character — open several to see a whole team."
+    }
+  },
+  "office": {
+    "intro": "Each character is one Claude Code session, named after its project folder (rename and dress them with “Customize outfit”). The bubble above a character shows what it's doing right now:",
+    "legendTitle": "What the bubbles mean",
+    "legend": {
+      "think": "Working on your request (between tool calls)",
+      "read": "Reading or searching files",
+      "type": "Editing code",
+      "exec": "Running a command",
+      "test": "Running tests or a build",
+      "plan": "Planning (task list)",
+      "delegate": "Handing work to a subagent",
+      "raise": "Waiting for your approval in the terminal",
+      "cheer": "Finished the request",
+      "slump": "Hit an error",
+      "talk": "Meeting with teammates"
+    },
+    "screens": "Monitors light up to match: code, terminal output, a question mark while waiting for you, a green check when done, a red cross on errors.",
+    "readOnly": "Agentville only watches. Answer approval prompts, send messages or stop a session in the terminal where it runs.",
+    "inspector": "Click a character to see its current tool, request, project folder, git branch and recent events. The activity log at the bottom keeps everything for 14 days.",
+    "controls": "Drag to move around, pinch or +/− to zoom, F to follow the selected character. ✎ Edit office lets you rearrange furniture.",
+    "customize": "Looks are saved per project folder, so the next session in the same project keeps its outfit.",
+    "demo": "Demo mode plays a scripted story for exploring — it's clearly labelled and never mixed with your real sessions."
+  },
+  "teams": {
+    "subagentsTitle": "Subagents",
+    "subagents": "When Claude delegates (for example to the Explore agent), a smaller character walks in, works next to its parent and leaves when done; a report flies back to the parent.",
+    "teamsTitle": "Agent teams",
+    "teams": "Claude Code's experimental agent teams let one session lead several teammates. Turn them on by adding this to ~/.claude/settings.json, then ask Claude to spawn teammates. Their shared task list appears in the sidebar, and finished tasks fly to the lead's desk.",
+    "teamsNote": "Agent teams are experimental and use more of your plan's usage.",
+    "worktreesTitle": "Git worktrees",
+    "worktrees": "To run several sessions on one repository without overwriting each other, give each its own worktree. Agentville groups sessions by repository and labels each with its branch.",
+    "conflictsTitle": "Edit conflicts",
+    "conflicts": "If two sessions edit the same file in the same folder within a few minutes, Agentville warns you in the sidebar — a good moment to move one of them to a worktree."
+  },
+  "help": {
+    "noCharacter": {
+      "q": "I started claude but no character appears",
+      "a1": "Open Settings → Monitoring setup and check that every item is ticked.",
+      "a2": "Sessions that were open before you connected Agentville must be restarted once.",
+      "a3": "Make sure you're in Live mode (top-left), not Demo.",
+      "a4": "If the receiver shows an error, choose another port under Advanced and reconnect."
+    },
+    "notFound": {
+      "q": "The terminal says “command not found: claude”",
+      "a": "Close the terminal and open a new one so it picks up the new PATH. If it still fails, run the install command again or see the official troubleshooting guide."
+    },
+    "permission": {
+      "q": "A character is raising its hand",
+      "a": "Claude is waiting for your approval. Switch to the terminal where that session runs and answer the prompt there."
+    },
+    "cost": {
+      "q": "Does Agentville cost anything or use my tokens?",
+      "a": "No. Agentville only reads the activity Claude Code reports on your computer. It never calls Claude itself and needs no API key."
+    },
+    "privacy": {
+      "q": "What leaves my computer?",
+      "a": "Nothing from Agentville. Claude Code sends activity to Agentville over 127.0.0.1 only. History stays on this computer for 14 days; you can clear it in Settings."
+    },
+    "uninstall": {
+      "q": "How do I remove Agentville?",
+      "a1": "Settings → Monitoring setup → Advanced → Remove hooks (restores Claude Code's settings).",
+      "a2": "Quit Agentville and delete the app (Windows: Settings → Apps → Agentville → Uninstall).",
+      "a3mac": "Optional: delete <code>~/Library/Application Support/com.agentville.desktop</code>.",
+      "a3win": "Optional: delete <code>%APPDATA%\\com.agentville.desktop</code>."
+    },
+    "more": "More about Claude Code:",
+    "closed": {
+      "q": "Claude Code shows “hook … failed: connect ECONNREFUSED”",
+      "a": "That appears when Agentville isn't running. It's harmless — Claude Code keeps working normally. Open Agentville to watch again, or remove the hooks (Settings → Monitoring setup → Advanced) if you don't use Agentville anymore."
+    }
+  }
+}

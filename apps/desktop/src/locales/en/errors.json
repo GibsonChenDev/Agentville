@@ -1,0 +1,30 @@
+{
+  "generic": "Something went wrong.",
+  "rendererFailed": "The office couldn't be drawn: {{message}}",
+  "retry": "Retry",
+  "storageUnavailable": "Preferences can't be saved in this environment; changes last until you quit.",
+  "code": {
+    "port_in_use": "The port is already in use. Choose another port.",
+    "listen_failed": "The receiver couldn't open its port.",
+    "bridge_offline": "The receiver isn't running.",
+    "invalid_port": "Choose a port between 1024 and 65535.",
+    "path_not_absolute": "Paths must be absolute, e.g. /opt/homebrew/bin/node.",
+    "invalid_hook_token": "The hook token is invalid. Reinstall the hooks.",
+    "config_write_failed": "Settings couldn't be saved.",
+    "settings_invalid_json": "Your Claude Code settings file isn't valid JSON, so it was left untouched. Fix it and try again.",
+    "settings_unreadable": "Your Claude Code settings file couldn't be read.",
+    "settings_not_object": "Your Claude Code settings file has an unexpected format, so it was left untouched.",
+    "unknown_method": "This action isn't supported by the receiver.",
+    "internal": "The receiver hit an internal error.",
+    "unknown": "Unexpected error ({{code}}).",
+    "installer_busy": "Another installation is already running.",
+    "installer_failed": "The installer couldn't be started.",
+    "installer_unavailable": "This tool can't be installed automatically on this Mac.",
+    "unknown_tool": "Unknown tool.",
+    "unknown_link": "Unknown link.",
+    "open_failed": "Couldn't open it.",
+    "settings_unwritable": "Claude Code's settings file couldn't be written.",
+    "too_large": "The request was too large.",
+    "invalid_json": "The request wasn't valid JSON."
+  }
+}

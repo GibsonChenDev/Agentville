@@ -1,0 +1,250 @@
+{
+  "status": {
+    "disconnected": "Disconnected",
+    "idle": "Idle",
+    "starting": "Starting",
+    "planning": "Planning",
+    "thinking": "Working",
+    "reading": "Reading",
+    "writing": "Writing code",
+    "executing_tool": "Running a tool",
+    "waiting_for_permission": "Waiting for approval",
+    "collaborating": "Collaborating",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled",
+    "unknown": "Unknown"
+  },
+  "statusHint": {
+    "thinking": "A model turn is in progress (inferred from events; reasoning is not visible)."
+  },
+  "role": {
+    "engineering_lead": "Engineering Lead",
+    "flutter_developer": "Flutter Developer",
+    "backend_engineer": "Backend Engineer",
+    "frontend_engineer": "Frontend Engineer",
+    "qa_engineer": "QA Engineer",
+    "designer": "UI/UX Designer",
+    "code_reviewer": "Code Reviewer",
+    "researcher": "Researcher",
+    "devops_engineer": "DevOps Engineer",
+    "generalist": "Generalist"
+  },
+  "origin": {
+    "managed": "Managed",
+    "external": "Monitored external",
+    "demo": "Demo fixture"
+  },
+  "originHint": {
+    "managed": "Started by Agentville. You can send prompts, approve tools and cancel.",
+    "external": "Started elsewhere and observed through hooks. Agentville cannot control it.",
+    "demo": "Scripted demo character. Not connected to Claude."
+  },
+  "kind": {
+    "subagent": "Subagent",
+    "subagentOf": "Subagent of {{name}}"
+  },
+  "category": {
+    "read": "Reading",
+    "search": "Searching",
+    "write": "Editing",
+    "execute": "Running command",
+    "test": "Testing / building",
+    "web": "Browsing",
+    "delegate": "Delegating",
+    "plan": "Planning",
+    "other": "Using tool"
+  },
+  "inspector": {
+    "empty": "Select a character to inspect",
+    "emptyHint": "Click anyone in the office, or pick a teammate from the sidebar.",
+    "status": "Status",
+    "session": "Session",
+    "noSession": "No verified session",
+    "project": "Project",
+    "noProject": "No project",
+    "currentTool": "Current tool",
+    "noTool": "No tool running",
+    "task": "Current task",
+    "noTask": "No task assigned",
+    "recent": "Recent events",
+    "noRecent": "No events yet",
+    "actions": "Actions",
+    "permission": "Permission request",
+    "permissionBody": "{{tool}} wants to run",
+    "approve": "Approve",
+    "deny": "Deny",
+    "sendPrompt": "Send prompt",
+    "cancelRun": "Cancel execution",
+    "customize": "Customize outfit",
+    "unavailableDemo": "Demo characters can't be controlled.",
+    "unavailableExternal": "Monitored sessions can only be observed. Respond in the terminal where it runs.",
+    "lastError": "Last error",
+    "lastToolFailure": "Last tool failure: {{tool}}",
+    "workstation": "Workstation",
+    "lastEvent": "Last event",
+    "branch": "Branch",
+    "team": "Team"
+  },
+  "world": {
+    "permission": "Needs approval",
+    "failed": "Error",
+    "done": "Done"
+  },
+  "roster": {
+    "empty": "No one is in the office yet",
+    "count_one": "{{count}} teammate",
+    "count_other": "{{count}} teammates",
+    "showDeparted_one": "Show {{count}} departed session",
+    "showDeparted_other": "Show {{count}} departed sessions",
+    "hideDeparted": "Hide departed sessions"
+  },
+  "appearance": {
+    "field": {
+      "hairStyle": "Hair",
+      "hairColor": "Hair color",
+      "skin": "Skin",
+      "face": "Expression",
+      "top": "Top",
+      "topColor": "Top color",
+      "bottom": "Bottom",
+      "bottomColor": "Bottom color",
+      "shoes": "Shoes",
+      "shoesColor": "Shoe color",
+      "accessory": "Accessory",
+      "equipment": "Desk setup"
+    },
+    "hairStyle": {
+      "short": "Short",
+      "bob": "Bob",
+      "long": "Long",
+      "bun": "Bun",
+      "curly": "Curly",
+      "buzz": "Buzz cut",
+      "ponytail": "Ponytail",
+      "mohawk": "Mohawk"
+    },
+    "hairColor": {
+      "espresso": "Espresso",
+      "black": "Black",
+      "auburn": "Auburn",
+      "blonde": "Blonde",
+      "silver": "Silver",
+      "teal": "Teal",
+      "rose": "Rose",
+      "ginger": "Ginger"
+    },
+    "skin": {
+      "porcelain": "Porcelain",
+      "light": "Light",
+      "tan": "Tan",
+      "olive": "Olive",
+      "brown": "Brown",
+      "deep": "Deep"
+    },
+    "face": {
+      "smile": "Smile",
+      "calm": "Calm",
+      "focused": "Focused",
+      "cheerful": "Cheerful"
+    },
+    "top": {
+      "hoodie": "Hoodie",
+      "tee": "T-shirt",
+      "shirt": "Shirt",
+      "blazer": "Blazer",
+      "sweater": "Sweater",
+      "vest": "Vest"
+    },
+    "bottom": {
+      "jeans": "Jeans",
+      "chinos": "Chinos",
+      "skirt": "Skirt",
+      "shorts": "Shorts",
+      "joggers": "Joggers"
+    },
+    "shoes": {
+      "sneakers": "Sneakers",
+      "boots": "Boots",
+      "loafers": "Loafers",
+      "hightops": "High-tops"
+    },
+    "accessory": {
+      "none": "None",
+      "glasses": "Glasses",
+      "headphones": "Headphones",
+      "cap": "Cap",
+      "beanie": "Beanie",
+      "scarf": "Scarf",
+      "lanyard": "Lanyard"
+    },
+    "equipment": {
+      "laptop": "Laptop",
+      "monitor": "Monitor",
+      "dual_monitor": "Dual monitors",
+      "desktop_tower": "Desktop tower",
+      "tablet": "Tablet",
+      "debug_rig": "Debug rig"
+    },
+    "color": {
+      "coral": "Coral",
+      "mustard": "Mustard",
+      "sage": "Sage",
+      "teal": "Teal",
+      "navy": "Navy",
+      "plum": "Plum",
+      "charcoal": "Charcoal",
+      "cream": "Cream",
+      "denim": "Denim",
+      "forest": "Forest"
+    }
+  },
+  "editor": {
+    "title": "Customize character",
+    "scopeProject": "Applies to every session in {{path}}",
+    "scopeSubagent": "Applies to every “{{type}}” subagent",
+    "scopeAgent": "Applies to this character",
+    "name": "Display name",
+    "role": "Role",
+    "groupLook": "Look",
+    "groupOutfit": "Outfit",
+    "groupDesk": "Desk",
+    "animation": "Preview animation",
+    "anim": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "type": "Typing",
+      "read": "Reading",
+      "raise": "Hand up",
+      "cheer": "Cheer",
+      "back": "Back",
+      "side": "Side"
+    },
+    "equipmentNote": "Visual only — equipment never changes what an agent can do.",
+    "workstation": "Workstation",
+    "workstationAuto": "Automatic",
+    "workstationItem": "Desk {{n}} · {{facing}}",
+    "facesScreen": "back to camera",
+    "facesCamera": "facing camera",
+    "workstationNote": "Applies in the current office; if the desk is taken, another free desk is used.",
+    "randomize": "Randomize",
+    "reset": "Restore defaults"
+  },
+  "team": {
+    "lead": "Lead",
+    "teammate": "Teammate",
+    "leadOf": "Leads team {{team}}",
+    "memberOf": "Teammate “{{name}}” in {{team}}",
+    "worktreeHint": "Git worktree at {{path}}",
+    "mainCheckout": "Main checkout",
+    "noTasks": "No agent-team tasks yet. With Claude Code agent teams enabled, the shared task list appears here.",
+    "doneBy": "Done by {{name}}",
+    "postedBy": "Posted by {{name}}",
+    "conflictTitle": "Possible edit conflict",
+    "conflictBody": "{{a}} and {{b}} both edited this file in the last few minutes.",
+    "conflictHint": "They share a working tree. Consider separate git worktrees for parallel sessions.",
+    "sharedTree_one": "{{count}} session in one working tree",
+    "sharedTree_other": "{{count}} sessions in one working tree",
+    "sharedTreeHint": "Several active sessions write to the same working tree. Separate git worktrees avoid overwriting each other."
+  }
+}
