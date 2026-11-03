@@ -21,7 +21,21 @@ Outputs: `apps/desktop/src-tauri/target/**/bundle/dmg/*.dmg`, `…/bundle/nsis/*
 ## Automated builds
 
 - `.github/workflows/ci.yml` — on every push/PR: typecheck, unit tests, i18n check, Rust tests and a production build, on both macOS and Windows runners.
-- `.github/workflows/release.yml` — push a tag `vX.Y.Z` to build the universal macOS `.dmg` and the Windows `-setup.exe` and attach them to the GitHub release for that tag (a draft is created if none exists). To rebuild one platform for an existing tag: Actions → Release → Run workflow → enter the tag and choose `macos` or `windows`.
+- `.github/workflows/release.yml` — push a tag `vX.Y.Z` to build the universal macOS `.dmg` and the Windows `-setup.exe` and attach them to the GitHub release for that tag (a draft is created if none exists; see "Releasing a new version" below). To rebuild one platform for an existing tag: Actions → Release → Run workflow → enter the tag and choose `macos` or `windows`.
+
+## Releasing a new version
+
+1. **Bump the app version first** — in one PR, set the same `X.Y.Z` in `apps/desktop/src-tauri/tauri.conf.json`, `apps/desktop/src-tauri/Cargo.toml` (and the `agentville` entry of `Cargo.lock`), `apps/desktop/package.json`, the root `package.json` and the two matching entries of `package-lock.json`. The installers, the version in Settings and Windows' upgrade check all use this number, not the tag.
+2. Merge it, then tag that commit on `main`: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. The release gets `Agentville_universal.dmg` and `Agentville_x64-setup.exe`. File names carry no version, so `https://github.com/GibsonChenDev/Agentville/releases/latest/download/Agentville_universal.dmg` (and `…_x64-setup.exe`) always downloads the newest build.
+
+A tag pushed before the bump builds installers that call themselves the previous version. To redo it: delete that release's assets, move the tag to the bumped commit (`git tag -f vX.Y.Z <commit> && git push -f origin vX.Y.Z`), and the workflow rebuilds and uploads to the same release.
+
+## Updating an installed app
+
+- **macOS**: quit Agentville, open the new `.dmg` and drag `Agentville.app` into Applications → **Replace**. macOS doesn't compare versions. Your character, coins, layouts and history stay: they live under the identifier `com.agentville.desktop` (`~/Library/Application Support/com.agentville.desktop` and the matching web data), which never changes. Unsigned builds need right-click → Open (or System Settings → Privacy & Security → Open Anyway) once per download.
+- **Windows**: run the new `-setup.exe`. The per-user installer finds the existing install by its identifier. A **newer** version offers "uninstall before installing" (the default) and keeps your data in `%APPDATA%` / `%LOCALAPPDATA%\com.agentville.desktop`; the **same** version offers reinstall or uninstall; an **older** one warns that a newer version is installed. Close Agentville first (the installer asks if it's running). Unsigned builds show SmartScreen → More info → Run anyway.
+- There's no auto-updater yet; users download the new installer themselves.
 
 ## Code signing (needed before giving the app to others)
 
