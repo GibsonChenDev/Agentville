@@ -1,6 +1,6 @@
 [package]
 name = "agentville"
-version = "0.2.0"
+version = "0.3.0"
 description = "Agentville — your AI team, alive"
 edition = "2021"
 rust-version = "1.77"
