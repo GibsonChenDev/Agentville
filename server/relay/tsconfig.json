@@ -15,6 +15,6 @@
     "noEmit": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src", "../../packages/team-protocol/src"],
+  "include": ["src", "../../packages/team-protocol/src/index.ts"],
   "exclude": ["src/**/*.test.ts"]
 }
