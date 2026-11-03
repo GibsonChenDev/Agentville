@@ -96,5 +96,17 @@
   "welcome": {
     "banner": "🎉 {{name}} 進辦公室了，歡迎！",
     "hello": "大家好！👋"
+  },
+  "chat": {
+    "title": "聊天",
+    "open": "打開團隊聊天",
+    "openUnread": "打開團隊聊天（{{count}} 則未讀）",
+    "kept": "保留最近 {{count}} 則、7 天",
+    "empty": "還沒有訊息，打個招呼吧！",
+    "placeholder": "傳訊息給辦公室的大家…",
+    "send": "送出",
+    "you": "你",
+    "offline": "目前沒有連線，暫時不能傳送訊息。",
+    "rateLimited": "傳太快了，剛剛那則沒有送出，請稍等一下。"
   }
 }

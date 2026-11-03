@@ -1,7 +1,7 @@
 import { appearanceFromSeed, sanitizeAppearance, workedMs } from '@agentville/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OfficeWorld, type CameraState, type HumanInfo, type PeerInfo, type SceneKey, type WorldAgent, type WorldDoor } from '../../game/engine/OfficeWorld';
+import { OfficeWorld, PLAYER_ID, type CameraState, type HumanInfo, type PeerInfo, type SceneKey, type WorldAgent, type WorldDoor } from '../../game/engine/OfficeWorld';
 import { lobbyDoorTile, lobbyScene, type SceneDefinition } from '../../game/scenes/layouts';
 import { doorIdFor, lobbyDoorIds, usePlace } from '../../world/placeStore';
 import { currentOfficeTheme } from '../../world/officeTheme';
@@ -197,6 +197,11 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
       world.welcome(`peer:${member.id}`, t('team:welcome.banner', { name: member.name }), t('team:welcome.hello'));
       if (useApp.getState().prefs.sound) playCue('welcome');
     };
+    // Chat pops up over the sender's head too (long messages are shortened there; the chat window has them in full).
+    teamEvents.onChat = (m, mine) => {
+      const chars = [...m.text];
+      world.say(mine ? PLAYER_ID : `peer:${m.from}`, chars.length > 60 ? `${chars.slice(0, 60).join('')}…` : m.text);
+    };
     const unsubs = [useApp.subscribe(update), useTeam.subscribe(update), usePlayer.subscribe(push), usePlace.subscribe(update), useEditor.subscribe(applyScene)];
     // Renderer labels come from the same i18n source and refresh on language change.
     const relabel = () => {
@@ -210,6 +215,7 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
       i18n.off('languageChanged', relabel);
       worldApi.current = null;
       teamEvents.onArrive = undefined;
+      teamEvents.onChat = undefined;
       world.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

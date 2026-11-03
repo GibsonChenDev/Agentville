@@ -22,6 +22,7 @@ import {
   dieFrom,
   playDice,
   type AccountDoc,
+  type ChatMessage,
 } from '../../../packages/team-protocol/src/index.ts';
 import { RoomCore, hex, random, sha256, type Conn, type ConnState, type RoomMeta, type RoomStore, type StoredMember } from './roomCore.ts';
 
@@ -328,7 +329,8 @@ export class Room extends DurableObject<Env> {
     const sql = ctx.storage.sql;
     sql.exec(`CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS members (id TEXT PRIMARY KEY, doc TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS layouts (theme TEXT PRIMARY KEY, doc TEXT NOT NULL)`);
+      CREATE TABLE IF NOT EXISTS layouts (theme TEXT PRIMARY KEY, doc TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS chat (id TEXT PRIMARY KEY, at INTEGER NOT NULL, doc TEXT NOT NULL)`);
     const store: RoomStore = {
       meta: () => {
         const row = sql.exec<{ v: string }>("SELECT v FROM meta WHERE k = 'room'").toArray()[0];
@@ -343,7 +345,12 @@ export class Room extends DurableObject<Env> {
         if (doc) sql.exec('INSERT OR REPLACE INTO layouts (theme, doc) VALUES (?, ?)', theme, JSON.stringify(doc));
         else sql.exec('DELETE FROM layouts WHERE theme = ?', theme);
       },
-      clear: () => void sql.exec('DELETE FROM meta; DELETE FROM members; DELETE FROM layouts'),
+      chat: () => sql.exec<{ doc: string }>('SELECT doc FROM chat ORDER BY at, id').toArray().map((r) => JSON.parse(r.doc) as ChatMessage),
+      putChat: (m, keep, since) => {
+        sql.exec('INSERT OR REPLACE INTO chat (id, at, doc) VALUES (?, ?, ?)', m.id, m.at, JSON.stringify(m));
+        sql.exec('DELETE FROM chat WHERE at <= ? OR id NOT IN (SELECT id FROM chat ORDER BY at DESC, id DESC LIMIT ?)', since, keep);
+      },
+      clear: () => void sql.exec('DELETE FROM meta; DELETE FROM members; DELETE FROM layouts; DELETE FROM chat'),
     };
     this.core = new RoomCore(store, () => ctx.getWebSockets().map((ws) => adapt(ws, ctx)), { random, sha256 });
     // Keep-alive pings are answered by the runtime without waking the object.

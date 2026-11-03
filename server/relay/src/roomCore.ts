@@ -4,6 +4,7 @@ import {
   mergeScores,
   parseClientMessage,
   type Appearance,
+  type ChatMessage,
   type LayoutDocWire,
   type MemberView,
   type Presence,
@@ -44,6 +45,10 @@ export interface RoomStore {
   deleteMember(id: string): void;
   layouts(): Record<string, LayoutDocWire>;
   putLayout(theme: string, doc: LayoutDocWire | null): void;
+  /** Recent chat, oldest first. */
+  chat(): ChatMessage[];
+  /** Adds a message, then keeps only the newest `keep` sent after `since`. */
+  putChat(m: ChatMessage, keep: number, since: number): void;
   /** Removes everything (last member left). */
   clear(): void;
 }
@@ -81,10 +86,13 @@ export const STALE_MS = 100_000;
 const AUTH_GRACE_MS = 30_000;
 
 const RATE = { perSecond: 30, burst: 60 };
+/** Chat on top of that: about one message a second, a few in a row. */
+const CHAT_RATE = { perSecond: 1, burst: 5 };
 
 export class RoomCore {
   /** In-memory only: limits simply reset if the object hibernates. */
   private buckets = new Map<string, { tokens: number; at: number }>();
+  private chatBuckets = new Map<string, { tokens: number; at: number }>();
 
   constructor(
     private readonly store: RoomStore,
@@ -184,7 +192,7 @@ export class RoomCore {
       conn.state.presence = undefined;
       conn.save();
       const members = this.store.members().map((m) => this.view(m));
-      conn.send(json({ t: 'welcome', you: member.id, room: { id: meta.id, name: meta.name, code: meta.code, theme: meta.theme, layouts: this.store.layouts() }, members }));
+      conn.send(json({ t: 'welcome', you: member.id, room: { id: meta.id, name: meta.name, code: meta.code, theme: meta.theme, layouts: this.store.layouts() }, members, chat: this.recentChat() }));
       this.broadcast({ t: 'member', member: this.view(member) }, conn);
       return;
     }
@@ -216,6 +224,20 @@ export class RoomCore {
         const next = { ...m, name: msg.name, appearance: msg.appearance };
         this.store.putMember(next);
         this.broadcast({ t: 'member', member: this.view(next) });
+        return;
+      }
+      case 'chat': {
+        const m = this.store.members().find((x) => x.id === id);
+        if (!m) return;
+        if (!take(this.chatBuckets, id, CHAT_RATE, this.now())) {
+          conn.send(json({ t: 'error', code: 'rate_limited' }));
+          return;
+        }
+        const now = this.now();
+        const message: ChatMessage = { id: hex(this.crypto.random(8)), from: id, name: m.name, text: msg.text, at: now };
+        this.store.putChat(message, LIMITS.chatHistory, now - LIMITS.chatKeepMs);
+        // Back to the sender too, so everyone's list has the same ids, times and order.
+        this.broadcast({ t: 'chat', m: message });
         return;
       }
       case 'scores': {
@@ -268,6 +290,12 @@ export class RoomCore {
 
   // ───────────────────────────────── helpers
 
+  /** Chat still within the keep window. */
+  private recentChat(): ChatMessage[] {
+    const since = this.now() - LIMITS.chatKeepMs;
+    return this.store.chat().filter((m) => m.at > since);
+  }
+
   private view(m: StoredMember): MemberView {
     const conn = this.conns().find((c) => c.state.memberId === m.id);
     const v: MemberView = { id: m.id, name: m.name, appearance: m.appearance, owner: m.owner, online: !!conn, agents: conn?.state.agents ?? 0 };
@@ -289,18 +317,19 @@ export class RoomCore {
   }
 
   private allow(connId: string) {
-    const now = this.now();
-    const b = this.buckets.get(connId) ?? { tokens: RATE.burst, at: now };
-    b.tokens = Math.min(RATE.burst, b.tokens + ((now - b.at) / 1000) * RATE.perSecond);
-    b.at = now;
-    if (b.tokens < 1) {
-      this.buckets.set(connId, b);
-      return false;
-    }
-    b.tokens -= 1;
-    this.buckets.set(connId, b);
-    return true;
+    return take(this.buckets, connId, RATE, this.now());
   }
+}
+
+/** Token bucket: takes one token for `key` if there is one. */
+function take(buckets: Map<string, { tokens: number; at: number }>, key: string, rate: { perSecond: number; burst: number }, now: number) {
+  const b = buckets.get(key) ?? { tokens: rate.burst, at: now };
+  b.tokens = Math.min(rate.burst, b.tokens + ((now - b.at) / 1000) * rate.perSecond);
+  b.at = now;
+  buckets.set(key, b);
+  if (b.tokens < 1) return false;
+  b.tokens -= 1;
+  return true;
 }
 
 const json = (m: ServerMessage) => JSON.stringify(m);

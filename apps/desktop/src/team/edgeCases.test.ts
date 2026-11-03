@@ -1,5 +1,5 @@
 import { ACCESSORIES, OFFICE_THEMES, OUTFIT_COLORS, PREMIUM_ACCESSORIES, PREMIUM_OUTFIT_COLORS, appearanceFromSeed, sanitizeAppearance } from '@agentville/domain';
-import { CATALOG, cleanLayoutDoc, type MemberView } from '@agentville/team-protocol';
+import { CATALOG, cleanChat, cleanLayoutDoc, type ChatMessage, type MemberView } from '@agentville/team-protocol';
 import { describe, expect, it } from 'vitest';
 import { placementAllowance, ownerTag } from '../account/accountStore';
 import { FURNITURE, SHOP_FURNITURE } from '../game/furniture/furniture';
@@ -9,7 +9,7 @@ import en from '../locales/en/office.json';
 import zh from '../locales/zh-TW/office.json';
 import { officeTheme } from '../world/officeTheme';
 import { MAX_PEER_AGENTS, peerAgents } from './peerAgents';
-import type { TeamState } from './teamStore';
+import { mergeChat, type TeamState } from './teamStore';
 
 const member = (id: string, agents: number, extra: Partial<MemberView> = {}): MemberView => ({ id, name: id, appearance: {}, owner: false, online: true, agents, ...extra });
 const team = (members: MemberView[], me = 'me'): Pick<TeamState, 'members' | 'membership' | 'status'> =>
@@ -128,5 +128,30 @@ describe('switching the map', () => {
   it('there are five maps, each a valid office', () => {
     expect(OFFICE_THEMES).toHaveLength(5);
     for (const theme of OFFICE_THEMES) expect(validateScene(DEFAULT_SCENES[theme]), theme).toBeNull();
+  });
+});
+
+describe('team chat on this computer', () => {
+  const msg = (id: string, at: number, text = id): ChatMessage => ({ id, from: 'a', name: 'Alice', text, at });
+
+  it('a reconnect resends history without duplicating it, and the list stays in time order', () => {
+    const shown = mergeChat([], [msg('m1', 1), msg('m2', 2)]);
+    const live = mergeChat(shown, [msg('m3', 3)]);
+    expect(mergeChat(live, [msg('m1', 1), msg('m2', 2), msg('m3', 3)]).map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+    expect(mergeChat([msg('late', 9)], [msg('early', 4)]).map((m) => m.id)).toEqual(['early', 'late']);
+  });
+
+  it('keeps only the newest 50', () => {
+    const many = Array.from({ length: 70 }, (_, i) => msg(`m${i}`, i));
+    const kept = mergeChat([], many);
+    expect(kept).toHaveLength(50);
+    expect(kept[0]!.id).toBe('m20');
+  });
+
+  it('cleans what you type the same way the relay does', () => {
+    expect(cleanChat('  hi\n\nthere  ')).toBe('hi there');
+    expect(cleanChat('   ')).toBeNull();
+    expect(cleanChat('字'.repeat(300))).toHaveLength(300);
+    expect(cleanChat('字'.repeat(301))).toBeNull();
   });
 });

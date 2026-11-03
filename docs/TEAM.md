@@ -14,8 +14,11 @@ What leaves your computer while you're in a team office, and nothing else:
 | Your character's position and pose (e.g. "sitting at desk ws-b1") | File names, project paths, repositories, branches |
 | **How many** of your live agents are in the office (a number 0–32) | Session ids, agent names, statuses, errors, history |
 | Office edits you save (theme and furniture layout) | Anything from the Monitor Mode receiver |
+| Chat messages you type in a team office (the relay keeps the office's last 50 for up to 7 days) | |
 
-This is enforced in three places: the app only ever builds the messages in `packages/team-protocol`; the relay re-parses every frame against those shapes and drops anything else (extra fields are stripped, unknown messages rejected); and the relay stores only member names, looks, a SHA-256 hash of each member's token, and the shared layouts.
+This is enforced in three places: the app only ever builds the messages in `packages/team-protocol`; the relay re-parses every frame against those shapes and drops anything else (extra fields are stripped, unknown messages rejected); and the relay stores only member names, looks, a SHA-256 hash of each member's token, the shared layouts, and the office's recent chat.
+
+**Chat.** 💬 at the bottom right of a team office. Messages go to everyone in the office and pop up over the sender's head. The relay keeps the newest 50 for up to 7 days so people arriving later can read back; they keep the nickname used when sending, and stay when the sender leaves the office. Deleting the office (last member leaves) deletes its chat. At most 300 characters per message, about one per second (5 in a row). Line breaks and invisible formatting characters are removed. Agentville never sends anything to the chat by itself.
 
 ## Using it ／ 使用方式
 

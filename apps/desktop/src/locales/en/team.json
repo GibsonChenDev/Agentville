@@ -96,5 +96,17 @@
   "welcome": {
     "banner": "🎉 {{name}} just came in — welcome!",
     "hello": "Hi everyone! 👋"
+  },
+  "chat": {
+    "title": "Chat",
+    "open": "Open the team chat",
+    "openUnread": "Open the team chat ({{count}} unread)",
+    "kept": "Last {{count}} messages, kept 7 days",
+    "empty": "No messages yet. Say hi!",
+    "placeholder": "Message the office…",
+    "send": "Send",
+    "you": "You",
+    "offline": "Not connected — messages can't be sent right now.",
+    "rateLimited": "Slow down a little — that one didn't go out."
   }
 }

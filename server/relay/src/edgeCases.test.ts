@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LayoutDocWire, MemberView, ServerMessage } from '../../../packages/team-protocol/src/index.ts';
+import type { ChatMessage, LayoutDocWire, MemberView, ServerMessage } from '../../../packages/team-protocol/src/index.ts';
 import { CLOSE, RoomCore, STALE_MS, random, sha256, type Conn, type RoomMeta, type RoomStore, type StoredMember } from './roomCore';
 
 /**
@@ -13,6 +13,7 @@ function memoryStore(): RoomStore {
   let meta: RoomMeta | null = null;
   const members = new Map<string, StoredMember>();
   const layouts = new Map<string, LayoutDocWire>();
+  let chat: ChatMessage[] = [];
   return {
     meta: () => meta,
     setMeta: (m) => (meta = m),
@@ -21,7 +22,12 @@ function memoryStore(): RoomStore {
     deleteMember: (id) => void members.delete(id),
     layouts: () => Object.fromEntries(layouts),
     putLayout: (t, d) => (d ? layouts.set(t, d) : layouts.delete(t)),
+    chat: () => chat,
+    putChat: (m, keep, since) => {
+      chat = [...chat, m].filter((x) => x.at > since).slice(-keep);
+    },
     clear: () => {
+      chat = [];
       meta = null;
       members.clear();
       layouts.clear();
@@ -40,7 +46,8 @@ const look = { hairStyle: 'bob', top: 'hoodie', accessory: 'glasses' };
 async function office(names: string[]) {
   let now = 1_000_000;
   const conns: FakeConn[] = [];
-  const core = new RoomCore(memoryStore(), () => conns.filter((c) => c.closed === undefined), { random, sha256 }, () => now);
+  const store = memoryStore();
+  const core = new RoomCore(store, () => conns.filter((c) => c.closed === undefined), { random, sha256 }, () => now);
   core.create({ id: 'r'.repeat(32), name: 'Team', code: 'AGV-AAAA-BBBB', theme: 'loft' });
   const tokens: Record<string, { memberId: string; token: string }> = {};
   for (const [i, name] of names.entries()) {
@@ -79,7 +86,7 @@ async function office(names: string[]) {
     for (const m of c.inbox) if (m.t === 'member' && m.member.id === id(name)) view = m.member;
     return view;
   };
-  return { core, connect, raw, send, id, memberIn, welcomeOf, tick: (ms: number) => (now += ms), now: () => now };
+  return { core, store, connect, raw, send, id, memberIn, welcomeOf, tick: (ms: number) => (now += ms), now: () => now };
 }
 
 describe('someone leaves the office or closes the app', () => {
@@ -241,5 +248,92 @@ describe('switching the map (場地)', () => {
     expect(b.inbox.at(-1)).toEqual({ t: 'offline', id: o.id('Alice') });
     const b2 = await o.connect('Bob');
     expect(o.welcomeOf(b2).room.theme).toBe('garden');
+  });
+});
+
+describe('team chat', () => {
+  const chats = (c: FakeConn) => c.inbox.filter((m): m is Extract<ServerMessage, { t: 'chat' }> => m.t === 'chat').map((m) => m.m);
+
+  it('a message reaches everyone in the office, the sender included, with the same id and time', async () => {
+    const o = await office(['Alice', 'Bob', 'Carol']);
+    const a = await o.connect('Alice');
+    const b = await o.connect('Bob');
+    await o.send(a, { t: 'chat', text: '  午餐吃什麼？ 🍜  ' });
+    expect(chats(b)).toEqual([{ id: expect.stringMatching(/^[a-f0-9]{16}$/), from: o.id('Alice'), name: 'Alice', text: '午餐吃什麼？ 🍜', at: o.now() }]);
+    expect(chats(a)).toEqual(chats(b));
+  });
+
+  it('people who come in later see the last 50 messages, oldest first', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    for (let i = 1; i <= 60; i++) {
+      o.tick(2000);
+      await o.send(a, { t: 'chat', text: `msg ${i}` });
+    }
+    const b = await o.connect('Bob');
+    const history = o.welcomeOf(b).chat!;
+    expect(history).toHaveLength(50);
+    expect(history[0]!.text).toBe('msg 11');
+    expect(history.at(-1)!.text).toBe('msg 60');
+  });
+
+  it('messages older than 7 days are gone', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    await o.send(a, { t: 'chat', text: 'old news' });
+    o.tick(6 * 24 * 3600_000);
+    await o.send(a, { t: 'chat', text: 'still fresh' });
+    o.tick(24 * 3600_000 + 1000);
+    const b = await o.connect('Bob');
+    expect(o.welcomeOf(b).chat!.map((m) => m.text)).toEqual(['still fresh']);
+  });
+
+  it('empty, too long or non-text messages are rejected; line breaks and hidden characters are cleaned', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    const b = await o.connect('Bob');
+    for (const text of ['', '   ', '\n\t', 'x'.repeat(301), 42, null, ['hi']]) {
+      a.inbox.length = 0;
+      await o.send(a, { t: 'chat', text });
+      expect(a.inbox, JSON.stringify(text)).toEqual([{ t: 'error', code: 'bad_message' }]);
+    }
+    await o.send(a, { t: 'chat', text: 'x'.repeat(300) });
+    await o.send(a, { t: 'chat', text: 'line one\nline two‮ reversed​ 👩‍💻' });
+    expect(chats(b).map((m) => m.text)).toEqual(['x'.repeat(300), 'line one line two reversed 👩‍💻']);
+  });
+
+  it('flooding is slowed down: a few in a row, then about one a second', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    const b = await o.connect('Bob');
+    for (let i = 0; i < 8; i++) await o.send(a, { t: 'chat', text: `spam ${i}` });
+    expect(chats(b)).toHaveLength(5);
+    expect(a.inbox.filter((m) => m.t === 'error' && m.code === 'rate_limited')).toHaveLength(3);
+    o.tick(1000);
+    await o.send(a, { t: 'chat', text: 'later' });
+    expect(chats(b).at(-1)!.text).toBe('later');
+  });
+
+  it('keeps the name used when sending, and keeps messages after the sender leaves the office', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    await o.send(a, { t: 'chat', text: 'hi' });
+    await o.send(a, { t: 'profile', name: 'Ally', appearance: look });
+    expect(o.core.removeMember(o.id('Alice'))).toBe(false);
+    const b = await o.connect('Bob');
+    expect(o.welcomeOf(b).chat).toEqual([expect.objectContaining({ name: 'Alice', text: 'hi' })]);
+  });
+
+  it('only members can chat, and the chat goes when the office is deleted', async () => {
+    const o = await office(['Alice']);
+    const stray = o.raw();
+    await o.send(stray, { t: 'chat', text: 'let me in' });
+    expect(stray.closed).toBe(CLOSE.unauthorized);
+    const a = await o.connect('Alice');
+    await o.send(a, { t: 'chat', text: 'bye' });
+    expect(o.store.chat()).toHaveLength(1);
+    expect(o.core.removeMember(o.id('Alice'))).toBe(true);
+    expect(o.core.meta).toBeNull();
+    expect(o.store.chat()).toEqual([]);
   });
 });

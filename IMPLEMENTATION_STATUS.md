@@ -47,6 +47,13 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Team chat (2026-11-03)
+
+- 💬 group chat in team offices: a window with the conversation history and an unread count, messages popping up over the sender's head.
+- The relay keeps the newest 50 messages for 7 days (SQLite in the Room object); messages keep the sender's nickname and stay after they leave; deleting the office deletes them.
+- 300 characters max, ~1 message/s (burst 5), control/format characters stripped (emoji joiners kept); Enter while an input method is composing doesn't send.
+- Tests: relay chat suite (delivery, history 50, 7-day expiry, validation, flood limit, names after leaving, deletion) and client merge/cleaning tests.
+
 ## Dice table, reconnect fixes, seat checks (2026-11-03)
 
 - **Dice table** in every built-in office (also sold, max 2): 壓大小 and 擲骰子比點數, rolled by the relay, bets 1/2/5/10, ±100 coins per day, one roll per 1.2 s.
