@@ -10,7 +10,8 @@ import { useGuide } from '../guide/guideStore';
 import { isMac } from '../../integration/platform';
 import { Portrait } from './Portrait';
 import { TeamPanel } from '../team/TeamPanel';
-import { chooseOfficeTheme, useOfficeTheme } from '../../world/officeTheme';
+import { chooseOfficeTheme, useOfficeStyle } from '../../world/officeTheme';
+import { useTeam } from '../../team/teamStore';
 import { StatusDot } from './StatusDot';
 import { AgentChips, ConflictWarnings, ObservedTasks, projectKey, projectLabel, sharedTreeCount } from './TeamPanels';
 
@@ -38,7 +39,8 @@ export function Sidebar() {
   const agents = useApp((s) => s.agents);
   const runtime = useApp((s) => s.runtime);
   const selected = useApp((s) => s.selectedAgentId);
-  const theme = useOfficeTheme();
+  const theme = useOfficeStyle();
+  const inTeamOffice = useTeam((s) => !!s.membership);
   const width = useApp((s) => s.prefs.sidebarWidth);
   const mode = useApp((s) => s.mode);
   const editing = useEditor((s) => s.active);
@@ -75,6 +77,7 @@ export function Sidebar() {
         <TeamPanel />
 
         <SectionTitle>{t('sidebar.office')}</SectionTitle>
+        {inTeamOffice && <p className="-mt-1 mb-1.5 px-4 text-[11px] leading-snug text-faint">{t('office:styleOnlyYou')}</p>}
         <div className="mb-4 grid gap-1.5 px-2" role="radiogroup" aria-label={t('sidebar.office')}>
           {OFFICE_THEMES.map((id) => (
             <button

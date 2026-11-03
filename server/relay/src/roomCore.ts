@@ -250,13 +250,10 @@ export class RoomCore {
         this.broadcast({ t: 'member', member: this.view(next) });
         return;
       }
-      case 'theme': {
-        const meta = this.store.meta();
-        if (!meta || meta.theme === msg.theme) return;
-        this.store.setMeta({ ...meta, theme: msg.theme });
-        this.broadcast({ t: 'theme', theme: msg.theme, by: id });
+      case 'theme':
+        // How an office looks is each person's own choice (kept in their app); nobody can switch
+        // it for everyone. Older apps still send this message, so it's accepted and ignored.
         return;
-      }
       case 'layout':
         this.store.putLayout(msg.theme, msg.doc);
         this.broadcast({ t: 'layout', theme: msg.theme, doc: msg.doc, by: id }, conn);

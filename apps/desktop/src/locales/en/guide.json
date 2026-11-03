@@ -125,7 +125,7 @@
   },
   "together": {
     "teamTitle": "Team offices",
-    "team": "Sidebar → Offices → Create: you get an invite code like AGV-7K3P-Q9M2. Teammates choose Join and type it once; after that the office is a door in their lobby. Everyone sees each other walk around, and anyone can switch the map or move furniture.",
+    "team": "Sidebar → Offices → Create: you get an invite code like AGV-7K3P-Q9M2. Teammates choose Join and type it once; after that the office is a door in their lobby. Everyone sees each other walk around and shares one furniture layout (anyone can move furniture); the map you pick there only changes how it looks to you.",
     "privacyTitle": "What teammates see",
     "privacy": "Your nickname, your character and where it stands, and how many of your agents are running — shown as anonymous characters at desks. Never your prompts, files, tools or projects.",
     "coinsTitle": "Coins",

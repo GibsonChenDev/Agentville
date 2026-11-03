@@ -17,7 +17,7 @@ import { THEMES } from '../../game/assets/themes';
 import { drawDesk, drawEquipment } from '../../game/furniture/furniture';
 import { sceneFor, useApp } from '../../state/store';
 import { lockedOption, useAccount } from '../../account/accountStore';
-import { useOfficeTheme } from '../../world/officeTheme';
+import { useOfficeStyle, useOfficeTheme } from '../../world/officeTheme';
 
 const PREVIEW_ANIMS: { id: string; anim: AnimName }[] = [
   { id: 'idle', anim: 'idle_front' },
@@ -75,7 +75,7 @@ export function Preview({ appearance, anim, scale = 6 }: { appearance: Character
 }
 
 function EquipmentPreview({ appearance }: { appearance: CharacterAppearance }) {
-  const theme = useOfficeTheme();
+  const theme = useOfficeStyle();
   const url = useMemo(() => {
     const t = THEMES[theme];
     const c = document.createElement('canvas');

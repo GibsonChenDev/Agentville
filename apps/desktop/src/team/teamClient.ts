@@ -301,15 +301,6 @@ export const team = {
     });
   },
 
-  /** Switches the map of the team office you're in, for everyone. */
-  setTheme(theme: OfficeTheme) {
-    const room = useTeam.getState().room;
-    if (!room || room.theme === theme) return;
-    useTeam.setState({ room: { ...room, theme } });
-    remember(useTeam.getState().room);
-    send({ t: 'theme', theme });
-  },
-
   /** Goes into one of your team offices (connects to it). */
   open(roomId: string) {
     if (useTeam.getState().membership?.roomId === roomId && ws) return;

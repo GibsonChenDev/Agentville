@@ -132,6 +132,7 @@ export const DEFAULT_SCENES: Record<OfficeTheme, SceneDefinition> = {
       ],
       wallDecor: [
         { kind: 'wall_whiteboard', x: 26, w: 92 },
+        { kind: 'clock', x: 129, y: 14 },
         { kind: 'window', x: 140, w: 140, panes: 5 },
         { kind: 'slats', x: 296, w: 72 },
         { kind: 'door', x: 384 },
@@ -196,6 +197,7 @@ export const DEFAULT_SCENES: Record<OfficeTheme, SceneDefinition> = {
       wallDecor: [
         { kind: 'window', x: 40, w: 104, panes: 3 },
         { kind: 'neon', x: 196, y: 16 },
+        { kind: 'clock', x: 292, y: 14 },
         { kind: 'poster', x: 160, y: 14, variant: 2 },
         { kind: 'door', x: 384 },
         { kind: 'shelf', x: 336, y: 22, w: 36 },
@@ -320,6 +322,7 @@ export const DEFAULT_SCENES: Record<OfficeTheme, SceneDefinition> = {
       wallDecor: [
         { kind: 'window', x: 24, w: 120, panes: 4 },
         { kind: 'window', x: 156, w: 96, panes: 3 },
+        { kind: 'clock', x: 296, y: 14 },
         { kind: 'door', x: 384 },
         { kind: 'shelf', x: 340, y: 22, w: 36 },
         { kind: 'poster', x: 448, y: 14, variant: 0 },
@@ -395,7 +398,12 @@ export function lobbyScene(doors: LobbyDoor[]): SceneDefinition {
     workstations: [],
     meetingSpots: [],
     loungeSpots: [],
-    wallDecor: [...doors.map((d, i) => ({ kind: 'office_door' as const, x: lobbyDoorTile(i).x * TILE, plate: d.plate })), ...doors.map((_, i) => ({ kind: 'pendant' as const, x: lobbyDoorTile(i).x * TILE + 16 }))],
+    wallDecor: [
+      ...doors.map((d, i) => ({ kind: 'office_door' as const, x: lobbyDoorTile(i).x * TILE, plate: d.plate })),
+      ...doors.map((_, i) => ({ kind: 'pendant' as const, x: lobbyDoorTile(i).x * TILE + 16 })),
+      // A clock on the wall past the last door (the hallway is always at least one door's width longer).
+      { kind: 'clock' as const, x: Math.max(lobbyDoorTile(doors.length - 1).x * TILE + 32 + 20, cols * TILE - 32), y: 14 },
+    ],
     rugs: [{ x: 2, y: 6, w: cols - 4, h: 2, style: 'stripe' }],
   };
 }

@@ -117,7 +117,7 @@ describe('RoomCore', () => {
     expect(bob).toMatchObject({ online: true, agents: 0 });
   });
 
-  it('shares theme and layout changes from any member and stores them', async () => {
+  it('shares layout changes from any member and stores them; map changes are ignored', async () => {
     const { core, open, send } = setup();
     const a = await core.addMember('Alice', appearance, true);
     const b = await core.addMember('Bob', appearance, false);
@@ -129,14 +129,11 @@ describe('RoomCore', () => {
     const doc = { version: 1, furniture: [{ id: 'desk-x', kind: 'desk', x: 3, y: 6 }], workstations: [{ id: 'ws-x', deskId: 'desk-x', facing: 'up' }] };
     await send(cb, { t: 'layout', theme: 'studio', doc });
     await send(cb, { t: 'theme', theme: 'studio' });
-    expect(ca.inbox.slice(-2)).toEqual([
-      { t: 'layout', theme: 'studio', doc, by: b.memberId },
-      { t: 'theme', theme: 'studio', by: b.memberId },
-    ]);
+    expect(ca.inbox.at(-1)).toEqual({ t: 'layout', theme: 'studio', doc, by: b.memberId });
     const late = open();
     await send(late, { t: 'auth', token: a.token, v: 1 });
     const w = late.inbox.find((m) => m.t === 'welcome');
-    expect(w?.t === 'welcome' && w.room).toMatchObject({ theme: 'studio', layouts: { studio: doc } });
+    expect(w?.t === 'welcome' && w.room).toMatchObject({ theme: 'loft', layouts: { studio: doc } });
   });
 
   it('replaces an older connection of the same member without announcing them offline', async () => {

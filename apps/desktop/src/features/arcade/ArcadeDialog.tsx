@@ -33,6 +33,8 @@ function useTeamBoard(): (g: GameId) => Rank[] {
   };
 }
 const GAME_KEYS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', ' ', 'enter']);
+/** Letter keys by physical position, so WASD works with a Chinese input method or another layout on. */
+const gameKey = (e: KeyboardEvent) => (/^Key[A-Z]$/.test(e.code) ? e.code.slice(3).toLowerCase() : e.code === 'Space' ? ' ' : e.key.toLowerCase());
 
 /** The arcade cabinet's screen: pick a game, play with keyboard or mouse, best scores kept in your account. */
 export function ArcadeDialog() {
@@ -71,13 +73,13 @@ export function ArcadeDialog() {
     let raf = 0;
     let ended = false;
     const down = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
+      const k = gameKey(e);
       if (!GAME_KEYS.has(k)) return;
       e.preventDefault();
       if (!input.held.has(k)) input.pressed.add(k);
       input.held.add(k);
     };
-    const up = (e: KeyboardEvent) => input.held.delete(e.key.toLowerCase());
+    const up = (e: KeyboardEvent) => input.held.delete(gameKey(e));
     const move = (e: PointerEvent) => {
       const r = c.getBoundingClientRect();
       input.pointerX = ((e.clientX - r.left) / r.width) * W;
