@@ -1328,6 +1328,13 @@ export class OfficeWorld {
     h.actor.stand({ x: tile.x * TILE + TILE / 2, y: tile.y * TILE + 12, tile, facing: 'down' });
   }
 
+  /** Feet position at the middle of the open floor tile nearest to (x, y). */
+  private nearestFloorPoint(x: number, y: number) {
+    const tile = { x: Math.min(this.scene.cols - 1, Math.max(0, Math.floor(x / TILE))), y: Math.min(this.scene.rows - 1, Math.max(0, Math.floor((y - 4) / TILE))) };
+    const t = this.nav.nearestWalkable(tile);
+    return t ? { x: t.x * TILE + TILE / 2, y: t.y * TILE + 12 } : null;
+  }
+
   /** Is the floor free for someone's feet at (x, y)? Checks a small box around the feet. */
   private freeAt(x: number, y: number) {
     for (const [ox, oy] of [
@@ -1576,7 +1583,7 @@ export class OfficeWorld {
         dy += v[1];
       }
     }
-    if ((dx || dy) && !this.edit) {
+    if ((dx || dy) && !this.edit && !this.doorAnim) {
       if (h.seat) this.vacate(h, PLAYER_ID);
       h.pending = undefined;
       const len = Math.hypot(dx, dy);
@@ -1584,14 +1591,23 @@ export class OfficeWorld {
       let y = a.y;
       // Small sub-steps so a long frame can't carry you through thin furniture.
       let remaining = (PLAYER_SPEED * dt) / 1000;
+      let exit: { x: number; y: number } | null | undefined;
       while (remaining > 0) {
         const step = Math.min(2, remaining);
         remaining -= step;
         const nx = x + (dx / len) * step;
         const ny = y + (dy / len) * step;
-        const stuck = !this.freeAt(x, y);
-        if (stuck || this.freeAt(nx, y)) x = nx;
-        if (stuck || this.freeAt(x, ny)) y = ny;
+        if (this.freeAt(x, y)) {
+          if (this.freeAt(nx, y)) x = nx;
+          if (this.freeAt(x, ny)) y = ny;
+          continue;
+        }
+        // Not on open floor (just through a doorway, or furniture moved under you): only steps
+        // toward the nearest open floor count, so you can't walk along or through the walls.
+        if (exit === undefined) exit = this.nearestFloorPoint(x, y);
+        if (!exit) break;
+        if (Math.abs(exit.x - nx) < Math.abs(exit.x - x)) x = nx;
+        if (Math.abs(exit.y - ny) < Math.abs(exit.y - y)) y = ny;
       }
       const facing: Facing = dx ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
       a.stepTo(x, y, facing);

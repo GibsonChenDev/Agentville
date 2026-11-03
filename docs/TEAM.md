@@ -13,7 +13,8 @@ What leaves your computer while you're in a team office, and nothing else:
 | Your nickname and character look | Prompts, assistant messages, tool calls and their inputs |
 | Your character's position and pose (e.g. "sitting at desk ws-b1") | File names, project paths, repositories, branches |
 | **How many** of your live agents are in the office (a number 0–32) | Session ids, agent names, statuses, errors, history |
-| Office edits you save (theme and furniture layout) | Anything from the Monitor Mode receiver |
+| Office furniture edits you save | Anything from the Monitor Mode receiver |
+| | The map/look you pick in a team office (kept on your computer) |
 | Chat messages you type in a team office (the relay keeps the office's last 50 for up to 7 days) | |
 
 This is enforced in three places: the app only ever builds the messages in `packages/team-protocol`; the relay re-parses every frame against those shapes and drops anything else (extra fields are stripped, unknown messages rejected); and the relay stores only member names, looks, a SHA-256 hash of each member's token, the shared layouts, and the office's recent chat.
@@ -27,7 +28,7 @@ This is enforced in three places: the app only ever builds the messages in `pack
 3. The code stays the same until the creator chooses **Generate a new code** (the old code stops working; people already in stay in).
 4. **Leave / 離開** removes you from the office and brings back your own local layouts. When the last member leaves, the office is deleted on the server.
 
-Anyone in the office can switch the map or edit the furniture; changes appear for everyone and the last save wins.
+Everyone shares one furniture layout: anyone can edit it, changes appear for everyone and the last save wins. The map buttons in a team office only change how it looks **to you** (floor, walls, window view, colours), remembered per office on your computer; the desks and furniture stay where they are, so everyone sees you sitting where you sit. The relay ignores map changes from older apps.
 
 Controls: `W A S D` walk · click the floor to walk there · click a chair, sofa, beanbag or arcade to use it · `E` use the nearest thing / get up · click your own character to change your look.
 
@@ -80,7 +81,7 @@ Ghost connections: a socket silent for 100 s (the app pings every 30 s) — e.g.
 | Arcade best scores | Shared with everyone in the office and late joiners; only ever go up; invalid scores are rejected. | `relay/edgeCases.test.ts` |
 | Outfits and furniture | Visible to everyone; a decoration unknown to an older app is skipped instead of discarding the whole layout. | both edge-case test files |
 | The app (or its receiver) restarts while an agent is working | The agent is shown as departed until its next hook, then picks up where it is. Hook numbering restarts with every receiver boot, so restored sessions forget their old numbers; an agent marked away after 5 silent minutes comes back on its next hook. A session that really ended isn't revived by a late hook. | `integration/reconnect.test.ts` |
-| One person switches the map | In a team office the map is shared, so it changes for everyone (and late joiners). In your own office it affects nobody. A map unknown to an older app falls back to that person's own map. | both edge-case test files |
+| One person switches the map | Only their own view changes (per office, on their computer); the shared layout and everyone else's screen stay as they are. In your own office it affects nobody. | both edge-case test files |
 
 ### Deploy your own ／ 部署
 

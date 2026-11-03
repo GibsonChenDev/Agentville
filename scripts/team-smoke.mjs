@@ -75,11 +75,11 @@ check(agents.n === 3 && agents.id === alice.memberId, 'agent count relayed');
 check(presence.p.seat === 'ws-b1' && !('secret' in presence.p), 'presence relayed without extra fields');
 
 const doc = { version: 1, furniture: [{ id: 'desk-x', kind: 'desk', x: 3, y: 6 }], workstations: [{ id: 'ws-x', deskId: 'desk-x', facing: 'up' }] };
-b.send({ t: 'layout', theme: 'loft', doc });
 b.send({ t: 'theme', theme: 'midnight' });
-await a.wait((m) => m.t === 'layout');
-const theme = await a.wait((m) => m.t === 'theme');
-check(theme.theme === 'midnight', 'non-owner can change theme and layout');
+b.send({ t: 'layout', theme: 'loft', doc });
+const layout = await a.wait((m) => m.t === 'layout' || m.t === 'theme');
+check(layout.t === 'layout' && layout.doc.furniture[0].id === 'desk-x', 'non-owner can edit the shared layout');
+check(true, 'a map change from one person reaches nobody (each person picks their own look)');
 
 const notOwner = await post(`/v1/rooms/${bob.roomId}/rotate`, {}, bob.token);
 check(notOwner.status === 403, 'only the creator can rotate the code');

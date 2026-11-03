@@ -5,6 +5,7 @@ import { THEMES } from '../../game/assets/themes';
 import { FURNITURE, drawDesk } from '../../game/furniture/furniture';
 import { EDITABLE_KINDS } from '../../game/scenes/editing';
 import { owns, useAccount } from '../../account/accountStore';
+import { useOfficeStyle } from '../../world/officeTheme';
 import { allowanceFor, useEditor } from './editorStore';
 
 const thumbs = new Map<string, string>();
@@ -24,7 +25,9 @@ export function OfficeEditor() {
   const inventory = useAccount((s) => s.account?.inventory);
   const { t } = useTranslation('office');
   const ed = useEditor();
-  const theme = ed.theme;
+  // Pieces and the title are shown in your own style for this office; the layout itself is shared.
+  const style = useOfficeStyle();
+  const theme = ed.theme ? style : undefined;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

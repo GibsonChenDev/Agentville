@@ -219,35 +219,27 @@ describe('looks and office decorations', () => {
 });
 
 describe('switching the map (場地)', () => {
-  it('in a team office, the map is shared: one person switching changes it for everyone, now and later', async () => {
+  it("nobody can switch the map for everyone: a map change from an (older) app reaches no one and changes nothing", async () => {
     const o = await office(['Alice', 'Bob', 'Carol']);
     const a = await o.connect('Alice');
     const b = await o.connect('Bob');
+    a.inbox.length = 0;
+    b.inbox.length = 0;
     await o.send(b, { t: 'theme', theme: 'seaside' });
-    expect(a.inbox.at(-1)).toEqual({ t: 'theme', theme: 'seaside', by: o.id('Bob') });
-    expect(b.inbox.at(-1)).toEqual({ t: 'theme', theme: 'seaside', by: o.id('Bob') });
+    expect(a.inbox).toEqual([]);
+    expect(b.inbox).toEqual([]); // not an error either: older apps keep working
     const c = await o.connect('Carol');
-    expect(o.welcomeOf(c).room.theme).toBe('seaside');
-  });
-
-  it('picking the map that is already shown sends nothing', async () => {
-    const o = await office(['Alice', 'Bob']);
-    const a = await o.connect('Alice');
-    const b = await o.connect('Bob');
-    const seen = b.inbox.length;
-    await o.send(a, { t: 'theme', theme: 'loft' });
-    expect(b.inbox.length).toBe(seen);
+    expect(o.welcomeOf(c).room.theme).toBe('loft'); // the shared layout everyone's desks follow
   });
 
   it('walking out to the lobby or into another office just shows you offline here; nothing else changes', async () => {
     const o = await office(['Alice', 'Bob']);
     const a = await o.connect('Alice');
     const b = await o.connect('Bob');
-    await o.send(a, { t: 'theme', theme: 'garden' });
     o.core.onClose(a); // the app closes this office's socket when you leave the room
     expect(b.inbox.at(-1)).toEqual({ t: 'offline', id: o.id('Alice') });
     const b2 = await o.connect('Bob');
-    expect(o.welcomeOf(b2).room.theme).toBe('garden');
+    expect(o.welcomeOf(b2).room.theme).toBe('loft');
   });
 });
 
@@ -390,13 +382,12 @@ describe("teammates' agents: visible as characters, work stays private", () => {
 });
 
 describe('switching offices does not affect anyone else', () => {
-  it('leaving office X for office Y: X only sees you go offline; X keeps its map; Y sees you arrive', async () => {
+  it('leaving office X for office Y: X only sees you go offline; Y sees you arrive', async () => {
     const x = await office(['Alice', 'Bob']);
     const y = await office(['Alice', 'Carol']);
     const ax = await x.connect('Alice');
     const bob = await x.connect('Bob');
     const carol = await y.connect('Carol');
-    await x.send(ax, { t: 'theme', theme: 'garden' });
     await x.send(ax, { t: 'agents', n: 4 });
     bob.inbox.length = 0;
     carol.inbox.length = 0;
@@ -408,10 +399,10 @@ describe('switching offices does not affect anyone else', () => {
     await y.send(ay, { t: 'theme', theme: 'seaside' });
 
     expect(bob.inbox).toEqual([{ t: 'offline', id: x.id('Alice') }]);
-    expect(carol.inbox.map((m) => m.t)).toEqual(['member', 'agents', 'theme']);
-    // X still shows the map chosen there, with Alice's agents gone.
+    expect(carol.inbox.map((m) => m.t)).toEqual(['member', 'agents']);
+    // X is as it was, with Alice's agents gone.
     const bob2 = await x.connect('Bob');
-    expect(x.welcomeOf(bob2).room.theme).toBe('garden');
+    expect(x.welcomeOf(bob2).room.theme).toBe('loft');
     expect(x.memberIn(bob2, 'Alice')).toMatchObject({ online: false, agents: 0 });
   });
 

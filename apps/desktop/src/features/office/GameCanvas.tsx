@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { OfficeWorld, PLAYER_ID, type CameraState, type HumanInfo, type PeerInfo, type SceneKey, type WorldAgent, type WorldDoor } from '../../game/engine/OfficeWorld';
 import { lobbyDoorTile, lobbyScene, type SceneDefinition } from '../../game/scenes/layouts';
 import { doorIdFor, lobbyDoorIds, usePlace } from '../../world/placeStore';
-import { currentOfficeTheme } from '../../world/officeTheme';
+import { currentOfficeStyle, currentOfficeTheme, useOfficeStyles } from '../../world/officeTheme';
 import { useArcade } from '../arcade/ArcadeDialog';
 import { useDice } from '../dice/DiceDialog';
 import { i18n } from '../../i18n';
@@ -93,10 +93,11 @@ function lobbyFor(rooms: TeamState['rooms']): SceneDefinition {
 function currentScene(): { key: SceneKey; scene: SceneDefinition; placeKey: string } {
   const place = usePlace.getState().place;
   if (place.kind === 'lobby') return { key: 'lobby', scene: lobbyFor(useTeam.getState().rooms), placeKey: 'lobby' };
-  const theme = currentOfficeTheme();
+  // Shared layout, drawn in your own style for this office.
+  const layout = currentOfficeTheme();
   const editor = useEditor.getState();
-  const scene = editor.active && editor.draft ? editor.draft : sceneFor(useApp.getState(), theme);
-  return { key: theme, scene, placeKey: doorIdFor(place) };
+  const scene = editor.active && editor.draft ? editor.draft : sceneFor(useApp.getState(), layout);
+  return { key: currentOfficeStyle(), scene, placeKey: doorIdFor(place) };
 }
 
 function doorsFor(key: SceneKey, scene: SceneDefinition): WorldDoor[] {
@@ -212,7 +213,7 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
       const chars = [...m.text];
       world.say(mine ? PLAYER_ID : `peer:${m.from}`, chars.length > 60 ? `${chars.slice(0, 60).join('')}…` : m.text);
     };
-    const unsubs = [useApp.subscribe(update), useTeam.subscribe(update), usePlayer.subscribe(push), usePlace.subscribe(update), useEditor.subscribe(applyScene)];
+    const unsubs = [useApp.subscribe(update), useTeam.subscribe(update), usePlayer.subscribe(push), usePlace.subscribe(update), useOfficeStyles.subscribe(update), useEditor.subscribe(applyScene)];
     // Renderer labels come from the same i18n source and refresh on language change.
     const relabel = () => {
       push();

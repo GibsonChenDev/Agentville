@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { MemberView } from '@agentville/team-protocol';
 import { NAMESPACES, i18n, resources } from '../i18n';
 import { useApp } from '../state/store';
-import { chooseOfficeTheme, officeTheme } from '../world/officeTheme';
+import { chooseOfficeTheme, currentOfficeStyle, currentOfficeTheme, officeStyle, officeTheme } from '../world/officeTheme';
 import { cachedOffice, forgetOffice, rememberOffice } from './officeCache';
 import { peerAgents } from './peerAgents';
 import { useTeam, type TeamState } from './teamStore';
@@ -58,11 +58,35 @@ describe('switching offices does not change anyone else’s map', () => {
     expect(useTeam.getState().room).toBeUndefined();
   });
 
-  it("picking a map in a team office changes that office, not your own office's map", () => {
-    useTeam.setState({ membership: { roomId: 'r', memberId: 'me', token: 't', owner: false, name: 'Team', server: 'x' }, room: { id: 'r', name: 'Team', code: 'AGV-AAAA-BBBB', theme: 'loft', layouts: {} }, status: 'online' });
+  const inOffice = (roomId: string) =>
+    useTeam.setState({ membership: { roomId, memberId: 'me', token: 't', owner: false, name: 'Team', server: 'x' }, room: { id: roomId, name: 'Team', code: 'AGV-AAAA-BBBB', theme: 'loft', layouts: {} }, status: 'online' });
+
+  it('picking a map in a team office changes only how it looks to you; its shared layout stays', () => {
+    inOffice('room-a');
     chooseOfficeTheme('midnight');
-    expect(useTeam.getState().room?.theme).toBe('midnight');
-    expect(useApp.getState().prefs.theme).toBe('loft');
+    expect(currentOfficeStyle()).toBe('midnight'); // what you see
+    expect(currentOfficeTheme()).toBe('loft'); // the layout everyone shares
+    expect(useTeam.getState().room?.theme).toBe('loft'); // nothing sent, nothing changed for others
+    expect(useApp.getState().prefs.theme).toBe('loft'); // your own office untouched
+  });
+
+  it('remembers your look for each team office separately, across restarts', () => {
+    inOffice('room-a');
+    chooseOfficeTheme('seaside');
+    inOffice('room-b');
+    expect(currentOfficeStyle()).toBe('loft'); // not chosen here yet: the office's own look
+    chooseOfficeTheme('garden');
+    inOffice('room-a');
+    expect(currentOfficeStyle()).toBe('seaside');
+    expect(JSON.parse(localStorage.getItem('agentville.officeStyles.v1')!)).toMatchObject({ 'room-a': 'seaside', 'room-b': 'garden' });
+  });
+
+  it('two teammates see the same layout in different looks', () => {
+    const room = { membership: { roomId: 'r' } as TeamState['membership'], room: { theme: 'garden' } as TeamState['room'], preview: undefined };
+    const mine = officeStyle('loft', room, { r: 'midnight' });
+    const theirs = officeStyle('studio', room, { r: 'seaside' });
+    expect([mine, theirs]).toEqual(['midnight', 'seaside']);
+    expect(officeTheme('loft', room)).toBe(officeTheme('studio', room));
   });
 });
 
