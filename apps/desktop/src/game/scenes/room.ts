@@ -2,6 +2,7 @@ import { PixelCanvas, bandedRadial, mix, rng, shade, type Color } from '../engin
 import { WHITE } from '../assets/palette';
 import type { ThemeStyle } from '../assets/themes';
 import { FURNITURE } from '../furniture/furniture';
+import { CLOCK_RADIUS } from './clock';
 import { TILE, type Rug, type SceneDefinition, type WallDecor } from './layouts';
 
 export const CAP = 8;
@@ -339,11 +340,18 @@ function drawDecor(pc: PixelCanvas, t: ThemeStyle, d: WallDecor, wallH: number) 
       return;
     }
     case 'clock': {
-      pc.ellipse(d.x, d.y + 7, 7, 7, '#2d2c33');
-      pc.ellipse(d.x, d.y + 7, 6, 6, '#f4efe6');
-      pc.vline(d.x, d.y + 3, 4, '#2d2c33');
-      pc.hline(d.x, d.y + 7, 3, '#2d2c33');
-      pc.px(d.x, d.y + 7, '#e2705c');
+      // Face and hour marks only: the renderer draws the hands at the current time.
+      const cy = d.y + 7;
+      pc.ellipse(d.x, cy, CLOCK_RADIUS, CLOCK_RADIUS, '#2d2c33');
+      pc.ellipse(d.x, cy, CLOCK_RADIUS - 1, CLOCK_RADIUS - 1, '#f4efe6');
+      for (const [x, y] of [
+        [0, -6],
+        [6, 0],
+        [0, 6],
+        [-6, 0],
+      ] as const)
+        pc.px(d.x + x, cy + y, '#8a8592');
+      pc.px(d.x, cy, '#e2705c');
       return;
     }
     case 'chalkboard': {

@@ -8,12 +8,14 @@ import { intentFor, isSlacking, type SlackActivity, type VisualIntent } from '..
 import { drawDocument, drawGlow } from '../assets/icons';
 import { LOBBY_STYLE, THEMES, type ThemeStyle } from '../assets/themes';
 import { CharacterActor, type BadgeInfo, type Seat, type Spot } from '../characters/CharacterActor';
+import { PresenceTrail } from '../characters/presenceTrail';
 import { FURNITURE, SERVER_LEDS, drawChair, drawDesk, drawEquipment } from '../furniture/furniture';
 import { drawScreen } from '../furniture/screens';
 import { NavGrid } from '../navigation/grid';
 import { DEFAULT_SCENES, TILE, type SceneDefinition } from '../scenes/layouts';
 import { interactableAt, interactablesFor, type Interactable } from '../scenes/interactables';
 import { waitingSpots } from '../scenes/crowd';
+import { clockHands } from '../scenes/clock';
 import { CAP, drawGlowLayer, drawLightmap, drawRoom, type LightSource } from '../scenes/room';
 import { characterTextures, texture, worldTextures } from './textures';
 import type { AgentStatus, ToolCategory } from '@agentville/domain';
@@ -91,13 +93,19 @@ interface Human {
   walkTarget?: TilePoint;
   /** Latest network presence (teammates only). */
   target?: Presence;
+  /** Recent presence reports, for smooth movement (teammates only). */
+  trail?: PresenceTrail;
 }
 
 const PLAYER_SPEED = 72; // art px per second, a little brisker than agents
-const PEER_SPEED = 110; // catch-up speed toward a teammate's reported position
 const IDLE_INTENT: VisualIntent = { place: 'desk', activity: 'idle', screen: 'off' };
 const TYPING_INTENT: VisualIntent = { place: 'desk', activity: 'type', screen: 'code' };
-const MOVE_KEYS: Record<string, [number, number]> = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0] };
+/**
+ * Movement keys by physical position (KeyboardEvent.code), not by the character they type: with
+ * a Chinese input method on (注音 types ㄊ on W) or another layout, `key` isn't "w" but `code` is
+ * still "KeyW".
+ */
+const MOVE_KEYS: Record<string, [number, number]> = { KeyW: [0, -1], KeyA: [-1, 0], KeyS: [0, 1], KeyD: [1, 0] };
 
 export interface CameraState {
   zoom: number;
@@ -117,7 +125,8 @@ interface StationView {
   occupant?: string;
 }
 
-const ZOOMS = [1, 2, 3, 4, 5, 6];
+/** Zoom steps of 0.5×. On Retina screens (2 device px per CSS px) every step is still a whole number of device pixels per art pixel. */
+export const ZOOMS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6];
 const CONFETTI = [0xff5f8f, 0xffd166, 0x5cc7e8, 0x7dff9a, 0xc7a3ff, 0xff8a3d, 0xfbf7ef];
 const SIGN_FONT = '-apple-system, "SF Pro Text", "Segoe UI", "PingFang TC", "Microsoft JhengHei UI", "Noto Sans TC", system-ui, sans-serif';
 const SCREEN_FPS = 8;
@@ -163,6 +172,9 @@ export class OfficeWorld {
   private departing = new Map<string, CharacterActor>();
   /** Open floor where agents wait when every desk is taken (nearest the door first). */
   private waiting: TilePoint[] = [];
+  /** Hands of the wall clocks (centre in art px), redrawn when the minute changes. */
+  private clocks: { g: Graphics; x: number; y: number }[] = [];
+  private clockMinute = -1;
   private agents = new Map<string, WorldAgent>();
   private assignments = new Map<string, string>(); // agentId → workstation id
   private glowTextures = new Map<string, Texture>();
@@ -354,6 +366,14 @@ export class OfficeWorld {
     this.glowLayer = new Sprite(texture(drawGlowLayer(theme, scene, lights).canvas));
     this.glowLayer.blendMode = 'add';
     this.fxBelow.addChild(this.glowLayer);
+    this.clocks = scene.wallDecor.flatMap((d) => {
+      if (d.kind !== 'clock') return [];
+      const g = new Graphics();
+      g.eventMode = 'none';
+      this.fxBelow.addChild(g);
+      return [{ g, x: d.x, y: d.y + 7 }];
+    });
+    this.clockMinute = -1;
     const lm = drawLightmap(theme, W, H, lights);
     if (lm) {
       this.lightmap = new Sprite(texture(lm.canvas));
@@ -678,10 +698,11 @@ export class OfficeWorld {
       actor.badge.visible = actor.bubble.visible = false;
     }
 
+    this.updateClocks();
     this.updateDoorAnim(now);
     this.updatePlayer(dt);
     for (const [id, h] of this.peers) {
-      this.updatePeer(id, h, dt);
+      this.updatePeer(id, h);
       const hello = this.greetings.get(id);
       if (hello && (now > hello.until || h.actor.isVisible)) {
         this.greetings.delete(id);
@@ -730,6 +751,22 @@ export class OfficeWorld {
       const p = toScreen(door.tile.x * TILE + TILE, this.scene.wallRows * TILE - 46);
       sign.root.position.set(Math.round(p.x), Math.round(p.y));
       sign.root.visible = !this.edit && this.zoom >= 2;
+    }
+  }
+
+  /** Wall clocks show this computer's local time. */
+  private updateClocks() {
+    if (!this.clocks.length) return;
+    const date = new Date();
+    const minute = date.getHours() * 60 + date.getMinutes();
+    if (minute === this.clockMinute) return;
+    this.clockMinute = minute;
+    const { hour, minute: min } = clockHands(date.getHours(), date.getMinutes());
+    for (const c of this.clocks) {
+      c.g.clear();
+      for (const [x, y] of min) c.g.rect(c.x + x, c.y + y, 1, 1).fill(0x2d2c33);
+      for (const [x, y] of hour) c.g.rect(c.x + x, c.y + y, 1, 1).fill(0x2d2c33);
+      c.g.rect(c.x, c.y, 1, 1).fill(0xe2705c);
     }
   }
 
@@ -1097,7 +1134,7 @@ export class OfficeWorld {
     const W = this.scene.cols * TILE;
     const H = this.scene.rows * TILE;
     const { width, height } = this.app.screen;
-    const fit = Math.max(1, Math.floor(Math.min(width / W, height / H)));
+    const fit = Math.max(1, Math.floor(Math.min(width / W, height / H) * 2) / 2);
     this.zoom = Math.max(2, Math.min(6, fit));
     this.cx = W / 2;
     this.cy = H / 2;
@@ -1107,7 +1144,7 @@ export class OfficeWorld {
 
   zoomBy(step: 1 | -1, anchor?: { x: number; y: number }) {
     const index = ZOOMS.indexOf(this.zoom);
-    const next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, index + step))]!;
+    const next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (index < 0 ? ZOOMS.findIndex((z) => z >= this.zoom) : index) + step))]!;
     if (next === this.zoom) return;
     if (anchor) {
       // keep the world point under the cursor fixed
@@ -1198,16 +1235,15 @@ export class OfficeWorld {
     };
     const onDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || document.querySelector('dialog[open]') || this.edit) return;
-      const k = e.key.toLowerCase();
-      if (MOVE_KEYS[k]) {
-        this.keys.add(k);
+      if (MOVE_KEYS[e.code]) {
+        this.keys.add(e.code);
         e.preventDefault();
-      } else if (k === 'e' && !e.repeat) {
+      } else if (e.code === 'KeyE' && !e.repeat) {
         this.playerInteract();
         e.preventDefault();
       }
     };
-    const onUp = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase());
+    const onUp = (e: KeyboardEvent) => this.keys.delete(e.code);
     const onBlur = () => this.keys.clear();
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
@@ -1289,8 +1325,11 @@ export class OfficeWorld {
       let h = this.peers.get(info.id);
       if (!h) {
         h = this.makeHuman(info.id, info);
+        h.trail = new PresenceTrail();
         this.peers.set(info.id, h);
       } else this.refreshHuman(h, info);
+      // A new report (the store keeps the same object until one arrives).
+      if (info.presence && info.presence !== h.target) h.trail?.push(info.presence, performance.now());
       h.target = info.presence;
     }
   }
@@ -1602,12 +1641,21 @@ export class OfficeWorld {
           if (this.freeAt(x, ny)) y = ny;
           continue;
         }
-        // Not on open floor (just through a doorway, or furniture moved under you): only steps
-        // toward the nearest open floor count, so you can't walk along or through the walls.
+        // Not on open floor (just through a doorway, or furniture moved under you): any key walks
+        // you straight to the nearest open floor first, so you can't wander along or through walls
+        // and no key ever seems dead.
         if (exit === undefined) exit = this.nearestFloorPoint(x, y);
         if (!exit) break;
-        if (Math.abs(exit.x - nx) < Math.abs(exit.x - x)) x = nx;
-        if (Math.abs(exit.y - ny) < Math.abs(exit.y - y)) y = ny;
+        const ex = exit.x - x;
+        const ey = exit.y - y;
+        const d = Math.hypot(ex, ey);
+        if (d <= step) {
+          x = exit.x;
+          y = exit.y;
+        } else {
+          x += (ex / d) * step;
+          y += (ey / d) * step;
+        }
       }
       const facing: Facing = dx ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
       a.stepTo(x, y, facing);
@@ -1652,16 +1700,18 @@ export class OfficeWorld {
     this.callbacks.onDoor?.(door.id);
   }
 
-  private updatePeer(id: string, h: Human, dt: number) {
-    const p = h.target;
+  private updatePeer(id: string, h: Human) {
     const a = h.actor;
-    if (!p) {
+    // Shown slightly in the past, gliding between their reports (see PresenceTrail).
+    const now = h.trail?.at(performance.now());
+    if (!h.target || !now) {
       if (a.isVisible) {
         this.vacate(h, id);
         a.hide();
       }
       return;
     }
+    const p = now.p;
     const it = p.seat && p.pose !== 'walk' && p.pose !== 'stand' ? this.interactables.find((i) => i.id === p.seat) : undefined;
     if (it) {
       if (h.seat === it.id) return;
@@ -1669,26 +1719,12 @@ export class OfficeWorld {
       if (!a.isVisible) a.spawnAt(it);
       if (this.occupy(h, id, it)) return;
     } else if (h.seat) this.vacate(h, id);
-    if (!a.isVisible) {
-      a.spawnAt(p);
-      a.halt(p.facing);
-    }
-    const dx = p.x - a.x;
-    const dy = p.y - a.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 96) {
-      a.stand({ x: p.x, y: p.y, tile: { x: Math.floor(p.x / TILE), y: Math.floor((p.y - 4) / TILE) }, facing: p.facing });
-      return;
-    }
-    if (dist < 0.5) {
-      if (p.pose === 'walk') a.stepTo(p.x, p.y, p.facing);
-      else if (a.isWalking || a.currentFacing !== p.facing) a.halt(p.facing);
-      return;
-    }
-    const step = Math.min(dist, (PEER_SPEED * dt) / 1000);
-    const facing: Facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
-    a.stepTo(a.x + (dx / dist) * step, a.y + (dy / dist) * step, facing);
+    const spot = { x: now.x, y: now.y, tile: { x: Math.floor(now.x / TILE), y: Math.floor((now.y - 4) / TILE) }, facing: p.facing };
+    if (!a.isVisible) a.spawnAt(spot);
+    if (now.moving) a.stepTo(now.x, now.y, p.facing);
+    else if (a.isWalking || a.x !== now.x || a.y !== now.y || a.currentFacing !== p.facing) a.stand(spot);
   }
+
 
   /** A speech bubble over an agent or person (e.g. how long they've worked, on click). */
   say(id: string, text: string) {

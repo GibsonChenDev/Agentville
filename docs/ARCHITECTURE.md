@@ -76,6 +76,6 @@ claude (terminal/IDE) ──http hook POST──▶ receiver 127.0.0.1:47821 (Ru
 |---|---|
 | Three-quarter top-down view, 16 px tiles | Simplest correct depth sorting (by feet y), square-grid A*, predictable hit-testing; detailed sprites without isometric distortion. |
 | Procedural pixel art drawn at native resolution | No image-generation API is assumed; assets are deterministic, palette-locked and replaceable via the texture cache. |
-| Integer zoom (1–6×) + device-pixel camera snapping | Keeps pixels crisp on Retina without shimmer. |
+| Zoom in 0.5× steps (1–6×) + device-pixel camera snapping | On Retina (2 device px per CSS px) every step is a whole number of device pixels per art pixel, so pixels stay crisp; on 1× screens half steps can make some art pixels one device pixel wider. |
 | Screen-space badges (Pixi `Text`) | Chinese and English labels stay sharp at every zoom; pixel fonts are never used for CJK. |
 | Tailwind v4 for UI | Matches the brief; theme tokens live in `styles/index.css`. |
