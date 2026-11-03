@@ -6,6 +6,7 @@ import { MonitoringSetup } from './MonitoringSetup';
 import { AccountSection } from './AccountSection';
 import { unlockAudio } from '../alerts/sounds';
 import { clearHistory } from '../../persistence/historyRecorder';
+import pkg from '../../../package.json';
 
 const LOCALES: { id: LocalePreference; key: string }[] = [
   { id: 'system', key: 'system' },
@@ -143,7 +144,7 @@ export function SettingsDialog() {
         </section>
 
         <section className="border-t border-line pt-3 text-[11.5px] text-faint">
-          <p>{t('version', { version: '0.1.0' })}</p>
+          <p>{t('version', { version: pkg.version })}</p>
           <p>{t('phase', { phase: '2' })}</p>
           {!storageAvailable && <p className="mt-1 text-amber">{t('errors:storageUnavailable')}</p>}
         </section>
