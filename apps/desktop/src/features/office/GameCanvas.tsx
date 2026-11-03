@@ -1,4 +1,4 @@
-import { appearanceFromSeed, sanitizeAppearance, type AgentRecord } from '@agentville/domain';
+import { appearanceFromSeed, sanitizeAppearance, workedMs } from '@agentville/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OfficeWorld, type CameraState, type HumanInfo, type PeerInfo, type SceneKey, type WorldAgent, type WorldDoor } from '../../game/engine/OfficeWorld';
@@ -6,29 +6,18 @@ import { lobbyDoorTile, lobbyScene, type SceneDefinition } from '../../game/scen
 import { doorIdFor, lobbyDoorIds, usePlace } from '../../world/placeStore';
 import { currentOfficeTheme } from '../../world/officeTheme';
 import { useArcade } from '../arcade/ArcadeDialog';
+import { useDice } from '../dice/DiceDialog';
 import { i18n } from '../../i18n';
+import { formatDuration } from '../../presentation/format';
 import { STATUS_TONE, currentCategory } from '../../presentation/status';
 import { inMode, sceneFor, useApp, type AppState } from '../../state/store';
 import { usePlayer } from '../../team/playerStore';
-import { team } from '../../team/teamClient';
+import { team, teamEvents } from '../../team/teamClient';
+import { playCue } from '../alerts/sounds';
+import { peerAgents } from '../../team/peerAgents';
 import { onlinePeers, useTeam, type TeamState } from '../../team/teamStore';
 import { canPlace, useEditor } from './editorStore';
 import { worldApi } from './worldApi';
-
-/** Teammates' agents: anonymous characters at desks. Only their number is known. */
-function peerAgents(team: TeamState): WorldAgent[] {
-  const t = i18n.t.bind(i18n);
-  const out: WorldAgent[] = [];
-  for (const m of onlinePeers(team)) {
-    for (let i = 0; i < m.agents; i++) {
-      const id = `peer:${m.id}:${i}`;
-      const record: AgentRecord = { id, name: t('team:agentOf', { name: m.name }), role: 'generalist', origin: 'external', kind: 'agent', appearance: appearanceFromSeed(id), createdAt: i };
-      // Alternate screens so a row of teammates' agents doesn't look cloned; both read as "working".
-      out.push({ record, status: i % 2 ? 'executing_tool' : 'writing', badge: { name: record.name, status: t('team:working'), tone: 'busy' } });
-    }
-  }
-  return out;
-}
 
 function peers(team: TeamState): PeerInfo[] {
   const t = i18n.t.bind(i18n);
@@ -73,6 +62,20 @@ function worldAgents(s: AppState): WorldAgent[] {
         },
       };
     });
+}
+
+/** What an agent says when clicked: how long it has worked. Null for people. */
+function workBubble(id: string): string | null {
+  const t = i18n.t.bind(i18n);
+  const peer = /^peer:([^:]+):\d+$/.exec(id);
+  if (peer) {
+    const m = useTeam.getState().members[peer[1]!];
+    return m ? t('agents:bubble.peer', { name: m.name }) : null;
+  }
+  const s = useApp.getState();
+  const r = s.runtime[id];
+  if (!s.agents[id] || !r) return null;
+  return t('agents:bubble.worked', { total: formatDuration(workedMs(r, Date.now()), t) });
 }
 
 const PLATES = ['#4fb3a9', '#c7a3ff', '#e2705c', '#5cc77a', '#7fd1ff', '#ff8fb8'];
@@ -124,12 +127,17 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
   useEffect(() => {
     if (!host.current) return;
     const world = new OfficeWorld({
-      onSelect: (id) => useApp.getState().select(id),
+      onSelect: (id) => {
+        useApp.getState().select(id);
+        const text = id ? workBubble(id) : null;
+        if (id && text) world.say(id, text);
+      },
       onCamera,
       onPresence: (p) => team.sendPresence(p),
       onPlayerClick: () => usePlayer.getState().openEditor(true),
       onDoor,
       onArcade: () => useArcade.getState().setOpen(true),
+      onDice: () => useDice.getState().setOpen(true),
     });
     let cancelled = false;
     let shown: { key: SceneKey; scene: SceneDefinition; placeKey: string } | undefined;
@@ -154,7 +162,14 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
       const s = useApp.getState();
       const teamState = useTeam.getState();
       const inLobby = usePlace.getState().place.kind === 'lobby';
-      world.sync(inLobby ? [] : [...worldAgents(s), ...peerAgents(teamState)], s.selectedAgentId, { reduceMotion: s.prefs.reduceMotion, alwaysShowLabels: s.prefs.alwaysShowLabels });
+      const t = i18n.t.bind(i18n);
+      const slackLabels = { phone: t('agents:slacking.phone'), stretch: t('agents:slacking.stretch'), nap: t('agents:slacking.nap') };
+      world.sync(inLobby ? [] : [...worldAgents(s), ...peerAgents(teamState)], s.selectedAgentId, {
+        reduceMotion: s.prefs.reduceMotion,
+        alwaysShowLabels: s.prefs.alwaysShowLabels,
+        slackLabels,
+        waitingLabel: t('agents:waitingForDesk'),
+      });
       world.syncPeers(inLobby ? [] : peers(teamState));
       world.setPlayer(playerInfo());
     };
@@ -177,6 +192,11 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
       applyScene();
       push();
     };
+    teamEvents.onArrive = (member) => {
+      const t = i18n.t.bind(i18n);
+      world.welcome(`peer:${member.id}`, t('team:welcome.banner', { name: member.name }), t('team:welcome.hello'));
+      if (useApp.getState().prefs.sound) playCue('welcome');
+    };
     const unsubs = [useApp.subscribe(update), useTeam.subscribe(update), usePlayer.subscribe(push), usePlace.subscribe(update), useEditor.subscribe(applyScene)];
     // Renderer labels come from the same i18n source and refresh on language change.
     const relabel = () => {
@@ -189,6 +209,7 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
       for (const u of unsubs) u();
       i18n.off('languageChanged', relabel);
       worldApi.current = null;
+      teamEvents.onArrive = undefined;
       world.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

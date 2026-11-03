@@ -92,5 +92,9 @@
     "newOffice": "＋ New office",
     "toLobby": "Lobby",
     "here": "You're here"
+  },
+  "welcome": {
+    "banner": "🎉 {{name}} just came in — welcome!",
+    "hello": "Hi everyone! 👋"
   }
 }

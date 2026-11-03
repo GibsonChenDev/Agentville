@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DomainEvent, DomainEventPayload } from '../events/types';
-import { applyEvent, isStale } from './reducer';
+import { applyEvent, isStale, workedMs } from './reducer';
 import { initialRuntime, type AgentRuntime } from './types';
 
 let n = 0;
@@ -148,5 +148,32 @@ describe('agent state machine', () => {
     const done = applyEvent(busy, ev({ kind: 'turn.completed' }));
     expect(isStale(done, done.lastEventAt! + 10_000, 5_000, 60_000)).toBe(false);
     expect(isStale(done, done.lastEventAt! + 70_000, 5_000, 60_000)).toBe(true);
+  });
+});
+
+describe('working time', () => {
+  it('counts turns in progress and banks them when the turn ends', () => {
+    let s = run(ev({ kind: 'session.started' }, { at: 0 }));
+    expect(workedMs(s, 5_000)).toBe(0);
+    s = applyEvent(s, ev({ kind: 'prompt.submitted' }, { at: 10_000 }));
+    expect(s.busySince).toBe(10_000);
+    s = applyEvent(s, ev({ kind: 'tool.started', toolUseId: 't', toolName: 'Read', category: 'read' }, { at: 20_000 }));
+    expect(s.busySince).toBe(10_000); // still the same stretch
+    expect(workedMs(s, 40_000)).toBe(30_000);
+    s = applyEvent(s, ev({ kind: 'turn.completed' }, { at: 70_000 }));
+    expect(s.busySince).toBeUndefined();
+    expect(workedMs(s, 999_999)).toBe(60_000);
+    s = applyEvent(s, ev({ kind: 'prompt.submitted' }, { at: 100_000 }));
+    expect(workedMs(s, 105_000)).toBe(65_000);
+  });
+
+  it('does not count waiting for permission, and stops on disconnect', () => {
+    let s = run(ev({ kind: 'prompt.submitted' }, { at: 0 }));
+    s = applyEvent(s, ev({ kind: 'permission.requested', requestId: 'p', toolName: 'Bash' }, { at: 10_000 }));
+    expect(workedMs(s, 50_000)).toBe(10_000);
+    s = applyEvent(s, ev({ kind: 'tool.finished', toolName: 'Bash' }, { at: 60_000 }));
+    expect(s.status).toBe('thinking');
+    s = applyEvent(s, ev({ kind: 'session.disconnected', reason: 'stale' }, { at: 65_000 }));
+    expect(workedMs(s, 1e9)).toBe(15_000);
   });
 });

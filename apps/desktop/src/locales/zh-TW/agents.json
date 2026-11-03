@@ -180,7 +180,18 @@
       "flower": "小花",
       "cat_ears": "貓耳",
       "wizard_hat": "巫師帽",
-      "crown": "皇冠"
+      "crown": "皇冠",
+      "bow": "蝴蝶結",
+      "sunglasses": "墨鏡",
+      "party_hat": "派對帽",
+      "bunny_ears": "兔耳",
+      "chef_hat": "廚師帽",
+      "santa_hat": "聖誕帽",
+      "antenna": "外星觸角",
+      "devil_horns": "小惡魔角",
+      "top_hat": "紳士禮帽",
+      "viking": "維京頭盔",
+      "halo": "天使光環"
     },
     "equipment": {
       "laptop": "筆電",
@@ -202,7 +213,13 @@
       "denim": "丹寧藍",
       "forest": "森林綠",
       "neon": "螢光綠",
-      "gold": "金色"
+      "gold": "金色",
+      "sakura": "櫻花粉",
+      "mint": "薄荷綠",
+      "sky": "天空藍",
+      "lavender": "薰衣草紫",
+      "ruby": "紅寶石",
+      "onyx": "曜石黑"
     }
   },
   "editor": {
@@ -252,5 +269,20 @@
     "sharedTree_one": "{{count}} 個工作階段共用目錄",
     "sharedTree_other": "{{count}} 個工作階段共用目錄",
     "sharedTreeHint": "多個進行中的工作階段寫入同一個工作目錄，使用各自的 git worktree 可避免互相覆蓋。"
-  }
+  },
+  "duration": {
+    "hm": "{{h}} 小時 {{m}} 分",
+    "ms": "{{m}} 分 {{s}} 秒",
+    "s": "{{s}} 秒"
+  },
+  "bubble": {
+    "worked": "工作 {{total}}…",
+    "peer": "我在幫 {{name}} 工作！"
+  },
+  "slacking": {
+    "phone": "滑手機中",
+    "stretch": "伸懶腰",
+    "nap": "打瞌睡中"
+  },
+  "waitingForDesk": "沒有空位，等待中"
 }

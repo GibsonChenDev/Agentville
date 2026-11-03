@@ -19,6 +19,8 @@ import {
   newAccount,
   normalizeRecoveryCode,
   recordScore,
+  dieFrom,
+  playDice,
   type AccountDoc,
 } from '../../../packages/team-protocol/src/index.ts';
 import { RoomCore, hex, random, sha256, type Conn, type ConnState, type RoomMeta, type RoomStore, type StoredMember } from './roomCore.ts';
@@ -29,8 +31,10 @@ export interface Env {
   ACCOUNT: DurableObjectNamespace<Account>;
 }
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const DEFAULT_THEME = 'loft';
+/** How often a room with open sockets checks for ghost connections. */
+const SWEEP_MS = 60_000;
 /** Wrong invite codes allowed per client IP per window before joins are refused. */
 const JOIN_FAILURES = { max: 10, windowMs: 10 * 60_000 };
 /** New accounts per client IP per hour. */
@@ -138,7 +142,7 @@ async function me(req: Request, env: Env, rest: string[]) {
   if (req.method !== 'POST') return error('not_found', 404);
   const body = await readJson(req);
   const r = await stub.act(action, body);
-  if (typeof r === 'string') return error(r as ApiErrorCode, r === 'unauthorized' ? 401 : r === 'not_found' ? 404 : 400);
+  if (typeof r === 'string') return error(r as ApiErrorCode, r === 'unauthorized' ? 401 : r === 'not_found' ? 404 : r === 'rate_limited' ? 429 : 400);
   return ok(r);
 }
 
@@ -292,6 +296,13 @@ export class Account extends DurableObject<Env> {
         next = { ...doc, rooms };
         break;
       }
+      case 'dice': {
+        const r = playDice(doc, body?.game, body?.bet, body?.pick, dieFrom(random), Date.now());
+        if (!r.ok) return r.error;
+        next = r.doc;
+        extra = { result: r.result };
+        break;
+      }
       case 'score': {
         const r = recordScore(doc, String(body?.game ?? ''), body?.score);
         if (!r) return 'bad_request';
@@ -334,7 +345,7 @@ export class Room extends DurableObject<Env> {
       },
       clear: () => void sql.exec('DELETE FROM meta; DELETE FROM members; DELETE FROM layouts'),
     };
-    this.core = new RoomCore(store, () => ctx.getWebSockets().map(adapt), { random, sha256 });
+    this.core = new RoomCore(store, () => ctx.getWebSockets().map((ws) => adapt(ws, ctx)), { random, sha256 });
     // Keep-alive pings are answered by the runtime without waking the object.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
   }
@@ -368,8 +379,14 @@ export class Room extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ connId: hex(random(8)), agents: 0 } satisfies ConnState);
+    server.serializeAttachment({ connId: hex(random(8)), agents: 0, openedAt: Date.now() } satisfies ConnState);
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** Every so often while anyone is connected: drop ghost connections (see STALE_MS). */
+  async alarm() {
+    if (this.core.sweep()) await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
@@ -377,22 +394,23 @@ export class Room extends DurableObject<Env> {
       ws.close(1003, 'text only');
       return;
     }
-    await this.core.onMessage(adapt(ws), message);
+    await this.core.onMessage(adapt(ws, this.ctx), message);
   }
 
   webSocketClose(ws: WebSocket) {
-    this.core.onClose(adapt(ws));
+    this.core.onClose(adapt(ws, this.ctx));
   }
 
   webSocketError(ws: WebSocket) {
-    this.core.onClose(adapt(ws));
+    this.core.onClose(adapt(ws, this.ctx));
   }
 }
 
-function adapt(ws: WebSocket): Conn {
+function adapt(ws: WebSocket, ctx: DurableObjectState): Conn {
   const state = (ws.deserializeAttachment() as ConnState | null) ?? { connId: 'unknown', agents: 0 };
   return {
     state,
+    lastPing: () => ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime(),
     save: () => ws.serializeAttachment(state),
     send: (raw) => ws.send(raw),
     close: (code, reason) => {

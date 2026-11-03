@@ -89,10 +89,14 @@ export function moveFurniture(scene: SceneDefinition, id: string, x: number, y: 
   return result({ ...scene, furniture, workstations });
 }
 
-export function addFurniture(scene: SceneDefinition, kind: string, x: number, y: number): EditResult {
+/**
+ * Adds a piece. `owner` tags it with whoever bought it (shop decorations), so a
+ * shared office can tell whose copies are whose: `item-<owner>-u<n>`.
+ */
+export function addFurniture(scene: SceneDefinition, kind: string, x: number, y: number, owner?: string): EditResult {
   if (!FURNITURE[kind]) return { ok: false, error: 'unknown_kind' };
   const n = nextIndex(scene);
-  const item: FurniturePlacement = { id: `${kind === 'desk' ? 'desk' : 'item'}-u${n}`, kind, x, y };
+  const item: FurniturePlacement = { id: `${kind === 'desk' ? 'desk' : 'item'}${owner ? `-${owner}` : ''}-u${n}`, kind, x, y };
   const workstations: Workstation[] =
     kind === 'desk' ? [...scene.workstations, { id: `ws-u${n}`, deskId: item.id, facing: 'up', seat: seatFor(item, 'up') }] : scene.workstations;
   return result({ ...scene, furniture: [...scene.furniture, item], workstations });
@@ -139,7 +143,9 @@ export function fromLayoutDoc(raw: unknown, base: SceneDefinition): SceneDefinit
   const int = (v: unknown) => (Number.isInteger(v) ? (v as number) : NaN);
   const furniture: FurniturePlacement[] = [];
   for (const f of r.furniture as Record<string, unknown>[]) {
-    if (!f || typeof f.id !== 'string' || !ID.test(f.id) || typeof f.kind !== 'string' || !FURNITURE[f.kind]) return base;
+    if (!f || typeof f.id !== 'string' || !ID.test(f.id) || typeof f.kind !== 'string') return base;
+    // A piece this version doesn't know (bought in a newer app by a teammate) is left out, not the whole layout.
+    if (!FURNITURE[f.kind]) continue;
     const x = int(f.x);
     const y = int(f.y);
     if (Number.isNaN(x) || Number.isNaN(y)) return base;
@@ -155,4 +161,12 @@ export function fromLayoutDoc(raw: unknown, base: SceneDefinition): SceneDefinit
   }
   const scene = { ...base, furniture, workstations };
   return validateScene(scene) ? base : scene;
+}
+
+/**
+ * Pieces of `kind` someone placed (built-in pieces of the default layout, like
+ * its dice table, don't count); with `owner`, only the ones that owner placed.
+ */
+export function placedCount(scene: Pick<SceneDefinition, 'furniture'>, kind: string, owner?: string): number {
+  return scene.furniture.filter((f) => f.kind === kind && f.id.startsWith('item-') && (!owner || f.id.includes(`-${owner}-`))).length;
 }

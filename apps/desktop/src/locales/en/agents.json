@@ -180,7 +180,18 @@
       "flower": "Flower",
       "cat_ears": "Cat ears",
       "wizard_hat": "Wizard hat",
-      "crown": "Crown"
+      "crown": "Crown",
+      "bow": "Hair bow",
+      "sunglasses": "Sunglasses",
+      "party_hat": "Party hat",
+      "bunny_ears": "Bunny ears",
+      "chef_hat": "Chef's hat",
+      "santa_hat": "Santa hat",
+      "antenna": "Alien antennae",
+      "devil_horns": "Devil horns",
+      "top_hat": "Top hat",
+      "viking": "Viking helmet",
+      "halo": "Halo"
     },
     "equipment": {
       "laptop": "Laptop",
@@ -202,7 +213,13 @@
       "denim": "Denim",
       "forest": "Forest",
       "neon": "Neon",
-      "gold": "Gold"
+      "gold": "Gold",
+      "sakura": "Sakura pink",
+      "mint": "Mint",
+      "sky": "Sky blue",
+      "lavender": "Lavender",
+      "ruby": "Ruby",
+      "onyx": "Onyx black"
     }
   },
   "editor": {
@@ -252,5 +269,20 @@
     "sharedTree_one": "{{count}} session in one working tree",
     "sharedTree_other": "{{count}} sessions in one working tree",
     "sharedTreeHint": "Several active sessions write to the same working tree. Separate git worktrees avoid overwriting each other."
-  }
+  },
+  "duration": {
+    "hm": "{{h}}h {{m}}m",
+    "ms": "{{m}}m {{s}}s",
+    "s": "{{s}}s"
+  },
+  "bubble": {
+    "worked": "Worked {{total}}…",
+    "peer": "Working for {{name}}!"
+  },
+  "slacking": {
+    "phone": "Scrolling the phone",
+    "stretch": "Stretching",
+    "nap": "Napping"
+  },
+  "waitingForDesk": "No free desk — waiting"
 }

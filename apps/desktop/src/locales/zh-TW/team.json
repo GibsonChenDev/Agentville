@@ -92,5 +92,9 @@
     "newOffice": "＋ 新辦公室",
     "toLobby": "大廳",
     "here": "目前位置"
+  },
+  "welcome": {
+    "banner": "🎉 {{name}} 進辦公室了，歡迎！",
+    "hello": "大家好！👋"
   }
 }

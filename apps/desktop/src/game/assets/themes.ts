@@ -5,9 +5,9 @@ export interface ThemeStyle {
   id: OfficeTheme;
   void: Color;
   floor: { kind: 'planks' | 'tiles' | 'carpet'; base: Color; alt: Color; seam: Color };
-  wall: { kind: 'brick' | 'plaster' | 'panel'; base: Color; alt: Color; mortar: Color; crown: Color; baseboard: Color };
+  wall: { kind: 'brick' | 'plaster' | 'panel' | 'shiplap'; base: Color; alt: Color; mortar: Color; crown: Color; baseboard: Color };
   cap: Color;
-  window: { skyTop: Color; skyBottom: Color; frame: Color; night: boolean; scenery: 'city' | 'hills' | 'nightcity' };
+  window: { skyTop: Color; skyBottom: Color; frame: Color; night: boolean; scenery: 'city' | 'hills' | 'nightcity' | 'garden' | 'sea' };
   desk: { top: Color; edge: Color; leg: Color; accent?: Color };
   chair: Color;
   rug: { base: Color; border: Color; pattern: Color };
@@ -67,6 +67,38 @@ export const THEMES: Record<OfficeTheme, ThemeStyle> = {
     warmLight: '#ffcf8a',
     screenGlow: '#62e6ff',
     accent: '#ff5fa2',
+  },
+  garden: {
+    id: 'garden',
+    void: '#1a2219',
+    floor: { kind: 'tiles', base: '#c98a62', alt: '#bd7d56', seam: '#9c6243' },
+    wall: { kind: 'plaster', base: '#dfe9d2', alt: '#d2dfc3', mortar: '#b9c9a8', crown: '#5e7f4e', baseboard: '#4f6b41' },
+    cap: '#2f4030',
+    window: { skyTop: '#86c9ef', skyBottom: '#e6f6d9', frame: '#4f6b41', night: false, scenery: 'garden' },
+    desk: { top: '#d9c29a', edge: '#a88c62', leg: '#4f6b41', accent: '#7cc06a' },
+    chair: '#6f9a58',
+    rug: { base: '#8fae87', border: '#f2e3b3', pattern: '#5e7f4e' },
+    sofa: '#d98b5f',
+    darkness: { color: '#000000', alpha: 0 },
+    warmLight: '#fff4c9',
+    screenGlow: '#c9f2ff',
+    accent: '#ff9db0',
+  },
+  seaside: {
+    id: 'seaside',
+    void: '#141c26',
+    floor: { kind: 'planks', base: '#e3d6bf', alt: '#d8c9ae', seam: '#b8a78a' },
+    wall: { kind: 'shiplap', base: '#eef3f5', alt: '#e2eaee', mortar: '#c3d0d6', crown: '#2f5f7a', baseboard: '#2f5f7a' },
+    cap: '#21384a',
+    window: { skyTop: '#f7a76c', skyBottom: '#ffe1b3', frame: '#f4f7f8', night: false, scenery: 'sea' },
+    desk: { top: '#f1ebe0', edge: '#c9bda8', leg: '#2f5f7a', accent: '#3fa7c4' },
+    chair: '#3fa7c4',
+    rug: { base: '#e9c46a', border: '#f4f7f8', pattern: '#f4845f' },
+    sofa: '#e9c46a',
+    darkness: { color: '#3a1f2a', alpha: 0.08 },
+    warmLight: '#ffd9a0',
+    screenGlow: '#bfe9ff',
+    accent: '#f4845f',
   },
 };
 

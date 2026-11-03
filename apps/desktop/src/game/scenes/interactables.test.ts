@@ -5,7 +5,7 @@ import { interactableAt, interactablesFor } from './interactables';
 import { DEFAULT_SCENES } from './layouts';
 
 describe('interactables', () => {
-  it('offers every desk, sofa place, beanbag and arcade in the built-in offices', () => {
+  it('offers every desk, sofa place, beanbag, arcade and dice table in the built-in offices', () => {
     for (const scene of Object.values(DEFAULT_SCENES)) {
       const list = interactablesFor(scene);
       expect(list.filter((i) => i.kind === 'desk')).toHaveLength(scene.workstations.length);
@@ -13,6 +13,7 @@ describe('interactables', () => {
       const beans = scene.furniture.filter((f) => f.kind === 'beanbag').length;
       expect(list.filter((i) => i.kind === 'sofa')).toHaveLength(sofas * 2 + beans);
       expect(list.filter((i) => i.kind === 'arcade')).toHaveLength(scene.furniture.filter((f) => f.kind === 'arcade').length);
+      expect(list.filter((i) => i.kind === 'dice')).toHaveLength(scene.furniture.filter((f) => f.kind === 'dice_table').length);
       expect(new Set(list.map((i) => i.id)).size).toBe(list.length);
     }
   });

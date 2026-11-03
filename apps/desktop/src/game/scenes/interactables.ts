@@ -4,10 +4,10 @@ import { TILE, type SceneDefinition } from './layouts';
 
 /**
  * Things a person (you or a teammate) can use: desk chairs, sofa places,
- * beanbags and the arcade. Ids are stable for a given layout, so a teammate's
+ * beanbags, the arcade and the dice table. Ids are stable for a given layout, so a teammate's
  * "sitting on sofa:sofa:1" means the same place on every screen.
  */
-export type InteractKind = 'desk' | 'sofa' | 'arcade';
+export type InteractKind = 'desk' | 'sofa' | 'arcade' | 'dice';
 
 export interface Interactable {
   id: string;
@@ -61,6 +61,14 @@ export function interactablesFor(scene: SceneDefinition): Interactable[] {
     }
     if (p.kind === 'beanbag') {
       out.push({ id: `bean:${p.id}`, kind: 'sofa', hit: [{ x: p.x, y: p.y }], approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 8, y: p.y * TILE + 12, facing: 'down', z });
+    }
+    if (p.kind === 'dice_table') {
+      // Stand at the front edge of the table, facing it.
+      const hit = [0, 1].flatMap((dx) => [
+        { x: p.x + dx, y: p.y },
+        { x: p.x + dx, y: p.y - 1 },
+      ]);
+      out.push({ id: `dice:${p.id}`, kind: 'dice', hit, approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 16, y: (p.y + 1) * TILE + 12, facing: 'up', z: (p.y + 1) * TILE + 12 });
     }
     if (p.kind === 'arcade') {
       // The cabinet stands about three tiles tall: clicking anywhere on it counts.

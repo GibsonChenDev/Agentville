@@ -1,11 +1,13 @@
 import {
   LIMITS,
   PROTOCOL_VERSION,
+  mergeScores,
   parseClientMessage,
   type Appearance,
   type LayoutDocWire,
   type MemberView,
   type Presence,
+  type Scores,
   type ServerMessage,
 } from '../../../packages/team-protocol/src/index.ts';
 
@@ -30,6 +32,8 @@ export interface StoredMember {
   owner: boolean;
   tokenHash: string;
   joinedAt: number;
+  /** Arcade best scores shared with the office; kept while the member is offline. */
+  scores?: Scores;
 }
 
 export interface RoomStore {
@@ -50,6 +54,9 @@ export interface ConnState {
   memberId?: string;
   presence?: Presence;
   agents: number;
+  /** When the socket opened and when it last sent a message (keep-alive pings are tracked by the runtime). */
+  openedAt?: number;
+  seenAt?: number;
 }
 
 export interface Conn {
@@ -58,9 +65,20 @@ export interface Conn {
   save(): void;
   send(raw: string): void;
   close(code: number, reason: string): void;
+  /** Last keep-alive ping answered for this socket without waking the room, if any. */
+  lastPing?(): number | undefined;
 }
 
-export const CLOSE = { unauthorized: 4001, version: 4002, replaced: 4003, removed: 4004 } as const;
+export const CLOSE = { unauthorized: 4001, version: 4002, replaced: 4003, removed: 4004, stale: 4005 } as const;
+
+/**
+ * A socket silent this long is a ghost: the app pings every 30 s, so a laptop
+ * that went to sleep or lost its network never said goodbye. Its member is
+ * shown offline and the socket closed (the app reconnects when it wakes).
+ */
+export const STALE_MS = 100_000;
+/** A socket that never authenticated is dropped much sooner. */
+const AUTH_GRACE_MS = 30_000;
 
 const RATE = { perSecond: 30, burst: 60 };
 
@@ -125,6 +143,11 @@ export class RoomCore {
   // ───────────────────────────────── sockets
 
   async onMessage(conn: Conn, raw: string) {
+    const now = this.now();
+    if (!conn.state.seenAt || now - conn.state.seenAt > 10_000) {
+      conn.state.seenAt = now;
+      conn.save();
+    }
     const msg = parseClientMessage(raw);
     if (!msg) {
       conn.send(json({ t: 'error', code: raw.length > LIMITS.messageBytes ? 'too_large' : 'bad_message' }));
@@ -195,6 +218,16 @@ export class RoomCore {
         this.broadcast({ t: 'member', member: this.view(next) });
         return;
       }
+      case 'scores': {
+        const m = this.store.members().find((x) => x.id === id);
+        if (!m) return;
+        const scores = mergeScores(m.scores, msg.s);
+        if (JSON.stringify(scores) === JSON.stringify(m.scores ?? {})) return;
+        const next = { ...m, scores };
+        this.store.putMember(next);
+        this.broadcast({ t: 'member', member: this.view(next) });
+        return;
+      }
       case 'theme': {
         const meta = this.store.meta();
         if (!meta || meta.theme === msg.theme) return;
@@ -218,12 +251,28 @@ export class RoomCore {
     if (!stillOnline) this.broadcast({ t: 'offline', id });
   }
 
+  /** Closes ghost connections; returns how many connections remain open. */
+  sweep(): number {
+    const now = this.now();
+    let open = 0;
+    for (const c of this.conns()) {
+      const last = Math.max(c.state.seenAt ?? 0, c.lastPing?.() ?? 0, c.state.openedAt ?? 0);
+      const limit = c.state.memberId ? STALE_MS : AUTH_GRACE_MS;
+      if (last && now - last > limit) {
+        this.onClose(c);
+        c.close(CLOSE.stale, 'stale');
+      } else open++;
+    }
+    return open;
+  }
+
   // ───────────────────────────────── helpers
 
   private view(m: StoredMember): MemberView {
     const conn = this.conns().find((c) => c.state.memberId === m.id);
     const v: MemberView = { id: m.id, name: m.name, appearance: m.appearance, owner: m.owner, online: !!conn, agents: conn?.state.agents ?? 0 };
     if (conn?.state.presence) v.presence = conn.state.presence;
+    if (m.scores && Object.keys(m.scores).length) v.scores = m.scores;
     return v;
   }
 

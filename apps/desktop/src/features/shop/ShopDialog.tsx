@@ -1,4 +1,4 @@
-import { CATALOG, EARN, type CatalogItem } from '@agentville/team-protocol';
+import { CATALOG, EARN, ownedCount, type CatalogItem } from '@agentville/team-protocol';
 import type { CharacterAppearance } from '@agentville/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,7 +90,7 @@ export function ShopDialog() {
       ref={dialog}
       onClose={close}
       onClick={(e) => e.target === dialog.current && close()}
-      className="m-auto w-[720px] max-w-[95vw] rounded-xl bg-panel p-0 text-fg shadow-2xl ring-1 ring-line-strong backdrop:bg-black/55"
+      className="m-auto w-[760px] max-w-[95vw] rounded-xl bg-panel p-0 text-fg shadow-2xl ring-1 ring-line-strong backdrop:bg-black/55"
       aria-labelledby="shop-title"
     >
       {open && (
@@ -101,6 +101,7 @@ export function ShopDialog() {
                 {t('title')}
               </h2>
               <p className="mt-0.5 text-[12px] text-muted">{t('howToEarn', { perTurn: EARN.perTurn, cap: EARN.dailyCap })}</p>
+              <p className="mt-0.5 text-[11.5px] text-faint">{t('limitNote')}</p>
             </div>
             <div className="shrink-0 text-right">
               <div className="text-[18px] font-bold tabular-nums">🪙 {account ? account.coins.toLocaleString() : '—'}</div>
@@ -124,9 +125,11 @@ export function ShopDialog() {
 
           {status !== 'ready' && <p className="mx-5 mt-3 rounded-md bg-coral/10 p-2.5 text-[12px] text-coral ring-1 ring-coral/30">{t('offline')}</p>}
 
-          <div className="scroll-thin grid max-h-[56vh] grid-cols-3 gap-3 overflow-y-auto p-5">
+          <div className="scroll-thin grid max-h-[56vh] grid-cols-4 gap-3 overflow-y-auto p-5">
             {items.map((item) => {
-              const owned = !!account?.inventory.includes(item.id);
+              const count = ownedCount(account?.inventory, item.id);
+              const owned = count > 0;
+              const canBuyMore = count < item.max;
               const wearing = item.kind === 'accessory' ? player.appearance.accessory === item.value : item.kind === 'color' ? player.appearance.topColor === item.value : false;
               return (
                 <div key={item.id} className={`flex flex-col items-center rounded-lg bg-panel-2 p-3 ring-1 ${justBought === item.id ? 'ring-amber' : 'ring-line'}`}>
@@ -138,7 +141,29 @@ export function ShopDialog() {
                     )}
                   </div>
                   <div className="mt-2 w-full truncate text-center text-[12.5px] font-medium">{label(item)}</div>
-                  {owned ? (
+                  {item.max > 1 && (
+                    <div className="mt-0.5 text-[11px] text-faint tabular-nums">{t('ownedOf', { count, max: item.max })}</div>
+                  )}
+                  {item.kind === 'furniture' && owned && canBuyMore ? (
+                    <div className="mt-2 flex w-full gap-1.5">
+                      <button
+                        onClick={() => use(item)}
+                        disabled={inLobby}
+                        title={inLobby ? t('placeFromOffice') : undefined}
+                        className="flex-1 rounded-md px-2 py-1 text-[12px] ring-1 ring-line-strong hover:bg-panel-3 disabled:opacity-50"
+                      >
+                        {t('place')}
+                      </button>
+                      <button
+                        onClick={() => void buy(item)}
+                        disabled={!account || busy === item.id || account.coins < item.price}
+                        title={t('buyAnother')}
+                        className="flex-1 rounded-md bg-amber px-2 py-1 text-[12px] font-semibold text-ink disabled:bg-panel-3 disabled:text-faint"
+                      >
+                        +🪙 {item.price.toLocaleString()}
+                      </button>
+                    </div>
+                  ) : owned ? (
                     <button
                       onClick={() => use(item)}
                       disabled={wearing || (item.kind === 'furniture' && inLobby)}

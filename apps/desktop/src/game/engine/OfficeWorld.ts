@@ -4,7 +4,7 @@ import 'pixi.js/unsafe-eval';
 import type { AgentRecord, CharacterAppearance, Equipment, Facing, OfficeTheme, TilePoint, Workstation } from '@agentville/domain';
 import type { PoseKind, Presence } from '@agentville/team-protocol';
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { intentFor, type VisualIntent } from '../animations/intent';
+import { intentFor, isSlacking, type SlackActivity, type VisualIntent } from '../animations/intent';
 import { drawDocument, drawGlow } from '../assets/icons';
 import { LOBBY_STYLE, THEMES, type ThemeStyle } from '../assets/themes';
 import { CharacterActor, type BadgeInfo, type Seat, type Spot } from '../characters/CharacterActor';
@@ -13,6 +13,7 @@ import { drawScreen } from '../furniture/screens';
 import { NavGrid } from '../navigation/grid';
 import { DEFAULT_SCENES, TILE, type SceneDefinition } from '../scenes/layouts';
 import { interactableAt, interactablesFor, type Interactable } from '../scenes/interactables';
+import { waitingSpots } from '../scenes/crowd';
 import { CAP, drawGlowLayer, drawLightmap, drawRoom, type LightSource } from '../scenes/room';
 import { characterTextures, texture, worldTextures } from './textures';
 import type { AgentStatus, ToolCategory } from '@agentville/domain';
@@ -29,6 +30,10 @@ export interface WorldAgent {
 export interface WorldOptions {
   reduceMotion: boolean;
   alwaysShowLabels: boolean;
+  /** Badge status while an idle agent slacks off, already localized. */
+  slackLabels?: Record<SlackActivity, string>;
+  /** Badge status for an agent waiting for a free desk, already localized. */
+  waitingLabel?: string;
 }
 
 export interface EditView {
@@ -113,6 +118,7 @@ interface StationView {
 }
 
 const ZOOMS = [1, 2, 3, 4, 5, 6];
+const CONFETTI = [0xff5f8f, 0xffd166, 0x5cc7e8, 0x7dff9a, 0xc7a3ff, 0xff8a3d, 0xfbf7ef];
 const SIGN_FONT = '-apple-system, "SF Pro Text", "Segoe UI", "PingFang TC", "Microsoft JhengHei UI", "Noto Sans TC", system-ui, sans-serif';
 const SCREEN_FPS = 8;
 const GLOW_TINT: Record<string, string> = {
@@ -138,7 +144,13 @@ export class OfficeWorld {
   private entities = new Container();
   private fxBelow = new Container();
   private fxAbove = new Container();
+  /** Above the lightmap, so confetti stays bright in dark offices. */
+  private fxConfetti = new Container();
   private overlay = new Container();
+  private confetti: { g: Graphics; vx: number; vy: number; life: number }[] = [];
+  private banner?: { root: Container; text: Text; bg: Graphics; start: number };
+  /** Teammates who just arrived: they say hello once their character shows up. */
+  private greetings = new Map<string, { text: string; until: number }>();
   private bg?: Sprite;
   private glowLayer?: Sprite;
   private lightmap?: Sprite;
@@ -147,6 +159,10 @@ export class OfficeWorld {
   private theme!: ThemeStyle;
   private stations: StationView[] = [];
   private actors = new Map<string, CharacterActor>();
+  /** Agents no longer in the office, walking out the door before they're removed. */
+  private departing = new Map<string, CharacterActor>();
+  /** Open floor where agents wait when every desk is taken (nearest the door first). */
+  private waiting: TilePoint[] = [];
   private agents = new Map<string, WorldAgent>();
   private assignments = new Map<string, string>(); // agentId → workstation id
   private glowTextures = new Map<string, Texture>();
@@ -204,6 +220,8 @@ export class OfficeWorld {
       onDoor?: (id: string) => void;
       /** The player stepped up to an arcade cabinet. */
       onArcade?: () => void;
+      /** The player stepped up to a dice table. */
+      onDice?: () => void;
     },
   ) {}
 
@@ -224,19 +242,20 @@ export class OfficeWorld {
     host.appendChild(this.app.canvas);
     this.app.canvas.style.imageRendering = 'pixelated';
     this.entities.sortableChildren = true;
-    this.camera.addChild(this.fxBelow, this.entities, this.fxAbove, this.editLayer);
+    this.camera.addChild(this.fxBelow, this.entities, this.fxAbove, this.fxConfetti, this.editLayer);
     this.editLayer.addChild(this.editGrid, this.editSelection, this.ghost);
     this.editLayer.visible = false;
     this.ghost.alpha = 0.75;
     // The stage is interactive, so Pixi hit-tests every descendant and stops at the
     // first one under the pointer. Purely visual layers must opt out entirely or
     // they swallow clicks meant for characters and furniture.
-    for (const layer of [this.fxBelow, this.fxAbove, this.editLayer]) layer.eventMode = 'none';
+    for (const layer of [this.fxBelow, this.fxAbove, this.fxConfetti, this.editLayer]) layer.eventMode = 'none';
     this.app.stage.addChild(this.camera, this.overlay);
     this.installInput(host);
     this.setTheme(theme, scene);
     this.fitZoom();
-    this.app.ticker.add((t) => this.update(t.deltaMS));
+    // elapsedMS, not deltaMS: Pixi caps deltaMS at 100 ms (minFPS 10), which would slow walking 10x in a throttled background window.
+    this.app.ticker.add((t) => this.update(t.elapsedMS));
     this.app.renderer.on('resize', () => this.clampCamera());
     this.initialized = true;
   }
@@ -257,6 +276,8 @@ export class OfficeWorld {
     this.handoffs = []; // their sprites live in `entities` and are destroyed below
     this.leds = [];
     this.stations = [];
+    for (const a of this.departing.values()) a.destroy();
+    this.departing.clear();
     const keep = new Set([...this.actors.values(), ...this.humanActors()].map((a) => a.root));
     // Where you were sitting, so you can stand up in front of it in the new layout.
     const playerSeat = this.player?.seat ? this.interactables.find((i) => i.id === this.player!.seat)?.approach : undefined;
@@ -267,6 +288,8 @@ export class OfficeWorld {
     }
     this.fxBelow.removeChildren().forEach((c) => c.destroy());
     this.fxAbove.removeChildren().forEach((c) => c.destroy());
+    this.fxConfetti.removeChildren().forEach((c) => c.destroy());
+    this.confetti = [];
     this.bg?.destroy();
     this.glowLayer?.destroy();
     this.lightmap = undefined;
@@ -318,6 +341,7 @@ export class OfficeWorld {
 
     for (const ws of scene.workstations) this.buildStation(ws, lights);
     this.interactables = interactablesFor(scene);
+    this.waiting = waitingSpots(scene);
 
     // window + neon light sources for the lightmap
     for (const d of scene.wallDecor) {
@@ -472,21 +496,27 @@ export class OfficeWorld {
     const now = performance.now();
     const ids = new Set(agents.map((a) => a.record.id));
     for (const [id, actor] of this.actors) {
-      if (!ids.has(id)) {
-        this.releaseStation(id);
-        actor.destroy();
-        this.actors.delete(id);
-      }
+      if (ids.has(id)) continue;
+      this.releaseStation(id);
+      this.actors.delete(id);
+      // Gone from the office (a teammate closed the app, a session was removed): walk out rather than vanish.
+      if (actor.isVisible && !actor.isLeaving && !options.reduceMotion && this.departing.size < 40) {
+        actor.selected = actor.hovered = false;
+        actor.startLeaving(this.nav, this.scene.door);
+        this.departing.set(id, actor);
+      } else actor.destroy();
     }
     for (const agent of agents) {
       this.agents.set(agent.record.id, agent);
       const intent = intentFor(agent.status, agent.category);
       let actor = this.actors.get(agent.record.id);
       if (!actor) {
+        this.departing.get(agent.record.id)?.destroy();
+        this.departing.delete(agent.record.id);
         actor = new CharacterActor(agent.record, characterTextures(agent.record.appearance), worldTextures(), intent, now, (id) => this.callbacks.onSelect(id));
         this.actors.set(agent.record.id, actor);
         this.entities.addChild(actor.root);
-        this.overlay.addChild(actor.badge);
+        this.overlay.addChild(actor.badge, actor.bubble);
       } else {
         if (actor.record.appearance !== agent.record.appearance) actor.setTextures(characterTextures(agent.record.appearance));
         // A new preferred desk: free the current one so steering walks the character over.
@@ -505,8 +535,11 @@ export class OfficeWorld {
     if (existing) return this.stations.find((s) => s.ws.id === existing);
     const agent = this.agents.get(agentId);
     const preferred = agent?.record.workstationId && this.stations.find((s) => s.ws.id === agent.record.workstationId && !s.occupant);
-    const station = preferred || this.stations.find((s) => !s.occupant);
+    // Your own agents come first: when the office is full, a teammate's agent gives up its desk.
+    const bumpable = isPeerAgent(agentId) ? undefined : this.stations.find((s) => s.occupant && isPeerAgent(s.occupant) && this.actors.has(s.occupant));
+    const station = preferred || this.stations.find((s) => !s.occupant) || bumpable;
     if (!station) return undefined;
+    if (station.occupant) this.releaseStation(station.occupant);
     station.occupant = agentId;
     this.assignments.set(agentId, station.ws.id);
     return station;
@@ -517,6 +550,36 @@ export class OfficeWorld {
     const station = this.stations.find((s) => s.ws.id === id);
     if (station) station.occupant = undefined;
     this.assignments.delete(agentId);
+  }
+
+  /** Agents at their desks' place with no desk free: each gets its own waiting tile, in arrival order. */
+  private waitingTile(agentId: string): TilePoint | undefined {
+    if (!this.waiting.length) return undefined;
+    let index = 0;
+    for (const [id, a] of this.actors) {
+      if (id === agentId) return this.waiting[index % this.waiting.length];
+      if (!this.assignments.has(id) && !a.isLeaving && a.scheduler.current.place === 'desk') index++;
+    }
+    return undefined;
+  }
+
+  /** No desk free: stand at a waiting tile until one opens up (steer re-checks every frame). */
+  private wait(actor: CharacterActor) {
+    const tile = this.waitingTile(actor.record.id);
+    if (!tile) return;
+    if (actor.isWalking) {
+      const goal = actor.goalTile;
+      if (actor.arrivedKind === 'wait' && goal?.x === tile.x && goal.y === tile.y) return;
+    } else if (!actor.isSeated) {
+      const at = actor.tile();
+      if (at.x === tile.x && at.y === tile.y) return;
+    }
+    actor.walkTo(this.nav, tile, 'wait', [tile]);
+  }
+
+  /** Is the agent standing around waiting for a desk? */
+  private isWaiting(actor: CharacterActor) {
+    return actor.isVisible && !actor.isLeaving && !actor.isSeated && actor.scheduler.current.place === 'desk' && !this.assignments.has(actor.record.id);
   }
 
   private doorPoint() {
@@ -566,7 +629,7 @@ export class OfficeWorld {
     }
     if (intent.place === 'desk') {
       const station = this.assignStation(id);
-      if (!station) return; // office full; character waits by the door
+      if (!station) return this.wait(actor); // office full: wait on open floor until a desk frees up
       if (actor.isSeated && actor.x === station.seat.x && actor.y === station.seat.y) return;
       if (actor.isWalking && actor.arrivedKind === 'seat') return;
       actor.walkTo(this.nav, station.ws.seat, 'seat', [station.ws.seat]);
@@ -597,7 +660,7 @@ export class OfficeWorld {
         } else if (kind === 'spot') {
           const spot = this.meetingSpot(actor.record.id);
           if (spot) actor.stand(spot);
-        }
+        } else if (kind === 'wait') actor.halt('down');
       }
       actor.render(now, intent, this.options.reduceMotion);
       // Characters fade back while the layout is being edited (re-seating resets alpha).
@@ -605,9 +668,27 @@ export class OfficeWorld {
       actor.root.eventMode = this.edit ? 'none' : 'auto';
     }
 
+    for (const [id, actor] of this.departing) {
+      if (actor.move(dt) === 'arrived' || !actor.isVisible) {
+        actor.destroy();
+        this.departing.delete(id);
+        continue;
+      }
+      actor.render(now, { place: 'away', activity: 'idle', screen: 'off' }, this.options.reduceMotion);
+      actor.badge.visible = actor.bubble.visible = false;
+    }
+
     this.updateDoorAnim(now);
     this.updatePlayer(dt);
-    for (const [id, h] of this.peers) this.updatePeer(id, h, dt);
+    for (const [id, h] of this.peers) {
+      this.updatePeer(id, h, dt);
+      const hello = this.greetings.get(id);
+      if (hello && (now > hello.until || h.actor.isVisible)) {
+        this.greetings.delete(id);
+        if (h.actor.isVisible) h.actor.say(hello.text, now, 4000);
+      }
+    }
+    this.updateConfetti(dt);
     for (const [, h] of this.allHumans()) {
       h.actor.render(now, h.actor.scheduler.current, this.options.reduceMotion);
       if (!(this.doorAnim && h === this.player)) h.actor.root.alpha = this.edit ? 0.35 : 1;
@@ -630,14 +711,19 @@ export class OfficeWorld {
     const toScreen = (x: number, y: number) => ({ x: this.camera.x + x * this.zoom, y: this.camera.y + y * this.zoom });
     for (const actor of this.actors.values()) {
       const agent = this.agents.get(actor.record.id);
-      if (agent) actor.renderBadge(agent.badge, toScreen, this.zoom);
-      if (this.edit) actor.badge.visible = false;
+      const slack = actor.scheduler.current.activity;
+      const label = isSlacking(slack) && actor.isSeated ? this.options.slackLabels?.[slack] : this.isWaiting(actor) ? this.options.waitingLabel : undefined;
+      if (agent) actor.renderBadge(label ? { ...agent.badge, status: label } : agent.badge, toScreen, this.zoom);
+      if (this.edit) actor.badge.visible = actor.bubble.visible = false;
+      // A crowd waiting for desks would bury the office under name tags: theirs show on hover.
+      else if (this.isWaiting(actor) && !actor.selected && !actor.hovered) actor.badge.visible = false;
     }
     for (const [, h] of this.allHumans()) {
       h.actor.renderBadge(h.badge, toScreen, this.zoom);
-      if (this.edit) h.actor.badge.visible = false;
+      if (this.edit) h.actor.badge.visible = h.actor.bubble.visible = false;
     }
     this.updateCoinPops(now, toScreen);
+    this.updateBanner(now);
     for (const door of this.doors) {
       const sign = this.doorSigns.get(door.id);
       if (!sign) continue;
@@ -747,6 +833,79 @@ export class OfficeWorld {
       c.root.alpha = age < 1100 ? 1 : 1 - (age - 1100) / 500;
       return true;
     });
+  }
+
+  /**
+   * A teammate came in: confetti bursts from the door, a banner says who it is,
+   * and their character says hello as soon as it appears.
+   */
+  welcome(peerId: string, banner: string, greeting: string) {
+    if (!this.initialized || this.sceneKey === 'lobby') return;
+    const now = performance.now();
+    this.greetings.set(peerId, { text: greeting, until: now + 15_000 });
+    this.showBanner(banner, now);
+    if (this.options.reduceMotion || this.confetti.length > 200) return;
+    const d = this.doorPoint();
+    for (let i = 0; i < 80; i++) {
+      const g = new Graphics();
+      g.rect(0, 0, i % 3 ? 2 : 1, i % 4 ? 1 : 2).fill(CONFETTI[i % CONFETTI.length]!);
+      g.position.set(d.x + (Math.random() - 0.5) * 24, d.y + 10);
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.9;
+      const speed = 70 + Math.random() * 110;
+      this.fxConfetti.addChild(g);
+      this.confetti.push({ g, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0 });
+    }
+  }
+
+  private updateConfetti(dt: number) {
+    const s = dt / 1000;
+    this.confetti = this.confetti.filter((c) => {
+      c.life += s;
+      if (c.life > 2.4) {
+        c.g.destroy();
+        return false;
+      }
+      c.vx *= 0.985;
+      // Paper flutters: gravity, but a slow terminal speed and a little sway.
+      c.vy = Math.min(c.vy + 190 * s, 34);
+      c.g.position.set(c.g.x + (c.vx + Math.sin(c.life * 9 + c.vx) * 12) * s, c.g.y + c.vy * s);
+      c.g.alpha = c.life < 1.8 ? 1 : 1 - (c.life - 1.8) / 0.6;
+      return true;
+    });
+  }
+
+  private showBanner(text: string, now: number) {
+    if (!this.banner) {
+      const root = new Container();
+      const bg = new Graphics();
+      const label = new Text({ text: '', style: { fontFamily: SIGN_FONT, fontSize: 15, fontWeight: '800', fill: 0x231d2b } });
+      root.addChild(bg, label);
+      root.eventMode = 'none';
+      this.overlay.addChild(root);
+      this.banner = { root, text: label, bg, start: now };
+    }
+    const b = this.banner;
+    b.start = now;
+    b.text.text = text;
+    const w = Math.ceil(b.text.width + 36);
+    b.bg.clear();
+    b.bg.roundRect(-w / 2, 0, w, 34, 17).fill({ color: 0xffd166 });
+    b.bg.roundRect(-w / 2, 0, w, 34, 17).stroke({ color: 0x2a1d0a, alpha: 0.5, width: 2 });
+    b.text.position.set(-w / 2 + 18, 7);
+  }
+
+  private updateBanner(now: number) {
+    const b = this.banner;
+    if (!b) return;
+    const age = now - b.start;
+    if (age > 4200) {
+      b.root.visible = false;
+      return;
+    }
+    b.root.visible = !this.edit;
+    const enter = Math.min(1, age / 220);
+    b.root.alpha = age < 3600 ? enter : 1 - (age - 3600) / 600;
+    b.root.position.set(Math.round(this.app.screen.width / 2), Math.round(14 + (1 - enter) * -20));
   }
 
   private docTextures = new Map<string, Texture>();
@@ -1082,7 +1241,7 @@ export class OfficeWorld {
     );
     actor.hideIcon = true;
     this.entities.addChild(actor.root);
-    this.overlay.addChild(actor.badge);
+    this.overlay.addChild(actor.badge, actor.bubble);
     return { actor, badge: info.badge, appearanceKey: JSON.stringify(info.appearance) };
   }
 
@@ -1141,7 +1300,8 @@ export class OfficeWorld {
     const h = this.player;
     if (!h?.actor.isVisible) return undefined;
     const it = h.seat ? this.interactables.find((i) => i.id === h.seat) : undefined;
-    const pose: PoseKind = it ? (it.kind === 'desk' ? 'sit' : it.kind) : h.actor.isWalking ? 'walk' : 'stand';
+    // Playing at the dice table travels as the arcade pose (standing at something, facing it).
+    const pose: PoseKind = it ? (it.kind === 'desk' ? 'sit' : it.kind === 'dice' ? 'arcade' : it.kind) : h.actor.isWalking ? 'walk' : 'stand';
     const p: Presence = { x: Math.round(h.actor.x * 10) / 10, y: Math.round(h.actor.y * 10) / 10, facing: h.actor.currentFacing, pose };
     if (it) p.seat = it.id;
     return p;
@@ -1203,11 +1363,11 @@ export class OfficeWorld {
     }
     h.seat = it.id;
     const a = h.actor;
-    if (it.kind === 'arcade') {
+    if (it.kind === 'arcade' || it.kind === 'dice') {
       a.stand({ x: it.x, y: it.y, tile: it.approach, facing: 'up' });
       a.standAnim = 'stand_play_back';
       a.scheduler.current = IDLE_INTENT;
-      if (id === PLAYER_ID) this.callbacks.onArcade?.();
+      if (id === PLAYER_ID) (it.kind === 'dice' ? this.callbacks.onDice : this.callbacks.onArcade)?.();
     } else {
       a.sit({ x: it.x, y: it.y, tile: it.approach, facing: it.facing === 'up' ? 'up' : 'down', z: it.z });
       a.scheduler.current = it.kind === 'desk' ? TYPING_INTENT : IDLE_INTENT;
@@ -1514,6 +1674,12 @@ export class OfficeWorld {
     a.stepTo(a.x + (dx / dist) * step, a.y + (dy / dist) * step, facing);
   }
 
+  /** A speech bubble over an agent or person (e.g. how long they've worked, on click). */
+  say(id: string, text: string) {
+    const actor = this.actors.get(id) ?? this.human(id)?.actor;
+    if (actor?.isVisible) actor.say(text, performance.now());
+  }
+
   /** World → host-element coordinates of an agent's head, for DOM popovers. */
   agentScreenPosition(id: string) {
     const a = this.actors.get(id);
@@ -1525,11 +1691,15 @@ export class OfficeWorld {
     this.destroyed = true;
     this.removeKeyListeners?.();
     if (!this.initialized) return;
-    for (const a of [...this.actors.values(), ...this.humanActors()]) a.destroy();
+    for (const a of [...this.actors.values(), ...this.departing.values(), ...this.humanActors()]) a.destroy();
     this.actors.clear();
+    this.departing.clear();
     this.app.destroy(true, { children: true });
   }
 }
+
+/** A teammate's anonymous agent (`peer:<member>:<n>`), as opposed to your own. */
+const isPeerAgent = (id: string) => /^peer:[^:]+:\d+$/.test(id);
 
 function hashString(s: string) {
   let h = 0;

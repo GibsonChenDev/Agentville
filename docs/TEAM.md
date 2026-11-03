@@ -32,8 +32,9 @@ Controls: `W A S D` walk · click the floor to walk there · click a chair, sofa
 
 - **Account without sign-up.** On first launch the app asks the relay for a new account and gets back a 25-character **recovery code** (`XXXXX-XXXXX-XXXXX-XXXXX-XXXXX`, 125 random bits). The code is the only credential: the server stores the account under a hash of it and never stores the code itself. Settings → Account shows it; typing it on another computer restores the character, coins, purchases, team offices and arcade records.
 - **Coins.** Every turn a live agent finishes (Claude Code's `Stop` hook) earns 10 coins, plus 1 per tool used during that turn (bonus capped at 10). The server enforces the limits — at most one turn per 15 s on average (burst of 10) and 500 coins per day — so forged events can't farm coins. New accounts start with 200.
-- **Shop.** Accessories (flower, cat ears, wizard hat, crown), outfit colours (neon, gold) and decorations (lava lamp, trophy, office cat, jukebox, aquarium). Prices live in `packages/team-protocol/src/account.ts` (`CATALOG`). Everything that was free before stays free.
-- **Arcade.** Snake, Breakout, Flappy and 2048 on every arcade cabinet; best scores are saved to the account.
+- **Shop.** 15 accessories, 8 outfit colours and 21 office decorations. Prices and per-person limits live in `packages/team-protocol/src/account.ts` (`CATALOG`, `max`): looks can be owned once; decorations 1–5 copies each, enforced by the server (`limit_reached`). Each copy is one piece in an office: in your own office every copy is yours; in a team office pieces are tagged with the buyer (`item-<account id prefix>-u<n>`), so teammates' purchases don't use up yours. Everything that was free before stays free.
+- **Dice table.** Every built-in office has one (more can be bought). 壓大小 (three dice, 4–10 small / 11–17 big, triples go to the house) and 擲骰子比點數 (two dice each against the dealer, ties push), both paying 1:1. The relay rolls the dice (`POST /v1/me/dice`); bets are 1, 2, 5 or 10 coins, one roll per 1.2 s, and each day's net result is capped at ±100 (`DICE` in `account.ts`), so nobody gets rich or goes broke at the table.
+- **Arcade.** Snake, Breakout, Flappy and 2048 on every arcade cabinet; best scores are saved to the account and shared with the team office you're in (shown on each game card, kept while the player is offline).
 
 ## Lobby ／ 大廳
 
@@ -61,9 +62,22 @@ Room logic lives in `src/roomCore.ts` with no Cloudflare dependencies and is uni
 | GET | `/v1/rooms/:id/ws` | WebSocket; first frame `{ t: "auth", token, v: 1 }` | live messages, see `packages/team-protocol` |
 | POST | `/v1/accounts` | — | `{ code, account }` (new account) |
 | GET | `/v1/me` | `Authorization: Bearer <recovery code>` | `{ account }` |
-| POST | `/v1/me/profile` · `/earn` · `/buy` · `/rooms` · `/score` | `{ name, appearance }` · `{ turns, tools }` · `{ item }` · `{ rooms }` · `{ game, score }` | `{ account }` (earn also returns `credited`) |
+| POST | `/v1/me/profile` · `/earn` · `/buy` · `/rooms` · `/score` · `/dice` | `{ name, appearance }` · `{ turns, tools }` · `{ item }` · `{ rooms }` · `{ game, score }` · `{ game, bet, pick? }` | `{ account }` (earn also returns `credited`, dice returns `result`) |
 
 Limits: 50 members per office, 64 KB per message, 30 messages/s per connection (burst 60).
+
+Ghost connections: a socket silent for 100 s (the app pings every 30 s) — e.g. a laptop that went to sleep — is closed by a sweep that runs every minute while anyone is connected, and its member is shown offline. The app reconnects when it wakes.
+
+### Edge cases ／ 邊緣情況
+
+| Situation | What happens | Tests |
+|---|---|---|
+| More agents than desks | Your own agents get desks first (a teammate's agent gives its desk up); the rest wait on their own open-floor tile near the door ("No free desk — waiting") and walk over when a desk frees up. At most 40 teammates' agents are drawn, shared round-robin between teammates. | `crowd.test.ts`, `team/edgeCases.test.ts` |
+| A teammate leaves or closes the app | They go offline at once; their agents walk out of the door. A sleeping laptop is dropped by the ghost sweep. Coming back within a minute isn't welcomed again. | `relay/edgeCases.test.ts` |
+| Arcade best scores | Shared with everyone in the office and late joiners; only ever go up; invalid scores are rejected. | `relay/edgeCases.test.ts` |
+| Outfits and furniture | Visible to everyone; a decoration unknown to an older app is skipped instead of discarding the whole layout. | both edge-case test files |
+| The app (or its receiver) restarts while an agent is working | The agent is shown as departed until its next hook, then picks up where it is. Hook numbering restarts with every receiver boot, so restored sessions forget their old numbers; an agent marked away after 5 silent minutes comes back on its next hook. A session that really ended isn't revived by a late hook. | `integration/reconnect.test.ts` |
+| One person switches the map | In a team office the map is shared, so it changes for everyone (and late joiners). In your own office it affects nobody. A map unknown to an older app falls back to that person's own map. | both edge-case test files |
 
 ### Deploy your own ／ 部署
 

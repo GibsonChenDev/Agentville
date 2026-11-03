@@ -1,5 +1,5 @@
 import { appearanceFromSeed, sanitizeAppearance, type CharacterAppearance } from '@agentville/domain';
-import { itemFor, normalizeRecoveryCode, type AccountView, type ApiErrorCode, type GameId, type ItemKind, type RoomRef } from '@agentville/team-protocol';
+import { itemFor, normalizeRecoveryCode, ownedCount, type AccountView, type ApiErrorCode, type DiceGame, type DicePick, type DiceResult, type GameId, type ItemKind, type RoomRef } from '@agentville/team-protocol';
 import { create } from 'zustand';
 import { TeamApiError, normalizeServer } from '../team/api';
 import { usePlayer } from '../team/playerStore';
@@ -27,6 +27,8 @@ interface AccountState {
   saveRooms: (rooms: RoomRef[]) => void;
   reportScore: (game: GameId, score: number) => void;
   earn: (turns: number, tools: number) => Promise<number>;
+  /** One round at the dice table; the server rolls and settles the coins. */
+  playDice: (game: DiceGame, bet: number, pick?: DicePick) => Promise<DiceResult>;
   openShop: (open: boolean) => void;
 }
 
@@ -165,6 +167,14 @@ export const useAccount = create<AccountState>((set, get) => {
       return r.credited;
     },
 
+    playDice: async (game, bet, pick) => {
+      const { code } = get();
+      if (!code) throw new TeamApiError('unauthorized');
+      const r = await request<{ account: AccountView; result: DiceResult }>('POST', '/v1/me/dice', code, { game, bet, pick });
+      set({ account: r.account });
+      return r.result;
+    },
+
     openShop: (shopOpen) => set({ shopOpen }),
   };
 });
@@ -174,6 +184,23 @@ export function owns(inventory: readonly string[] | undefined, kind: ItemKind, v
   const item = itemFor(kind, value);
   return !item || !!inventory?.includes(item.id);
 }
+
+/**
+ * How many copies of a shop decoration you may still put in the office you're
+ * editing: owned copies minus the ones already placed. In your own office every
+ * copy is yours; in a team office only the pieces tagged with your account count,
+ * so teammates' purchases don't use up yours. Null for free furniture.
+ */
+export function placementAllowance(inventory: readonly string[] | undefined, kind: string, placed: (owner?: string) => number, shared: boolean, owner?: string) {
+  const item = itemFor('furniture', kind);
+  if (!item) return null;
+  const owned = ownedCount(inventory, item.id);
+  const used = shared ? (owner ? placed(owner) : owned) : placed();
+  return { owned, used, left: Math.max(0, owned - used) };
+}
+
+/** Short, non-secret tag for furniture you place (the start of your account id). */
+export const ownerTag = (accountId: string | undefined) => (accountId ? accountId.slice(0, 8) : undefined);
 
 /** Appearance fields whose options are sold in the shop. */
 export function lockedOption(inventory: readonly string[] | undefined, field: keyof CharacterAppearance, value: string): boolean {

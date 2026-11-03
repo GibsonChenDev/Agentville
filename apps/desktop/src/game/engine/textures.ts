@@ -23,7 +23,7 @@ export interface WorldTextures {
   icons: Record<IconKind, Texture>;
 }
 
-const ICON_KINDS: IconKind[] = ['think', 'read', 'type', 'test', 'plan', 'raise', 'cheer', 'slump', 'talk', 'delegate', 'exec'];
+const ICON_KINDS: IconKind[] = ['think', 'read', 'type', 'test', 'plan', 'raise', 'cheer', 'slump', 'talk', 'delegate', 'exec', 'phone'];
 
 let world: WorldTextures | null = null;
 export function worldTextures(): WorldTextures {

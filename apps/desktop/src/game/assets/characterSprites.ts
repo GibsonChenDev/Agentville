@@ -29,7 +29,9 @@ export type ArmPose =
   | 'raise1'
   | 'cheer'
   | 'slump'
-  | 'gesture';
+  | 'gesture'
+  | 'phone'
+  | 'stretch';
 
 export type EyePose = 'open' | 'blink' | 'down' | 'up' | 'closed' | 'happy' | 'focused';
 
@@ -43,7 +45,7 @@ export interface Pose {
   arms: ArmPose;
   eyes: EyePose;
   mouth?: 'smile' | 'open' | 'flat' | 'o';
-  extras?: ('paper' | 'sweat' | 'notebook')[];
+  extras?: ('paper' | 'sweat' | 'notebook' | 'zzz' | 'zzz2')[];
 }
 
 interface Resolved {
@@ -400,6 +402,38 @@ function drawArms(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number, layer: '
       pc.rect(R, y + 1, 2, 4, s1);
       pc.rect(R + 1, y + 3, 3, 2, sleeve);
       hand(R + 3, y + 1);
+      return;
+    }
+    case 'phone': {
+      // Scrolling a phone held at the chest, screen lit toward the face.
+      if (layer === 'behind') {
+        arm(L, y + 1, 5, false);
+        arm(R, y + 1, 5, true);
+        return;
+      }
+      // Held up at chin height, so it shows above the desk.
+      pc.rect(L + 1, y + 3, 3, 2, sleeve);
+      pc.rect(R - 2, y + 3, 3, 2, s1);
+      if (back) return;
+      pc.rect(10, y - 3, 4, 6, '#23232b');
+      pc.rect(11, y - 2, 2, 4, '#7fd1ff');
+      hand(9, y + 1);
+      hand(13, y + 1);
+      return;
+    }
+    case 'stretch': {
+      // Both arms thrown up and out in a V, clear of the head.
+      if (layer === 'behind') return;
+      for (const [x, out] of [
+        [L, -1],
+        [R, 1],
+      ] as const) {
+        const c = x === R ? s1 : sleeve;
+        pc.rect(x, y - 2, 2, 4, c);
+        pc.rect(x + out, y - 6, 2, 4, shortSleeve ? skin : c);
+        pc.rect(x + out * 2, y - 10, 2, 4, skin);
+        pc.rect(x + out * 2, y - 12, 2, 2, skin);
+      }
       return;
     }
   }
@@ -825,6 +859,108 @@ function drawAccessory(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       }
       return;
     }
+    case 'bow': {
+      const c = '#ff5f8f';
+      const bx = pose.view === 'side' ? x0 + 5 : x0 + 7;
+      pc.rect(bx, y0 - 2, 2, 3, c);
+      pc.rect(bx + 4, y0 - 2, 2, 3, c);
+      pc.rect(bx + 2, y0 - 1, 2, 2, shade(c, -0.25));
+      return;
+    }
+    case 'sunglasses': {
+      if (pose.view === 'back') return;
+      const lens = '#1b1a22';
+      const ey = y0 + 5;
+      if (pose.view === 'side') {
+        pc.rect(x0, ey, 3, 3, lens);
+        pc.hline(x0 + 3, ey + 1, 5, lens);
+        return;
+      }
+      for (const ex of [x0 + 1, x0 + 7]) {
+        pc.rect(ex, ey, 4, 3, lens);
+        pc.px(ex + 1, ey, '#7fd1ff');
+      }
+      pc.hline(x0 + 5, ey + 1, 2, lens);
+      return;
+    }
+    case 'party_hat': {
+      for (let i = 0; i < 8; i++) {
+        const w = 1 + Math.floor(i / 2) * 2;
+        pc.hline(x0 + 6 - Math.floor(w / 2), y0 - 8 + i, w, i % 3 === 0 ? '#ffd166' : '#5cc7e8');
+      }
+      pc.round(x0 + 5, y0 - 10, 3, 3, '#ff5f8f');
+      return;
+    }
+    case 'bunny_ears': {
+      const fur = '#f4f1ea';
+      for (const ex of pose.view === 'side' ? [x0 + 5] : [x0 + 2, x0 + 7]) {
+        pc.round(ex, y0 - 8, 3, 8, fur);
+        if (pose.view !== 'back') pc.vline(ex + 1, y0 - 7, 5, '#f2a3b5');
+      }
+      return;
+    }
+    case 'chef_hat': {
+      pc.rect(x0 + 1, y0 - 2, 10, 3, WHITE);
+      pc.hline(x0 + 1, y0, 10, shade(WHITE, -0.12));
+      pc.round(x0, y0 - 8, 12, 7, WHITE);
+      pc.vline(x0 + 4, y0 - 6, 3, shade(WHITE, -0.1));
+      pc.vline(x0 + 8, y0 - 6, 3, shade(WHITE, -0.1));
+      return;
+    }
+    case 'santa_hat': {
+      const red = '#d33a3a';
+      pc.rect(x0 + 1, y0 - 4, 10, 3, red);
+      pc.rect(x0 + 3, y0 - 6, 7, 2, red);
+      pc.rect(x0 + 7, y0 - 7, 4, 1, red);
+      pc.rect(x0, y0 - 1, 12, 2, WHITE);
+      pc.round(x0 + 10, y0 - 8, 3, 3, WHITE);
+      return;
+    }
+    case 'antenna': {
+      const stalk = '#3a3a44';
+      pc.hline(x0 + 1, y0 - 1, 10, stalk);
+      for (const ex of [x0 + 3, x0 + 8]) {
+        pc.vline(ex, y0 - 5, 4, stalk);
+        pc.round(ex - 1, y0 - 8, 3, 3, '#7dff9a');
+      }
+      return;
+    }
+    case 'devil_horns': {
+      const red = '#d33a3a';
+      pc.rect(x0 + 1, y0 - 2, 2, 2, red);
+      pc.px(x0, y0 - 3, red);
+      pc.rect(x0 + 9, y0 - 2, 2, 2, red);
+      pc.px(x0 + 11, y0 - 3, red);
+      return;
+    }
+    case 'top_hat': {
+      const felt = '#1c1b22';
+      pc.rect(x0 - 1, y0, 14, 2, felt);
+      pc.rect(x0 + 2, y0 - 8, 8, 8, felt);
+      pc.rect(x0 + 2, y0 - 2, 8, 2, '#c0233f');
+      pc.vline(x0 + 3, y0 - 7, 5, '#3a3944');
+      return;
+    }
+    case 'viking': {
+      const steel = '#9aa3b5';
+      const horn = '#f4efe6';
+      pc.round(x0, y0 - 3, 12, 5, steel);
+      pc.hline(x0, y0 + 1, 12, shade(steel, -0.25));
+      for (const rx of [x0 + 2, x0 + 6, x0 + 10]) pc.px(rx, y0 + 1, WHITE);
+      pc.rect(x0 - 2, y0 - 2, 2, 2, horn);
+      pc.rect(x0 - 3, y0 - 5, 2, 3, horn);
+      pc.rect(x0 + 12, y0 - 2, 2, 2, horn);
+      pc.rect(x0 + 13, y0 - 5, 2, 3, horn);
+      return;
+    }
+    case 'halo': {
+      const gold = '#ffe066';
+      pc.hline(x0 + 2, y0 - 5, 8, gold);
+      pc.hline(x0 + 2, y0 - 3, 8, gold);
+      pc.px(x0 + 1, y0 - 4, gold);
+      pc.px(x0 + 10, y0 - 4, gold);
+      return;
+    }
     case 'lanyard': {
       if (pose.view !== 'front') return;
       const y = 16 + dy;
@@ -857,6 +993,17 @@ function drawExtras(pc: PixelCanvas, pose: Pose, dy: number) {
       pc.rect(9, y + 1, 6, 3, WHITE);
       pc.hline(10, y + 2, 4, '#9aa3b5');
     }
+    if (extra === 'zzz' || extra === 'zzz2') {
+      // Little z's drifting up from a napping head.
+      const up = extra === 'zzz2' ? 2 : 0;
+      const z = (x: number, y: number, n: number) => {
+        pc.hline(x, y, n, WHITE);
+        for (let i = 1; i < n - 1; i++) pc.px(x + n - 1 - i, y + i, WHITE);
+        pc.hline(x, y + n - 1, n, WHITE);
+      };
+      z(18, 6 + dy - up, 3);
+      z(20, 1 + dy - up, 4);
+    }
     if (extra === 'sweat') {
       pc.px(19, 7 + dy, '#8fd3ff');
       pc.rect(19, 8 + dy, 2, 2, '#8fd3ff');
@@ -883,6 +1030,9 @@ export type AnimName =
   | 'sit_front_raise'
   | 'sit_front_cheer'
   | 'sit_front_slump'
+  | 'sit_front_nap'
+  | 'sit_front_phone'
+  | 'sit_front_stretch'
   | 'sit_back_idle'
   | 'sit_back_type'
   | 'sit_back_read'
@@ -892,6 +1042,9 @@ export type AnimName =
   | 'sit_back_raise'
   | 'sit_back_cheer'
   | 'sit_back_slump'
+  | 'sit_back_nap'
+  | 'sit_back_phone'
+  | 'sit_back_stretch'
   | 'stand_cheer'
   | 'stand_raise'
   | 'stand_talk_side'
@@ -938,6 +1091,27 @@ function sitSet(view: 'front' | 'back'): Record<string, AnimDef> {
     cheer: {
       frameMs: 220,
       frames: [P(v, true, { arms: 'cheer', eyes: 'happy', mouth: 'open', bob: -2 }), P(v, true, { arms: 'cheer', eyes: 'happy', mouth: 'open' })],
+    },
+    // Slacking off after a while with nothing to do.
+    nap: {
+      frameMs: 1000,
+      frames: [
+        P(v, true, { arms: 'slump', eyes: 'closed', mouth: 'flat', extras: ['zzz'] }),
+        P(v, true, { arms: 'slump', eyes: 'closed', mouth: 'o', bob: 1, extras: ['zzz2'] }),
+      ],
+    },
+    phone: {
+      frameMs: 750,
+      frames: [
+        P(v, true, { arms: 'phone', eyes: 'down', mouth: 'smile' }),
+        P(v, true, { arms: 'phone', eyes: 'down', mouth: 'smile', bob: 1 }),
+        P(v, true, { arms: 'phone', eyes: 'down', mouth: 'open' }),
+        P(v, true, { arms: 'phone', eyes: 'blink', mouth: 'smile' }),
+      ],
+    },
+    stretch: {
+      frameMs: 600,
+      frames: [P(v, true, { arms: 'stretch', eyes: 'closed', mouth: 'o', bob: -1 }), P(v, true, { arms: 'stretch', eyes: 'closed', mouth: 'o', bob: -2 })],
     },
     slump: {
       frameMs: 1100,

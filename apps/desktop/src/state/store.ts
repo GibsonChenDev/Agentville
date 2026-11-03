@@ -12,6 +12,7 @@ import {
   appearanceFromSeed,
   initialRuntime,
   isStale,
+  workedMs,
   type AgentRecord,
   type AgentRuntime,
   type CharacterAppearance,
@@ -237,7 +238,17 @@ export const useApp = create<AppState>((set, get) => ({
     s = { ...s, baseAgents, agents: effective(baseAgents, s.profiles), runtime };
     for (const e of history) s = { ...s, ...(ingestStep(s, e) ?? {}) };
     // Restored sessions are history: nobody is in the office until they speak again.
-    const restored = Object.fromEntries(Object.entries(s.runtime).map(([id, r]) => [id, baseAgents[id] && !get().runtime[id] ? { ...r, status: 'disconnected' as const, openTools: [], pendingPermission: undefined } : r]));
+    // A stretch of work cut off by the app closing ends at its last event. Sessions that were still
+    // running when the app quit are only presumed gone: their next hook brings them back.
+    const restored = Object.fromEntries(
+      Object.entries(s.runtime).map(([id, r]) => [
+        id,
+        baseAgents[id] && !get().runtime[id]
+          ? // Event numbering restarts with every receiver boot, so a restored session forgets its last number.
+            { ...r, status: 'disconnected' as const, presumedGone: r.status !== 'disconnected' || r.presumedGone, lastSeq: undefined, openTools: [], pendingPermission: undefined, busySince: undefined, workedMs: workedMs(r, r.lastEventAt ?? 0) }
+          : r,
+      ]),
+    );
     set({ baseAgents: s.baseAgents, agents: s.agents, runtime: restored, events: s.events, seenIds: s.seenIds, collab: s.collab });
   },
 

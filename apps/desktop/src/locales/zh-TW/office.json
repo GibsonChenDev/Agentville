@@ -2,12 +2,16 @@
   "theme": {
     "loft": "溫馨新創閣樓",
     "studio": "矽谷創意工作室",
-    "midnight": "午夜開發實驗室"
+    "midnight": "午夜開發實驗室",
+    "garden": "陽光溫室花園",
+    "seaside": "海景小屋"
   },
   "themeShort": {
     "loft": "閣樓",
     "studio": "工作室",
-    "midnight": "午夜實驗室"
+    "midnight": "午夜實驗室",
+    "garden": "溫室",
+    "seaside": "海景小屋"
   },
   "camera": {
     "zoom": "縮放 {{level}}×",
@@ -34,8 +38,10 @@
       "blocks_spot": "那是保留給人站立的位置。",
       "seat_blocked": "那裡放不下辦公桌的椅子。",
       "blocks_path": "這樣會擋住通往座位或會議區的路。",
-      "last_desk": "辦公室至少需要一張辦公桌。"
-    }
+      "last_desk": "辦公室至少需要一張辦公桌。",
+      "over_limit": "你擁有的數量都已擺出來了，可以到商店再買。"
+    },
+    "copies": "{{used}}/{{owned}}"
   },
   "furniture": {
     "desk": "辦公桌",
@@ -57,6 +63,23 @@
     "trophy": "獎盃",
     "cat": "辦公室貓咪",
     "jukebox": "點唱機",
-    "aquarium": "水族箱"
+    "aquarium": "水族箱",
+    "cactus": "仙人掌",
+    "sunflower": "向日葵",
+    "bonsai": "盆景",
+    "gumball": "扭蛋機",
+    "globe": "地球儀",
+    "telescope": "望遠鏡",
+    "dino": "恐龍模型",
+    "dog": "辦公室柴犬",
+    "christmas_tree": "聖誕樹",
+    "fridge": "冰箱",
+    "vending": "自動販賣機",
+    "robot": "機器人夥伴",
+    "treadmill": "跑步機",
+    "fireplace": "壁爐",
+    "ping_pong": "桌球桌",
+    "piano": "直立式鋼琴",
+    "dice_table": "骰子桌"
   }
 }

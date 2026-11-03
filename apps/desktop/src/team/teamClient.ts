@@ -1,5 +1,6 @@
 import { OFFICE_THEMES, type OfficeTheme } from '@agentville/domain';
-import { PROTOCOL_VERSION, normalizeInviteCode, type ClientMessage, type Presence, type RoomView, type ServerMessage } from '@agentville/team-protocol';
+import { PROTOCOL_VERSION, normalizeInviteCode, type ClientMessage, type MemberView, type Presence, type RoomView, type ServerMessage } from '@agentville/team-protocol';
+import { useAccount } from '../account/accountStore';
 import { worldApi } from '../features/office/worldApi';
 import { fromLayoutDoc, toLayoutDoc } from '../game/scenes/editing';
 import { DEFAULT_SCENES, type SceneDefinition } from '../game/scenes/layouts';
@@ -19,6 +20,8 @@ const CLOSE_VERSION = 4002;
 const CLOSE_REPLACED = 4003;
 const CLOSE_REMOVED = 4004;
 const KEEPALIVE_MS = 30_000;
+/** A teammate back within this long after dropping off (a network blip) isn't welcomed again. */
+const REWELCOME_MS = 60_000;
 
 let ws: WebSocket | undefined;
 let retries = 0;
@@ -27,6 +30,8 @@ let keepalive: ReturnType<typeof setInterval> | undefined;
 let agentsTimer: ReturnType<typeof setTimeout> | undefined;
 let sentAgents = -1;
 let started = false;
+/** When each teammate last went offline, to tell a real arrival from a reconnect. */
+const offlineAt = new Map<string, number>();
 
 function send(m: ClientMessage) {
   if (ws?.readyState === WebSocket.OPEN && useTeam.getState().status === 'online') ws.send(JSON.stringify(m));
@@ -110,12 +115,18 @@ function handle(msg: ServerMessage, m: Membership) {
       if (player.name && (me?.name !== player.name || JSON.stringify(me?.appearance) !== JSON.stringify(player.appearance))) sendProfile();
       const p = worldApi.current?.presence();
       if (p) send({ t: 'presence', p });
+      sendScores();
       return;
     }
-    case 'member':
+    case 'member': {
+      const before = team.members[msg.member.id];
       useTeam.setState({ members: { ...team.members, [msg.member.id]: msg.member } });
+      const left = offlineAt.get(msg.member.id);
+      if (msg.member.online && !before?.online && msg.member.id !== m.memberId && (left === undefined || Date.now() - left > REWELCOME_MS)) teamEvents.onArrive?.(msg.member);
       return;
+    }
     case 'offline': {
+      offlineAt.set(msg.id, Date.now());
       const x = team.members[msg.id];
       if (x) useTeam.setState({ members: { ...team.members, [msg.id]: { ...x, online: false, agents: 0, presence: undefined } } });
       return;
@@ -177,13 +188,22 @@ function syncAgents(now = false) {
   else agentsTimer = setTimeout(push, 400);
 }
 
+/** Your arcade best scores, so teammates can see them on the cabinet. */
+function sendScores() {
+  const scores = useAccount.getState().account?.scores;
+  if (scores && Object.keys(scores).length) send({ t: 'scores', s: { ...scores } });
+}
+
 function sendProfile() {
   const { name, appearance } = usePlayer.getState();
   if (name) send({ t: 'profile', name, appearance: { ...appearance } });
 }
 
-/** Called when you're no longer in the current team office (left, removed, or it was deleted). */
-export const teamEvents: { onLeft?: (roomId: string) => void } = {};
+/**
+ * `onLeft`: you're no longer in the current team office (left, removed, or it was deleted).
+ * `onArrive`: a teammate just came into the office you're in.
+ */
+export const teamEvents: { onLeft?: (roomId: string) => void; onArrive?: (member: MemberView) => void } = {};
 
 /** Disconnects; with `forget`, also drops the office from your list (left or removed). */
 function leaveLocally(error?: TeamError, forget = true) {
@@ -234,6 +254,9 @@ export const team = {
     });
     usePlayer.subscribe((s, prev) => {
       if (s.name !== prev.name || s.appearance !== prev.appearance) sendProfile();
+    });
+    useAccount.subscribe((s, prev) => {
+      if (JSON.stringify(s.account?.scores) !== JSON.stringify(prev.account?.scores)) sendScores();
     });
     window.addEventListener('online', () => {
       if (useTeam.getState().status === 'reconnecting') connect();

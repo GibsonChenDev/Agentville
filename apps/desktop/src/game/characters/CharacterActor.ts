@@ -1,6 +1,6 @@
 import type { AgentRecord, Facing, TilePoint } from '@agentville/domain';
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { IntentScheduler, type Activity, type VisualIntent } from '../animations/intent';
+import { IntentScheduler, isSlacking, type Activity, type VisualIntent } from '../animations/intent';
 import { ANCHOR_X, ANCHOR_Y, ANIMS, type AnimName } from '../assets/characterSprites';
 import { iconForActivity, type IconKind } from '../assets/icons';
 import type { NavGrid } from '../navigation/grid';
@@ -43,11 +43,13 @@ const TONE_COLORS: Record<BadgeInfo['tone'], number> = {
 const FONT = '-apple-system, "SF Pro Text", "Segoe UI", "PingFang TC", "Heiti TC", "Microsoft JhengHei UI", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif';
 
 type Phase = 'hidden' | 'walking' | 'seated' | 'standing' | 'leaving';
-type Destination = 'seat' | 'spot' | 'door' | 'player';
+type Destination = 'seat' | 'spot' | 'door' | 'player' | 'wait';
 
 export class CharacterActor {
   readonly root = new Container();
   readonly badge = new Container();
+  /** Speech bubble above the badge (screen space, like the badge). */
+  readonly bubble = new Container();
   private readonly body = new Sprite();
   private readonly shadow: Sprite;
   private readonly ring: Sprite;
@@ -56,6 +58,11 @@ export class CharacterActor {
   private readonly nameText: Text;
   private readonly statusText: Text;
   private readonly statusDot = new Graphics();
+  private readonly bubbleBg = new Graphics();
+  private readonly bubbleText: Text;
+  private bubbleUntil = 0;
+  private bubbleH = 0;
+  private badgeH = 18;
 
   scheduler: IntentScheduler;
   x = 0;
@@ -64,6 +71,8 @@ export class CharacterActor {
   private phase: Phase = 'hidden';
   private facing: Facing = 'down';
   private destination: Destination | null = null;
+  /** Tile the current walk ends on. */
+  private goal?: TilePoint;
   private anim: AnimName = 'idle_front';
   private animStart = 0;
   private iconKind: IconKind | null = null;
@@ -87,7 +96,7 @@ export class CharacterActor {
     onSelect: (id: string) => void,
   ) {
     this.record = record;
-    this.scheduler = new IntentScheduler(initial, now);
+    this.scheduler = new IntentScheduler(initial, now, undefined, hash(record.id));
     this.shadow = new Sprite(world.shadow);
     this.shadow.anchor.set(0.5, 0.5);
     this.ring = new Sprite(world.ring);
@@ -113,6 +122,10 @@ export class CharacterActor {
     this.statusText = new Text({ text: '', style: { fontFamily: FONT, fontSize: 10, fontWeight: '500', fill: 0xd9dce6 } });
     this.badge.addChild(this.badgeBg, this.statusDot, this.nameText, this.statusText);
     this.badge.visible = false;
+    this.bubbleText = new Text({ text: '', style: { fontFamily: FONT, fontSize: 12, fontWeight: '500', fill: 0x231d2b, wordWrap: true, wordWrapWidth: 210, breakWords: true, lineHeight: 16 } });
+    this.bubble.addChild(this.bubbleBg, this.bubbleText);
+    this.bubble.visible = false;
+    this.bubble.eventMode = 'none';
     this.badge.eventMode = 'static';
     this.badge.cursor = 'pointer';
     this.badge.on('pointertap', (e) => {
@@ -144,6 +157,7 @@ export class CharacterActor {
     const start = nav.isWalkable(from.x, from.y) ? from : (nav.nearestWalkable(from) ?? from);
     const tiles = nav.findPath(start, target, [...allow, start]);
     this.destination = kind;
+    this.goal = target;
     this.settle = undefined;
     if (!tiles) {
       // Unreachable (e.g. layout changed underneath): teleport as a last resort.
@@ -219,6 +233,10 @@ export class CharacterActor {
     return this.destination;
   }
 
+  get goalTile() {
+    return this.goal;
+  }
+
   sit(seat: Seat) {
     this.settle = this.x === seat.x && this.y === seat.y ? undefined : { fromX: this.x, fromY: this.y, t: 0 };
     this.x = seat.x;
@@ -281,7 +299,7 @@ export class CharacterActor {
       this.animStart = now;
     }
     const def = ANIMS[anim];
-    const isIdle = anim.startsWith('idle') || anim.endsWith('_idle');
+    const isIdle = anim.startsWith('idle') || anim.endsWith('_idle') || isSlacking(intent.activity);
     const frameIndex = reduceMotion && isIdle ? 0 : Math.floor((now - this.animStart) / def.frameMs) % def.frames.length;
     const set = flip ? this.textures.flipped[anim] : this.textures.frames[anim];
     const tex: Texture | undefined = set?.[frameIndex];
@@ -307,7 +325,9 @@ export class CharacterActor {
     this.ring.position.set(0, this.phase === 'seated' ? -2 : 0);
 
     // floating activity icon
-    const kind = this.hideIcon || this.phase === 'walking' || this.phase === 'leaving' ? null : iconForActivity(intent.activity, intent.screen);
+    // Standing around without a desk (waiting for one) only shows the icons that need you.
+    const deskless = this.phase === 'standing' && intent.place === 'desk' && intent.activity !== 'raise' && intent.activity !== 'slump';
+    const kind = this.hideIcon || deskless || this.phase === 'walking' || this.phase === 'leaving' ? null : iconForActivity(intent.activity, intent.screen);
     if (kind !== this.iconKind) {
       this.iconKind = kind;
       this.icon.texture = kind ? this.world.icons[kind] : Texture.EMPTY;
@@ -318,10 +338,29 @@ export class CharacterActor {
     this.icon.position.set(9, headTop + 2 + bob);
   }
 
+  /** Shows `text` in a speech bubble over the character for a few seconds. */
+  say(text: string, now: number, ms = 5000) {
+    this.bubbleUntil = now + ms;
+    this.bubbleText.text = text;
+    const padX = 9;
+    const padY = 6;
+    const w = Math.ceil(this.bubbleText.width + padX * 2);
+    const h = Math.ceil(this.bubbleText.height + padY * 2);
+    this.bubbleH = h + 7;
+    const g = this.bubbleBg;
+    g.clear();
+    // Bubble with a tail pointing down at the character; the bubble's origin is the tail tip.
+    g.roundRect(-w / 2, -h - 7, w, h, 8).fill({ color: 0xfbf7ef });
+    g.poly([-6, -8, 6, -8, 0, 0]).fill({ color: 0xfbf7ef });
+    g.roundRect(-w / 2, -h - 7, w, h, 8).stroke({ color: 0x231d2b, alpha: 0.35, width: 1 });
+    this.bubbleText.position.set(-w / 2 + padX, -h - 7 + padY);
+  }
+
   /** Positions the screen-space badge; `toScreen` maps world → overlay coordinates. */
   renderBadge(info: BadgeInfo, toScreen: (x: number, y: number) => { x: number; y: number }, zoom: number) {
     if (this.phase === 'hidden') {
       this.badge.visible = false;
+      this.bubble.visible = false;
       return;
     }
     const showStatus = this.selected || this.hovered || this.showStatus || info.tone === 'attention' || info.tone === 'danger';
@@ -336,6 +375,7 @@ export class CharacterActor {
       const statusW = showStatus ? this.statusText.width + 12 : 0;
       const w = Math.ceil(Math.max(nameW, statusW) + padX * 2);
       const h = showStatus ? 32 : 18;
+      this.badgeH = h;
       this.badgeBg.clear();
       this.badgeBg.roundRect(-w / 2, -h, w, h, 6).fill({ color: 0x17141f, alpha: 0.86 });
       this.badgeBg.roundRect(-w / 2, -h, w, h, 6).stroke({ color: this.selected ? 0xf2b33d : 0xffffff, alpha: this.selected ? 0.9 : 0.12, width: 1 });
@@ -350,10 +390,26 @@ export class CharacterActor {
     const p = toScreen(this.root.x, this.root.y + headTop - 3);
     this.badge.position.set(Math.round(p.x), Math.round(p.y - (this.icon.visible ? 4 * zoom : 0)));
     this.badge.visible = zoom >= 2 || this.selected || this.hovered;
+
+    const now = performance.now();
+    const left = this.bubbleUntil - now;
+    this.bubble.visible = left > 0;
+    if (left > 0) {
+      // Kept on screen for characters near the top edge (the tail then points a little past the head).
+      this.bubble.position.set(this.badge.x, Math.max(this.bubbleH + 4, this.badge.y - (this.badge.visible ? this.badgeH + 4 : 0)));
+      this.bubble.alpha = Math.min(1, left / 400);
+    }
   }
 
   destroy() {
     this.root.destroy({ children: true });
     this.badge.destroy({ children: true });
+    this.bubble.destroy({ children: true });
   }
+}
+
+function hash(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h;
 }

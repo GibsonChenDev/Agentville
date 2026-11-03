@@ -24,5 +24,37 @@
       "name": "2048",
       "how": "方向鍵或 WASD 滑動，相同數字會合併。"
     }
+  },
+  "teamBoard": "團隊最佳紀錄",
+  "you": "{{name}}（你）",
+  "teamRank": "在這間辦公室排第 {{rank}} 名（共 {{count}} 人）",
+  "dice": {
+    "title": "骰子桌",
+    "bigsmall": "壓大小",
+    "duel": "擲骰子比點數",
+    "bigsmallHow": "擲三顆骰子，4–10 為小、11–17 為大，豹子（三顆相同）莊家贏。贏了 1 賠 1。",
+    "duelHow": "你和莊家各擲兩顆骰子，點數大的贏，1 賠 1；平手退回賭注。",
+    "big": "大",
+    "small": "小",
+    "bet": "下注",
+    "roll": "擲骰 🎲",
+    "rolling": "擲骰中…",
+    "you": "你",
+    "dealer": "莊家",
+    "total": "{{total}}",
+    "win": "你贏了 +{{n}} 🪙",
+    "lose": "你輸了 −{{n}} 🪙",
+    "push": "平手，退回賭注",
+    "today": "今日輸贏：{{net}}（上限 ±{{cap}}）",
+    "note": "每次只能下小額（{{bets}} 金幣），每天輸贏最多 ±{{cap}}，不會突然暴富或破產。金幣只能在 Agentville 裡使用。",
+    "offline": "骰子桌需要連線到伺服器，恢復連線後再試。",
+    "error": {
+      "daily_limit": "今天玩夠囉，明天再來！",
+      "rate_limited": "慢慢來，一次擲一把。",
+      "insufficient_funds": "金幣不夠下這注。",
+      "bad_request": "不能這樣下注。",
+      "network": "連不到伺服器。",
+      "server": "伺服器發生問題，請再試一次。"
+    }
   }
 }

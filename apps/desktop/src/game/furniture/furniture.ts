@@ -399,7 +399,7 @@ export function drawCoffeeTable(t: ThemeStyle): PixelCanvas {
 export function drawCoffeeBar(t: ThemeStyle): PixelCanvas {
   const pc = new PixelCanvas(66, 36);
   const counter = t.id === 'midnight' ? '#2d2f4a' : t.id === 'studio' ? '#f1ede6' : '#3f3a3f';
-  const topC = t.id === 'loft' ? '#c8925c' : t.id === 'studio' ? '#d8b98f' : '#43465f';
+  const topC = t.id === 'midnight' ? '#43465f' : t.id === 'studio' || t.id === 'seaside' ? '#d8b98f' : '#c8925c';
   // counter
   pc.rect(1, 18, 64, 17, counter);
   pc.rect(1, 14, 64, 5, topC);
@@ -641,8 +641,342 @@ export function drawAquarium(): PixelCanvas {
   return pc.outline(-0.45);
 }
 
+const TERRACOTTA = '#c56b48';
+
+export function drawCactus(): PixelCanvas {
+  const pc = new PixelCanvas(12, 22);
+  const g = '#4f9a52';
+  pot(pc, 6, 16, 8, 6, TERRACOTTA);
+  pc.round(4, 3, 4, 13, g);
+  pc.vline(5, 4, 11, shade(g, 0.2));
+  pc.rect(1, 7, 2, 5, g);
+  pc.hline(1, 11, 3, g);
+  pc.rect(9, 5, 2, 5, g);
+  pc.hline(8, 9, 3, g);
+  for (const [x, y] of [[4, 6], [7, 9], [5, 12], [1, 8], [10, 6]] as const) pc.px(x, y, '#e9f2c9');
+  pc.px(6, 2, '#ff8fb8');
+  return pc.outline(-0.5);
+}
+
+export function drawSunflower(): PixelCanvas {
+  const pc = new PixelCanvas(14, 30);
+  pot(pc, 7, 23, 8, 7, '#3d6fb5');
+  pc.vline(7, 10, 13, '#4f8a3a');
+  pc.round(2, 15, 5, 3, '#5ea845');
+  pc.round(8, 18, 5, 3, '#5ea845');
+  for (const [x, y] of [[7, 1], [3, 3], [11, 3], [1, 7], [13, 7], [3, 11], [11, 11], [7, 12]] as const) pc.round(x - 1, y, 3, 3, '#ffcf3a');
+  pc.round(3, 3, 9, 9, '#ffcf3a');
+  pc.round(5, 5, 5, 5, '#7a4a22');
+  pc.px(6, 6, '#a86a33');
+  return pc.outline(-0.5);
+}
+
+export function drawBonsai(): PixelCanvas {
+  const pc = new PixelCanvas(20, 18);
+  pc.rect(2, 13, 16, 4, '#3b5a7a');
+  pc.hline(2, 13, 16, shade('#3b5a7a', 0.25));
+  pc.rect(3, 12, 14, 1, '#6e4a30');
+  pc.vline(9, 6, 6, '#6e4a30');
+  pc.rect(10, 8, 3, 1, '#6e4a30');
+  pc.vline(8, 9, 3, shade('#6e4a30', 0.15));
+  pc.round(2, 3, 9, 5, '#3f7d46');
+  pc.round(10, 1, 8, 5, '#4e8f4f');
+  pc.round(6, 0, 7, 4, '#5ea85a');
+  return pc.outline(-0.5);
+}
+
+export function drawGumball(): PixelCanvas {
+  const pc = new PixelCanvas(12, 26);
+  const red = '#d33a3a';
+  pc.rect(3, 15, 6, 10, red);
+  pc.hline(2, 24, 8, shade(red, -0.3));
+  pc.rect(5, 18, 2, 2, '#c9ccd6');
+  pc.px(5, 22, '#2a2a32');
+  pc.ellipse(6, 8, 5, 6, '#e8f6ff', 0.85);
+  const rand = rng(31);
+  for (let i = 0; i < 14; i++) pc.px(2 + Math.floor(rand() * 8), 4 + Math.floor(rand() * 9), ['#ff5f8f', '#ffd166', '#5cc7e8', '#7dff9a', '#c7a3ff'][i % 5]!);
+  pc.px(4, 4, WHITE);
+  pc.rect(4, 1, 4, 2, red);
+  return pc.outline(-0.5);
+}
+
+export function drawGlobe(): PixelCanvas {
+  const pc = new PixelCanvas(14, 26);
+  const wood = '#7a4e30';
+  pc.rect(3, 23, 8, 2, wood);
+  pc.vline(7, 17, 6, wood);
+  pc.ellipse(7, 9, 6, 6, '#3e8fd1');
+  pc.round(3, 5, 4, 3, '#4caf6a');
+  pc.round(7, 9, 4, 4, '#4caf6a');
+  pc.px(5, 12, '#4caf6a');
+  pc.px(4, 5, WHITE);
+  for (let y = 2; y < 17; y++) pc.px(13 - Math.round((y - 2) / 5), y, '#c9a46a');
+  return pc.outline(-0.5);
+}
+
+export function drawTelescope(): PixelCanvas {
+  const pc = new PixelCanvas(20, 28);
+  const leg = '#3a3a44';
+  for (let i = 0; i < 12; i++) {
+    pc.px(9 - Math.floor(i / 2), 15 + i, leg);
+    pc.px(10 + Math.floor(i / 2), 15 + i, leg);
+  }
+  pc.vline(10, 15, 12, shade(leg, 0.2));
+  // tube pointing up at the sky
+  for (let i = 0; i < 12; i++) pc.rect(4 + i, 13 - i, 4, 3, i < 2 ? '#e0c070' : '#2f4170');
+  pc.rect(15, 2, 4, 3, '#e0c070');
+  pc.px(16, 2, WHITE);
+  return pc.outline(-0.5);
+}
+
+export function drawDino(): PixelCanvas {
+  const pc = new PixelCanvas(20, 22);
+  const g = '#5cb85c';
+  pc.rect(3, 19, 14, 2, '#5a4636');
+  pc.round(4, 9, 9, 8, g);
+  pc.round(9, 1, 9, 7, g);
+  pc.rect(9, 6, 4, 4, g);
+  pc.rect(1, 12, 4, 3, g);
+  pc.px(0, 13, g);
+  pc.rect(5, 16, 2, 3, shade(g, -0.2));
+  pc.rect(10, 16, 2, 3, shade(g, -0.2));
+  pc.px(13, 10, shade(g, -0.2));
+  pc.px(14, 3, '#1b1a22');
+  pc.hline(12, 6, 5, WHITE);
+  for (const x of [6, 8, 10]) pc.px(x, 8, '#f2b33d');
+  pc.hline(5, 12, 6, shade(g, 0.2));
+  return pc.outline(-0.5);
+}
+
+export function drawDog(): PixelCanvas {
+  const pc = new PixelCanvas(18, 16);
+  const cushion = '#e2705c';
+  const fur = '#e3a35a';
+  pc.ellipse(9, 12, 8, 3, cushion);
+  pc.hline(2, 14, 14, shade(cushion, -0.25));
+  pc.ellipse(10, 9, 5, 3, fur);
+  pc.round(3, 3, 7, 7, fur);
+  pc.rect(4, 7, 4, 3, '#f4efe6');
+  pc.px(3, 2, fur);
+  pc.px(4, 1, fur);
+  pc.px(8, 1, fur);
+  pc.px(9, 2, fur);
+  pc.px(5, 5, '#1b1a22');
+  pc.px(8, 5, '#1b1a22');
+  pc.px(6, 7, '#1b1a22');
+  pc.round(14, 6, 3, 3, fur);
+  pc.px(15, 6, '#f4efe6');
+  return pc.outline(-0.5);
+}
+
+export function drawChristmasTree(): PixelCanvas {
+  const pc = new PixelCanvas(20, 34);
+  const g = '#2f7d46';
+  pc.rect(8, 28, 4, 3, '#6e4a30');
+  pc.rect(5, 30, 10, 3, '#d33a3a');
+  pc.hline(5, 31, 10, '#ffd166');
+  for (const [top, w0, rows] of [
+    [4, 2, 8],
+    [10, 4, 9],
+    [17, 6, 11],
+  ] as const) {
+    for (let i = 0; i < rows; i++) {
+      const w = w0 + i * 1.2;
+      pc.hline(Math.round(10 - w / 2), top + i, Math.round(w), i % 3 === 0 ? shade(g, 0.12) : g);
+    }
+  }
+  const rand = rng(12);
+  for (let i = 0; i < 12; i++) {
+    const y = 7 + Math.floor(rand() * 20);
+    const half = Math.max(1, Math.floor((y - 4) / 3));
+    pc.px(10 - half + Math.floor(rand() * half * 2), y, ['#ff5f5f', '#ffd166', '#5cc7e8', WHITE][i % 4]!);
+  }
+  pc.px(10, 1, '#ffd166');
+  pc.hline(9, 2, 3, '#ffd166');
+  pc.px(10, 3, '#ffd166');
+  return pc.outline(-0.5);
+}
+
+export function drawFridge(): PixelCanvas {
+  const pc = new PixelCanvas(16, 34);
+  const body = '#e8eef2';
+  box(pc, 1, 1, 14, 4, 28, shade(body, 0.05), body);
+  pc.hline(1, 14, 14, shade(body, -0.2));
+  pc.vline(12, 7, 5, '#9aa3b5');
+  pc.vline(12, 17, 8, '#9aa3b5');
+  pc.rect(3, 8, 3, 3, '#ffd166');
+  pc.rect(6, 19, 3, 4, '#ff8fb8');
+  pc.px(4, 20, '#5cc7e8');
+  return pc.outline(-0.5);
+}
+
+export function drawVending(): PixelCanvas {
+  const pc = new PixelCanvas(18, 36);
+  const body = '#2f6fd1';
+  box(pc, 1, 1, 16, 3, 32, shade(body, 0.1), body);
+  pc.rect(3, 6, 9, 20, '#cfeaff');
+  for (let row = 0; row < 4; row++) {
+    pc.hline(3, 10 + row * 5, 9, '#7a8aa6');
+    for (let i = 0; i < 3; i++) pc.rect(4 + i * 3, 7 + row * 5, 2, 3, ['#ff5f5f', '#ffd166', '#7dff9a', '#ff8fb8'][(row + i) % 4]!);
+  }
+  pc.rect(13, 8, 3, 6, '#1b1a22');
+  for (let y = 9; y < 14; y += 2) pc.hline(13, y, 3, '#62e6ff');
+  pc.rect(3, 28, 12, 4, '#1b1a22');
+  return pc.outline(-0.45);
+}
+
+export function drawRobot(): PixelCanvas {
+  const pc = new PixelCanvas(16, 28);
+  const metal = '#b8c0cc';
+  pc.rect(4, 22, 3, 5, shade(metal, -0.2));
+  pc.rect(9, 22, 3, 5, shade(metal, -0.2));
+  pc.round(2, 12, 12, 11, metal);
+  pc.rect(5, 15, 6, 4, '#2f4170');
+  pc.px(6, 16, '#ff5f5f');
+  pc.px(9, 17, '#7dff9a');
+  pc.rect(0, 13, 2, 7, shade(metal, -0.1));
+  pc.rect(14, 13, 2, 7, shade(metal, -0.1));
+  pc.round(3, 2, 10, 9, metal);
+  pc.rect(4, 4, 8, 5, '#14202e');
+  pc.rect(5, 5, 2, 2, '#62e6ff');
+  pc.rect(9, 5, 2, 2, '#62e6ff');
+  pc.hline(6, 8, 4, '#62e6ff');
+  pc.vline(8, 0, 2, '#3a3a44');
+  pc.px(8, 0, '#ff5f5f');
+  return pc.outline(-0.5);
+}
+
+export function drawTreadmill(): PixelCanvas {
+  const pc = new PixelCanvas(34, 24);
+  const frame = '#3a3a44';
+  pc.rect(2, 14, 30, 6, frame);
+  pc.rect(3, 12, 28, 3, '#1b1a22');
+  for (let x = 5; x < 30; x += 4) pc.px(x, 13, '#4a4b5a');
+  pc.hline(2, 20, 30, shade(frame, -0.3));
+  pc.vline(28, 2, 12, frame);
+  pc.vline(5, 2, 12, frame);
+  pc.hline(5, 3, 24, frame);
+  pc.rect(12, 1, 10, 5, '#2b2233');
+  pc.rect(13, 2, 8, 3, '#7dff9a');
+  pc.hline(14, 3, 3, '#1b1a22');
+  return pc.outline(-0.5);
+}
+
+export function drawFireplace(): PixelCanvas {
+  const pc = new PixelCanvas(34, 30);
+  const brick = '#a3533b';
+  pc.rect(1, 4, 32, 25, brick);
+  const rand = rng(5);
+  for (let y = 6; y < 28; y += 4) for (let x = (y / 4) % 2 ? 1 : 4; x < 32; x += 7) pc.rect(x, y, 6, 3, rand() < 0.5 ? shade(brick, 0.08) : shade(brick, -0.06));
+  pc.rect(0, 2, 34, 3, '#5a4636');
+  pc.hline(0, 2, 34, '#7a604a');
+  pc.round(8, 12, 18, 16, '#1b1416');
+  pc.rect(10, 24, 14, 2, '#6e4a30');
+  pc.round(11, 17, 12, 8, '#ff8a3d');
+  pc.round(13, 14, 8, 8, '#ffd166');
+  pc.round(15, 18, 4, 5, '#fff2c4');
+  return pc.outline(-0.45);
+}
+
+export function drawPingPong(): PixelCanvas {
+  const pc = new PixelCanvas(48, 34);
+  const top = '#2b8a5a';
+  const leg = '#3a3a44';
+  for (const x of [4, 42]) pc.rect(x, 22, 2, 10, leg);
+  pc.rect(1, 4, 46, 16, top);
+  pc.hline(1, 4, 46, shade(top, 0.2));
+  pc.rect(1, 20, 46, 3, shade(top, -0.3));
+  pc.hline(1, 11, 46, WHITE, 0.9);
+  pc.vline(1, 4, 16, WHITE);
+  pc.vline(46, 4, 16, WHITE);
+  pc.hline(1, 19, 46, WHITE);
+  pc.hline(1, 4, 46, WHITE);
+  // net across the middle
+  pc.rect(23, 0, 2, 22, '#e8eef2');
+  for (let y = 1; y < 20; y += 2) pc.px(24, y, '#9aa3b5');
+  pc.round(9, 7, 6, 3, '#d33a3a');
+  pc.px(36, 14, '#ffd166');
+  return pc.outline(-0.45);
+}
+
+export function drawPiano(): PixelCanvas {
+  const pc = new PixelCanvas(34, 32);
+  const wood = '#2a1d1a';
+  pc.rect(1, 1, 32, 22, wood);
+  pc.hline(1, 1, 32, shade(wood, 0.3));
+  pc.rect(3, 4, 28, 6, shade(wood, 0.12));
+  pc.rect(12, 5, 10, 4, '#f4efe6');
+  pc.hline(13, 6, 8, '#9aa3b5');
+  pc.rect(0, 13, 34, 6, '#f4f1ea');
+  for (let x = 2; x < 34; x += 3) pc.vline(x, 13, 6, '#c9c4bb');
+  for (let x = 3; x < 33; x += 3) if (x % 7 !== 0) pc.rect(x, 13, 2, 3, '#1b1a22');
+  pc.rect(1, 19, 32, 3, wood);
+  pc.rect(2, 22, 3, 9, wood);
+  pc.rect(29, 22, 3, 9, wood);
+  pc.rect(14, 28, 6, 2, '#e0c070');
+  return pc.outline(-0.45);
+}
+
+/** A small felt dice table with 大/小 betting zones, a dice cup and a few chips. */
+export function drawDiceTable(): PixelCanvas {
+  const pc = new PixelCanvas(34, 26);
+  const felt = '#1f7a4d';
+  const wood = '#6e3f26';
+  for (const x of [3, 29]) pc.rect(x, 17, 2, 8, '#3a2a20');
+  pc.round(0, 3, 34, 14, wood);
+  pc.round(2, 4, 30, 11, felt);
+  pc.hline(2, 4, 30, shade(felt, 0.15));
+  pc.rect(0, 15, 34, 3, shade(wood, -0.2));
+  // betting zones: 小 on the left, 大 on the right
+  pc.rect(4, 6, 11, 7, shade(felt, -0.12));
+  pc.rect(19, 6, 11, 7, shade(felt, -0.12));
+  pc.hline(5, 9, 9, '#ffd166');
+  pc.vline(9, 7, 5, '#ffd166');
+  pc.hline(20, 8, 9, '#ffd166');
+  pc.vline(24, 7, 5, '#ffd166');
+  pc.px(22, 11, '#ffd166');
+  pc.px(26, 11, '#ffd166');
+  // dice in the middle
+  for (const [x, y] of [
+    [15, 1],
+    [18, 3],
+  ] as const) {
+    pc.rect(x, y, 4, 4, WHITE);
+    pc.px(x + 1, y + 1, '#d33a3a');
+    pc.px(x + 2, y + 2, '#d33a3a');
+  }
+  // chips
+  pc.round(5, 13, 3, 2, '#d33a3a');
+  pc.round(27, 13, 3, 2, '#3d6fb5');
+  pc.round(26, 12, 3, 2, '#ffd166');
+  return pc.outline(-0.45);
+}
+
 /** Decorations sold in the shop (see CATALOG in team-protocol). */
-export const SHOP_FURNITURE = ['lava_lamp', 'trophy', 'cat', 'jukebox', 'aquarium'] as const;
+export const SHOP_FURNITURE = [
+  'lava_lamp',
+  'trophy',
+  'cat',
+  'jukebox',
+  'aquarium',
+  'cactus',
+  'sunflower',
+  'bonsai',
+  'gumball',
+  'globe',
+  'telescope',
+  'dino',
+  'dog',
+  'christmas_tree',
+  'fridge',
+  'vending',
+  'robot',
+  'treadmill',
+  'fireplace',
+  'ping_pong',
+  'piano',
+  'dice_table',
+] as const;
 
 export const FURNITURE: Record<string, FurnitureDef> = {
   desk: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: (t) => drawDesk(t) },
@@ -673,5 +1007,22 @@ export const FURNITURE: Record<string, FurnitureDef> = {
   cat: { fw: 1, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawCat() },
   jukebox: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, light: { x: 10, y: 9, r: 26, color: 'warm', strength: 0.6 }, draw: () => drawJukebox() },
   aquarium: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, light: { x: 17, y: 8, r: 26, color: 'screen', strength: 0.5 }, draw: () => drawAquarium() },
+  cactus: { fw: 1, fh: 1, bottomPad: 0, ox: 2, blocks: true, draw: () => drawCactus() },
+  sunflower: { fw: 1, fh: 1, bottomPad: 1, ox: 1, blocks: true, draw: () => drawSunflower() },
+  bonsai: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, draw: () => drawBonsai() },
+  gumball: { fw: 1, fh: 1, bottomPad: 0, ox: 2, blocks: true, draw: () => drawGumball() },
+  globe: { fw: 1, fh: 1, bottomPad: 0, ox: 1, blocks: true, draw: () => drawGlobe() },
+  telescope: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, draw: () => drawTelescope() },
+  dino: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, draw: () => drawDino() },
+  dog: { fw: 1, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawDog() },
+  christmas_tree: { fw: 1, fh: 1, bottomPad: 1, ox: -2, blocks: true, light: { x: 10, y: 16, r: 26, color: 'warm', strength: 0.55 }, draw: () => drawChristmasTree() },
+  fridge: { fw: 1, fh: 1, bottomPad: 0, ox: 0, blocks: true, draw: () => drawFridge() },
+  vending: { fw: 1, fh: 1, bottomPad: 0, ox: -1, blocks: true, light: { x: 8, y: 14, r: 24, color: 'screen', strength: 0.5 }, draw: () => drawVending() },
+  robot: { fw: 1, fh: 1, bottomPad: 0, ox: 0, blocks: true, light: { x: 8, y: 6, r: 16, color: 'screen', strength: 0.4 }, draw: () => drawRobot() },
+  treadmill: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawTreadmill() },
+  fireplace: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, light: { x: 17, y: 20, r: 44, color: 'warm', strength: 0.9 }, draw: () => drawFireplace() },
+  ping_pong: { fw: 3, fh: 2, bottomPad: -2, ox: 0, blocks: true, draw: () => drawPingPong() },
+  piano: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawPiano() },
+  dice_table: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, light: { x: 17, y: 8, r: 24, color: 'warm', strength: 0.5 }, draw: () => drawDiceTable() },
 };
 

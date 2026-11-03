@@ -47,6 +47,11 @@
     "invalid_code": "Invalid code.",
     "room_full": "Full.",
     "forbidden": "Not allowed.",
-    "not_found": "Not found."
-  }
+    "not_found": "Not found.",
+    "limit_reached": "You already own the most copies allowed.",
+    "daily_limit": "That's enough for today — the table opens again tomorrow."
+  },
+  "ownedOf": "Owned {{count}} / {{max}}",
+  "buyAnother": "Buy another copy",
+  "limitNote": "Limits per person: looks 1 each; decorations 1–5 copies."
 }

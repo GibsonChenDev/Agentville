@@ -1,4 +1,4 @@
-export const OFFICE_THEMES = ['loft', 'studio', 'midnight'] as const;
+export const OFFICE_THEMES = ['loft', 'studio', 'midnight', 'garden', 'seaside'] as const;
 export type OfficeTheme = (typeof OFFICE_THEMES)[number];
 
 export type Facing = 'up' | 'down' | 'left' | 'right';

@@ -1,6 +1,7 @@
 import type { OfficeTheme } from '@agentville/domain';
 import { create } from 'zustand';
-import { addFurniture, moveFurniture, removeFurniture, setDeskFacing, validateScene, type EditResult, type LayoutError } from '../../game/scenes/editing';
+import { addFurniture, moveFurniture, placedCount, removeFurniture, setDeskFacing, validateScene, type EditResult, type LayoutError } from '../../game/scenes/editing';
+import { ownerTag, placementAllowance, useAccount } from '../../account/accountStore';
 import { DEFAULT_SCENES, type SceneDefinition } from '../../game/scenes/layouts';
 import { sceneFor, useApp } from '../../state/store';
 import { currentOfficeTheme } from '../../world/officeTheme';
@@ -16,7 +17,7 @@ interface EditorState {
   draft?: SceneDefinition;
   selectedId?: string;
   placing?: string;
-  error?: LayoutError;
+  error?: LayoutError | 'over_limit';
   dirty: boolean;
   saving: boolean;
   start: () => void;
@@ -57,7 +58,9 @@ export const useEditor = create<EditorState>((set, get) => {
     place: (kind, x, y) => {
       const { draft } = get();
       if (!draft) return;
-      const r = addFurniture(draft, kind, x, y);
+      const allowance = allowanceFor(draft, kind);
+      if (allowance && !allowance.left) return set({ error: 'over_limit' });
+      const r = addFurniture(draft, kind, x, y, allowance ? ownerTag(useAccount.getState().account?.id) : undefined);
       apply(r, r.ok ? { selectedId: r.scene.furniture.at(-1)!.id, placing: undefined } : {});
     },
     remove: () => {
@@ -88,10 +91,17 @@ export const useEditor = create<EditorState>((set, get) => {
   };
 });
 
+/** Copies of a shop decoration you can still place in this draft; null for free furniture. */
+export function allowanceFor(draft: SceneDefinition, kind: string) {
+  const account = useAccount.getState().account;
+  return placementAllowance(account?.inventory, kind, (owner) => placedCount(draft, kind, owner), !!useApp.getState().teamLayouts, ownerTag(account?.id));
+}
+
 /** Would `item` be valid at (x, y)? Used for the live green/red placement ghost. */
 export function canPlace(item: { id?: string; kind: string }, x: number, y: number): boolean {
   const { draft } = useEditor.getState();
   if (!draft) return false;
+  if (!item.id && allowanceFor(draft, item.kind)?.left === 0) return false;
   const r = item.id ? moveFurniture(draft, item.id, x, y) : addFurniture(draft, item.kind, x, y);
   return r.ok;
 }

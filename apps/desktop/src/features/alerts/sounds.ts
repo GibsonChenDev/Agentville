@@ -2,7 +2,7 @@
  * Tiny synthesized cues (no audio assets): a soft two-note chime for "needs
  * you", a rising arpeggio for "done", a low blip for "failed". Off by default.
  */
-export type Cue = 'attention' | 'done' | 'failed';
+export type Cue = 'attention' | 'done' | 'failed' | 'welcome';
 
 let ctx: AudioContext | null = null;
 
@@ -29,6 +29,12 @@ const NOTES: Record<Cue, [number, number][]> = {
   failed: [
     [220, 0],
     [185, 0.14],
+  ],
+  welcome: [
+    [587, 0],
+    [740, 0.08],
+    [880, 0.16],
+    [1175, 0.26],
   ],
 };
 

@@ -2,12 +2,16 @@
   "theme": {
     "loft": "Cozy Startup Loft",
     "studio": "Silicon Valley Creative Studio",
-    "midnight": "Midnight Developer Lab"
+    "midnight": "Midnight Developer Lab",
+    "garden": "Sunny Greenhouse Garden",
+    "seaside": "Seaside Beach House"
   },
   "themeShort": {
     "loft": "Loft",
     "studio": "Studio",
-    "midnight": "Midnight Lab"
+    "midnight": "Midnight Lab",
+    "garden": "Greenhouse",
+    "seaside": "Beach House"
   },
   "camera": {
     "zoom": "Zoom {{level}}×",
@@ -34,8 +38,10 @@
       "blocks_spot": "That spot is reserved for people to stand at.",
       "seat_blocked": "The desk's chair has no room there.",
       "blocks_path": "That would block someone's way to a desk or the meeting area.",
-      "last_desk": "The office needs at least one desk."
-    }
+      "last_desk": "The office needs at least one desk.",
+      "over_limit": "You've placed every copy you own — buy more in the shop."
+    },
+    "copies": "{{used}}/{{owned}}"
   },
   "furniture": {
     "desk": "Desk",
@@ -57,6 +63,23 @@
     "trophy": "Trophy",
     "cat": "Office cat",
     "jukebox": "Jukebox",
-    "aquarium": "Aquarium"
+    "aquarium": "Aquarium",
+    "cactus": "Cactus",
+    "sunflower": "Sunflower",
+    "bonsai": "Bonsai",
+    "gumball": "Gumball machine",
+    "globe": "Globe",
+    "telescope": "Telescope",
+    "dino": "Dino figure",
+    "dog": "Office shiba",
+    "christmas_tree": "Christmas tree",
+    "fridge": "Fridge",
+    "vending": "Vending machine",
+    "robot": "Robot buddy",
+    "treadmill": "Treadmill",
+    "fireplace": "Fireplace",
+    "ping_pong": "Ping-pong table",
+    "piano": "Upright piano",
+    "dice_table": "Dice table"
   }
 }

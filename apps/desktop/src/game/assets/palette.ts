@@ -35,6 +35,12 @@ export const OUTFIT: Record<OutfitColor, Color> = {
   forest: '#30604a',
   neon: '#3ff0c8',
   gold: '#e8b923',
+  sakura: '#f4a7bb',
+  mint: '#8fe3c0',
+  sky: '#7ec4f2',
+  lavender: '#b49be0',
+  ruby: '#c0233f',
+  onyx: '#1c1b22',
 };
 
 export const INK = '#231d2b';

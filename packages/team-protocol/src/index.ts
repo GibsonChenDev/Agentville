@@ -48,7 +48,12 @@ export interface MemberView {
   /** Number of the member's agents currently in the office. */
   agents: number;
   presence?: Presence;
+  /** Arcade best scores the member shared with this office. */
+  scores?: Scores;
 }
+
+/** Best score per arcade game. */
+export type Scores = Partial<Record<GameId, number>>;
 
 export interface LayoutDocWire {
   version: 1;
@@ -73,6 +78,7 @@ export type ClientMessage =
   | { t: 'profile'; name: string; appearance: Appearance }
   | { t: 'theme'; theme: string }
   | { t: 'layout'; theme: string; doc: LayoutDocWire | null }
+  | { t: 'scores'; s: Scores }
   | { t: 'ping' };
 
 export type ErrorCode = 'unauthorized' | 'bad_message' | 'too_large' | 'version' | 'rate_limited' | 'removed';
@@ -108,7 +114,7 @@ export interface MembershipResponse {
   token: string;
   owner: boolean;
 }
-export type ApiErrorCode = 'invalid_code' | 'room_full' | 'rate_limited' | 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'unknown_item' | 'owned' | 'insufficient_funds';
+export type ApiErrorCode = 'invalid_code' | 'room_full' | 'rate_limited' | 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'unknown_item' | 'owned' | 'limit_reached' | 'insufficient_funds' | 'daily_limit';
 
 // ───────────────────────────────── validation
 
@@ -209,6 +215,10 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       const doc = cleanLayoutDoc(m.doc);
       return doc ? { t: 'layout', theme: m.theme, doc } : null;
     }
+    case 'scores': {
+      const scores = cleanScores(m.s);
+      return scores ? { t: 'scores', s: scores } : null;
+    }
     case 'ping':
       return { t: 'ping' };
     default:
@@ -245,3 +255,4 @@ export function isInviteCode(v: unknown): v is string {
 }
 
 export * from './account';
+import { cleanScores, type GameId } from './account';
