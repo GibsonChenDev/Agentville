@@ -1,34 +1,48 @@
 name: Release
 
-# Push a tag like v0.2.0 to build signed installers for macOS (universal .dmg)
-# and Windows (.exe, NSIS) and attach them to a draft GitHub release.
+# Builds installers and attaches them to the GitHub release for a tag:
+#   - push a tag like v0.2.0  → builds macOS (universal .dmg) and Windows (.exe)
+#   - Actions → Release → Run workflow → pick a tag and platform to (re)build one
+#
+# Builds are currently UNSIGNED (no Apple Developer ID / Windows certificate yet).
+# To sign macOS builds later, add the APPLE_* repository secrets listed in
+# docs/RELEASE.md and pass them as `env:` to the tauri-action step of the macos
+# job. Don't add the env entries before the secrets exist: empty values make the
+# bundler try to import an empty certificate and the build fails.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build for (e.g. v0.1.0)
+        required: true
+      platform:
+        description: Which installers to build
+        type: choice
+        options: [all, macos, windows]
+        default: all
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
-  build:
+  macos:
+    if: github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'macos'
+    runs-on: macos-latest
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            args: --target universal-apple-darwin --bundles app,dmg
-          - platform: windows-latest
-            args: --bundles nsis
-    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
@@ -36,16 +50,37 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing + notarization (optional; unsigned builds still work locally).
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: Agentville ${{ github.ref_name }}
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: Agentville ${{ env.RELEASE_TAG }}
           releaseDraft: true
-          args: ${{ matrix.args }}
+          args: --target universal-apple-darwin --bundles app,dmg
+
+  windows:
+    if: github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'windows'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: Agentville ${{ env.RELEASE_TAG }}
+          releaseDraft: true
+          args: --bundles nsis

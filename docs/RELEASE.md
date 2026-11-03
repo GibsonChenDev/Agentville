@@ -21,13 +21,16 @@ Outputs: `apps/desktop/src-tauri/target/**/bundle/dmg/*.dmg`, `…/bundle/nsis/*
 ## Automated builds
 
 - `.github/workflows/ci.yml` — on every push/PR: typecheck, unit tests, i18n check, Rust tests and a production build, on both macOS and Windows runners.
-- `.github/workflows/release.yml` — push a tag `vX.Y.Z` to build the universal macOS `.dmg` and the Windows `-setup.exe` and attach them to a draft GitHub release.
+- `.github/workflows/release.yml` — push a tag `vX.Y.Z` to build the universal macOS `.dmg` and the Windows `-setup.exe` and attach them to the GitHub release for that tag (a draft is created if none exists). To rebuild one platform for an existing tag: Actions → Release → Run workflow → enter the tag and choose `macos` or `windows`.
 
 ## Code signing (needed before giving the app to others)
 
 Unsigned builds trigger warnings: macOS Gatekeeper ("developer cannot be verified" → right-click → Open) and Windows SmartScreen ("More info → Run anyway").
 
-**macOS** — Apple Developer Program (US$99/year): create a "Developer ID Application" certificate, then add these repository secrets: `APPLE_CERTIFICATE` (base64 .p12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific password), `APPLE_TEAM_ID`. The release workflow signs and notarizes automatically.
+**macOS** — not configured yet (releases are unsigned). When you have an Apple Developer Program membership (US$99/year):
+1. Create a "Developer ID Application" certificate and export it as a `.p12`.
+2. Add repository secrets: `APPLE_CERTIFICATE` (the `.p12` encoded with `base64 -i cert.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific password), `APPLE_TEAM_ID`.
+3. In `.github/workflows/release.yml`, add those six as `env:` entries (`${{ secrets.NAME }}`) on the macOS job's tauri-action step. Only do this after the secrets exist — empty values make the build fail with "SecKeychainItemImport: Unable to decode the provided data".
 
 **Windows** — an OV/EV code-signing certificate or Azure Trusted Signing. Configure `bundle.windows.certificateThumbprint` (local certificate) or a `signCommand` in `tauri.conf.json`, following https://v2.tauri.app/distribute/sign/windows/.
 
