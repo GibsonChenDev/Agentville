@@ -835,7 +835,8 @@ export type AnimName =
   | 'stand_raise'
   | 'stand_talk_side'
   | 'stand_talk_front'
-  | 'stand_talk_back';
+  | 'stand_talk_back'
+  | 'stand_play_back';
 
 export interface AnimDef {
   frames: Pose[];
@@ -909,6 +910,7 @@ function buildAnimDefs(): Record<AnimName, AnimDef> {
     stand_talk_side: { frameMs: 420, frames: [P('side', false, { mouth: 'open' }), P('side', false, { mouth: 'smile', bob: 1 })] },
     stand_talk_front: { frameMs: 420, frames: [P('front', false, { arms: 'gesture', mouth: 'open' }), P('front', false, { mouth: 'smile', bob: 1 })] },
     stand_talk_back: { frameMs: 420, frames: [P('back', false, { arms: 'gesture' }), P('back', false, { bob: 1 })] },
+    stand_play_back: { frameMs: 120, frames: [P('back', false, { arms: 'type0' }), P('back', false, { arms: 'type1', bob: -1 }), P('back', false, { arms: 'type1' }), P('back', false, { arms: 'type0', bob: -1 })] },
   };
   for (const [k, v] of Object.entries(front)) defs[`sit_front_${k}` as AnimName] = v;
   for (const [k, v] of Object.entries(back)) defs[`sit_back_${k}` as AnimName] = v;

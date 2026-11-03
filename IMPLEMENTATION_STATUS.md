@@ -38,6 +38,7 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - **Cowork (observed)**: agent-team task board, lead/teammate roles, handoff animations, subagent reports, repository/branch/worktree grouping, edit-conflict warnings.
 - **Customization**: character editor and office editor, saved in SQLite.
 - **History**: 14-day session/event history in SQLite, restored on start; clear in Settings.
+- **Team office**: create/join with an invite code; your own character (WASD/click to walk, sit at desks/sofas/beanbags, play the arcade); teammates' characters and agent counts live; their agents as anonymous characters; shared map and furniture edits. Cloudflare Worker relay (`server/relay`), privacy contract in `packages/team-protocol` — see docs/TEAM.md.
 - **Product**: native notifications, optional sounds, en/zh-TW throughout, Demo Mode for exploration.
 
 ## Deferred
@@ -46,9 +47,20 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Team office (2026-11-03)
+
+| Check | Result |
+|---|---|
+| Protocol + room logic unit tests | ✅ 14 passed (auth, relay to teammates only, extra fields stripped, late-joiner welcome, theme/layout sharing, replaced connections, leave/cleanup, rate limit) |
+| Interactables tests | ✅ every desk, sofa place, beanbag and arcade reachable in all three offices |
+| Relay on local Cloudflare runtime (`wrangler dev`) + `scripts/team-smoke.mjs` | ✅ 16/16 (create, wrong code, sloppy code, join, presence, agent count, theme/layout by non-owner, rotate by owner only, old code dead, leave, empty room deleted) |
+| Two app windows + scripted third member, in the browser pane | ✅ create/join UI, invite code, WASD with collision, click-to-walk, desk/sofa sitting, teammate movement mirrored, 3 anonymous agents at desks, map switch synced, arcade |
+| Deployed relay on Cloudflare | ⏳ needs `wrangler login` by the account owner |
+
 ## Known limitations
 
 - Hooks installed by an older Agentville (11 events) keep working but are flagged "reinstall" to add the team/directory events.
 - When Agentville isn't running, Claude Code prints a harmless "hook … failed: connect ECONNREFUSED" line (explained in the guide).
 - Sessions already running when hooks are installed must be restarted once.
+- Team office: layout edits made while reconnecting are not queued; the last saved layout wins when two people edit at once.
 - Preferred workstations are per office theme; restored history shows past sessions as departed until they're active again.

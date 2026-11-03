@@ -23,7 +23,9 @@ Cosmetic idle motion (breathing, blinking, dust motes) lives purely in the rende
 
 - **`@agentville/domain`** — no runtime dependencies. Agents, appearance options, capabilities matrix (`can(origin, capability)`), tasks and their transition table, office layout types.
 - **`@agentville/claude-integration`** — adapters from Claude Code into domain events. Hook normalizer (tested against malformed payloads).
+- **`@agentville/team-protocol`** — wire format between the app and the team relay, with the validators both sides use (privacy contract: only avatar, nickname/look, agent count and office edits).
 - **`@agentville/desktop`** — React UI + PixiJS world + Tauri shell.
+- **`server/relay`** (not a workspace package) — Cloudflare Worker + Durable Objects relaying team offices; see docs/TEAM.md.
 
 ## Desktop app
 

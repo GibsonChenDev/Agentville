@@ -1,7 +1,8 @@
 // Pixi generates shader/uniform code with eval by default; this module swaps in
 // CSP-safe implementations so the Tauri webview needs no 'unsafe-eval'.
 import 'pixi.js/unsafe-eval';
-import type { AgentRecord, Equipment, OfficeTheme, TilePoint, Workstation } from '@agentville/domain';
+import type { AgentRecord, CharacterAppearance, Equipment, Facing, OfficeTheme, TilePoint, Workstation } from '@agentville/domain';
+import type { PoseKind, Presence } from '@agentville/team-protocol';
 import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { intentFor, type VisualIntent } from '../animations/intent';
 import { drawDocument, drawGlow } from '../assets/icons';
@@ -11,6 +12,7 @@ import { FURNITURE, SERVER_LEDS, drawChair, drawDesk, drawEquipment } from '../f
 import { drawScreen } from '../furniture/screens';
 import { NavGrid } from '../navigation/grid';
 import { DEFAULT_SCENES, TILE, type SceneDefinition } from '../scenes/layouts';
+import { interactableAt, interactablesFor, type Interactable } from '../scenes/interactables';
 import { CAP, drawGlowLayer, drawLightmap, drawRoom, type LightSource } from '../scenes/room';
 import { characterTextures, texture, worldTextures } from './textures';
 import type { AgentStatus, ToolCategory } from '@agentville/domain';
@@ -41,6 +43,39 @@ export interface EditCallbacks {
   /** Whether `item` (an existing id, or a kind when placing) may sit at tile (x, y). */
   validate: (item: { id?: string; kind: string }, x: number, y: number) => boolean;
 }
+
+/** You (the person at this computer) and teammates in a shared office. */
+export interface HumanInfo {
+  name: string;
+  appearance: CharacterAppearance;
+  badge: BadgeInfo;
+}
+
+export interface PeerInfo extends HumanInfo {
+  /** World id, e.g. `peer:<memberId>`. */
+  id: string;
+  presence?: Presence;
+}
+
+export const PLAYER_ID = 'player:self';
+
+interface Human {
+  actor: CharacterActor;
+  badge: BadgeInfo;
+  appearanceKey: string;
+  /** Interactable in use. */
+  seat?: string;
+  /** Interactable to use once the walk there ends (player only). */
+  pending?: string;
+  /** Latest network presence (teammates only). */
+  target?: Presence;
+}
+
+const PLAYER_SPEED = 72; // art px per second, a little brisker than agents
+const PEER_SPEED = 110; // catch-up speed toward a teammate's reported position
+const IDLE_INTENT: VisualIntent = { place: 'desk', activity: 'idle', screen: 'off' };
+const TYPING_INTENT: VisualIntent = { place: 'desk', activity: 'type', screen: 'code' };
+const MOVE_KEYS: Record<string, [number, number]> = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0] };
 
 export interface CameraState {
   zoom: number;
@@ -117,11 +152,26 @@ export class OfficeWorld {
   private dragItem?: { id?: string; kind: string; grabDx: number; grabDy: number; tile?: { x: number; y: number }; moved: boolean };
   /** Actors to place directly at their destination after a theme switch (no walk-in). */
   private reseat = new Set<string>();
+  private interactables: Interactable[] = [];
+  /** Non-desk interactables in use → human id (desks use StationView.occupant). */
+  private seatUsers = new Map<string, string>();
+  private player?: Human;
+  private peers = new Map<string, Human>();
+  private keys = new Set<string>();
+  private keyMoving = false;
+  private lastPresence?: { p: Presence; at: number };
+  private removeKeyListeners?: () => void;
   private destroyed = false;
   private initialized = false;
 
   constructor(
-    private readonly callbacks: { onSelect: (id?: string) => void; onCamera: (state: CameraState) => void },
+    private readonly callbacks: {
+      onSelect: (id?: string) => void;
+      onCamera: (state: CameraState) => void;
+      /** Your avatar moved or sat down; sent to teammates. */
+      onPresence?: (p: Presence) => void;
+      onPlayerClick?: () => void;
+    },
   ) {}
 
   async init(host: HTMLElement, theme: OfficeTheme, scene?: SceneDefinition) {
@@ -172,7 +222,9 @@ export class OfficeWorld {
     this.handoffs = []; // their sprites live in `entities` and are destroyed below
     this.leds = [];
     this.stations = [];
-    const keep = new Set([...this.actors.values()].map((a) => a.root));
+    const keep = new Set([...this.actors.values(), ...this.humanActors()].map((a) => a.root));
+    // Where you were sitting, so you can stand up in front of it in the new layout.
+    const playerSeat = this.player?.seat ? this.interactables.find((i) => i.id === this.player!.seat)?.approach : undefined;
     for (const child of [...this.entities.children]) {
       if (keep.has(child)) continue;
       this.entities.removeChild(child);
@@ -230,6 +282,7 @@ export class OfficeWorld {
     }
 
     for (const ws of scene.workstations) this.buildStation(ws, lights);
+    this.interactables = interactablesFor(scene);
 
     // window + neon light sources for the lightmap
     for (const d of scene.wallDecor) {
@@ -259,6 +312,19 @@ export class OfficeWorld {
       if (actor.isVisible) this.reseat.add(actor.record.id);
       actor.hide();
     }
+    // People stand up; you stay where you were if that's still floor.
+    this.seatUsers.clear();
+    for (const [id, h] of this.allHumans()) {
+      h.seat = undefined;
+      h.pending = undefined;
+      h.actor.standAnim = undefined;
+      h.actor.scheduler.current = IDLE_INTENT;
+      if (id !== PLAYER_ID) h.actor.hide();
+      else if (playerSeat && this.nav.isWalkable(playerSeat.x, playerSeat.y)) h.actor.stand({ x: playerSeat.x * TILE + TILE / 2, y: playerSeat.y * TILE + 12, tile: playerSeat, facing: 'down' });
+      else if (h.actor.isVisible && this.freeAt(h.actor.x, h.actor.y)) h.actor.halt();
+      else this.placeAtDoor(h);
+    }
+    this.emitPresence();
     this.drawEditGrid();
     this.applyEditView();
   }
@@ -498,12 +564,21 @@ export class OfficeWorld {
       actor.root.eventMode = this.edit ? 'none' : 'auto';
     }
 
+    this.updatePlayer(dt);
+    for (const [id, h] of this.peers) this.updatePeer(id, h, dt);
+    for (const [, h] of this.allHumans()) {
+      h.actor.render(now, h.actor.scheduler.current, this.options.reduceMotion);
+      h.actor.root.alpha = this.edit ? 0.35 : 1;
+      h.actor.root.eventMode = this.edit ? 'none' : 'auto';
+    }
+    this.emitPresence();
+
     this.updateStations(now);
     this.updateParticles(dt, now);
     this.updateHandoffs(now);
 
     if (this.followId) {
-      const a = this.actors.get(this.followId);
+      const a = this.actors.get(this.followId) ?? this.human(this.followId)?.actor;
       if (a?.isVisible) {
         this.cx += (a.x - this.cx) * Math.min(1, dt / 180);
         this.cy += (a.y - 16 - this.cy) * Math.min(1, dt / 180);
@@ -516,6 +591,10 @@ export class OfficeWorld {
       if (agent) actor.renderBadge(agent.badge, toScreen, this.zoom);
       if (this.edit) actor.badge.visible = false;
     }
+    for (const [, h] of this.allHumans()) {
+      h.actor.renderBadge(h.badge, toScreen, this.zoom);
+      if (this.edit) h.actor.badge.visible = false;
+    }
   }
 
   private updateStations(now: number) {
@@ -524,10 +603,9 @@ export class OfficeWorld {
     this.lastScreenFrame = frame;
     for (const station of this.stations) {
       const occupantId = station.occupant;
-      const actor = occupantId ? this.actors.get(occupantId) : undefined;
-      const agent = occupantId ? this.agents.get(occupantId) : undefined;
+      const actor = occupantId ? (this.actors.get(occupantId) ?? this.human(occupantId)?.actor) : undefined;
       const seated = !!actor?.isSeated;
-      this.setStationEquipment(station, agent?.record.appearance.equipment, hashString(station.ws.id));
+      this.setStationEquipment(station, actor?.record.appearance.equipment, hashString(station.ws.id));
       const mode = seated && actor ? actor.scheduler.current.screen : 'off';
       if (redraw) {
         station.screen.clear();
@@ -854,7 +932,10 @@ export class OfficeWorld {
       if (this.edit) {
         const handled = this.finishEditPointer(!!clicked);
         if (!handled && clicked && e.target === stage) this.edit.cb.onPick(undefined);
-      } else if (clicked && e.target === stage) this.callbacks.onSelect(undefined);
+      } else if (clicked && e.target === stage) {
+        this.callbacks.onSelect(undefined);
+        this.playerClick(this.tileAt(e.global));
+      }
       end();
     });
     stage.on('pointerupoutside', () => {
@@ -872,6 +953,333 @@ export class OfficeWorld {
       },
       { passive: false },
     );
+    const typing = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+    };
+    const onDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || document.querySelector('dialog[open]') || this.edit) return;
+      const k = e.key.toLowerCase();
+      if (MOVE_KEYS[k]) {
+        this.keys.add(k);
+        e.preventDefault();
+      } else if (k === 'e' && !e.repeat) {
+        this.playerInteract();
+        e.preventDefault();
+      }
+    };
+    const onUp = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase());
+    const onBlur = () => this.keys.clear();
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    this.removeKeyListeners = () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }
+
+  // ───────────────────────────────── people: you and your teammates
+
+  private human(id: string): Human | undefined {
+    return id === PLAYER_ID ? this.player : this.peers.get(id);
+  }
+
+  private *allHumans(): Generator<[string, Human]> {
+    if (this.player) yield [PLAYER_ID, this.player];
+    yield* this.peers;
+  }
+
+  private humanActors() {
+    return [...this.allHumans()].map(([, h]) => h.actor);
+  }
+
+  private makeHuman(id: string, info: HumanInfo): Human {
+    const record: AgentRecord = { id, name: info.name, role: 'generalist', origin: 'external', kind: 'agent', appearance: info.appearance, createdAt: 0 };
+    const actor = new CharacterActor(record, characterTextures(info.appearance), worldTextures(), IDLE_INTENT, performance.now(), () =>
+      id === PLAYER_ID ? this.callbacks.onPlayerClick?.() : this.callbacks.onSelect(id),
+    );
+    actor.hideIcon = true;
+    this.entities.addChild(actor.root);
+    this.overlay.addChild(actor.badge);
+    return { actor, badge: info.badge, appearanceKey: JSON.stringify(info.appearance) };
+  }
+
+  private refreshHuman(h: Human, info: HumanInfo) {
+    const key = JSON.stringify(info.appearance);
+    if (key !== h.appearanceKey) {
+      h.appearanceKey = key;
+      h.actor.setTextures(characterTextures(info.appearance));
+    }
+    h.actor.record = { ...h.actor.record, name: info.name, appearance: info.appearance };
+    h.badge = info.badge;
+  }
+
+  /** Shows (or removes, with null) your own avatar. */
+  setPlayer(info: HumanInfo | null) {
+    if (!this.initialized) return;
+    if (!info) {
+      if (this.player) {
+        this.vacate(this.player, PLAYER_ID);
+        this.player.actor.destroy();
+        this.player = undefined;
+      }
+      return;
+    }
+    if (this.player) this.refreshHuman(this.player, info);
+    else {
+      this.player = this.makeHuman(PLAYER_ID, info);
+      this.placeAtDoor(this.player);
+    }
+  }
+
+  /** Teammates currently in the office, with their last reported position. */
+  syncPeers(list: PeerInfo[]) {
+    if (!this.initialized) return;
+    const ids = new Set(list.map((p) => p.id));
+    for (const [id, h] of this.peers) {
+      if (ids.has(id)) continue;
+      this.vacate(h, id);
+      h.actor.destroy();
+      this.peers.delete(id);
+    }
+    for (const info of list) {
+      let h = this.peers.get(info.id);
+      if (!h) {
+        h = this.makeHuman(info.id, info);
+        this.peers.set(info.id, h);
+      } else this.refreshHuman(h, info);
+      h.target = info.presence;
+    }
+  }
+
+  /** Your avatar's current position and pose, for sending to a newly joined room. */
+  presence(): Presence | undefined {
+    const h = this.player;
+    if (!h?.actor.isVisible) return undefined;
+    const it = h.seat ? this.interactables.find((i) => i.id === h.seat) : undefined;
+    const pose: PoseKind = it ? (it.kind === 'desk' ? 'sit' : it.kind) : h.actor.isWalking ? 'walk' : 'stand';
+    const p: Presence = { x: Math.round(h.actor.x * 10) / 10, y: Math.round(h.actor.y * 10) / 10, facing: h.actor.currentFacing, pose };
+    if (it) p.seat = it.id;
+    return p;
+  }
+
+  private emitPresence() {
+    const p = this.presence();
+    if (!p || !this.callbacks.onPresence) return;
+    const last = this.lastPresence;
+    const now = performance.now();
+    if (last && last.p.pose === p.pose && last.p.seat === p.seat && last.p.facing === p.facing && last.p.x === p.x && last.p.y === p.y) return;
+    const structural = !last || last.p.pose !== p.pose || last.p.seat !== p.seat;
+    if (!structural && now - last.at < 100) return; // ~10 updates/s while walking
+    this.lastPresence = { p, at: now };
+    this.callbacks.onPresence(p);
+  }
+
+  private placeAtDoor(h: Human) {
+    const door = this.doorPoint();
+    // A random spot just inside the door, so people arriving together don't stack up.
+    const spots = [-1, 0, 1, 2].map((dx) => ({ x: this.scene.door.x + dx, y: this.scene.door.y + 1 })).filter((t) => this.nav.isWalkable(t.x, t.y));
+    const tile = spots[Math.floor(Math.random() * spots.length)] ?? { x: this.scene.door.x, y: this.scene.door.y + 1 };
+    h.actor.spawnAt(door);
+    h.actor.stand({ x: tile.x * TILE + TILE / 2, y: tile.y * TILE + 12, tile, facing: 'down' });
+  }
+
+  /** Is the floor free for someone's feet at (x, y)? Checks a small box around the feet. */
+  private freeAt(x: number, y: number) {
+    for (const [ox, oy] of [
+      [-4, -2],
+      [4, -2],
+      [-4, 2],
+      [4, 2],
+    ] as const) {
+      if (!this.nav.isWalkable(Math.floor((x + ox) / TILE), Math.floor((y + oy - 4) / TILE))) return false;
+    }
+    return true;
+  }
+
+  private occupantOf(it: Interactable) {
+    if (it.kind === 'desk') return this.stations.find((s) => s.ws.id === it.workstationId)?.occupant;
+    return this.seatUsers.get(it.id);
+  }
+
+  /** Puts a person on a chair, sofa place or arcade. Agents give way; other people don't. */
+  private occupy(h: Human, id: string, it: Interactable): boolean {
+    if (it.kind === 'desk') {
+      const station = this.stations.find((s) => s.ws.id === it.workstationId);
+      if (!station) return false;
+      if (station.occupant && station.occupant !== id) {
+        if (!this.actors.has(station.occupant)) return false;
+        this.releaseStation(station.occupant); // the agent walks to another desk
+      }
+      station.occupant = id;
+    } else {
+      const user = this.seatUsers.get(it.id);
+      if (user && user !== id) return false;
+      this.seatUsers.set(it.id, id);
+    }
+    h.seat = it.id;
+    const a = h.actor;
+    if (it.kind === 'arcade') {
+      a.stand({ x: it.x, y: it.y, tile: it.approach, facing: 'up' });
+      a.standAnim = 'stand_play_back';
+      a.scheduler.current = IDLE_INTENT;
+    } else {
+      a.sit({ x: it.x, y: it.y, tile: it.approach, facing: it.facing === 'up' ? 'up' : 'down', z: it.z });
+      a.scheduler.current = it.kind === 'desk' ? TYPING_INTENT : IDLE_INTENT;
+    }
+    return true;
+  }
+
+  /** Gets up from whatever the person is using and stands in front of it. */
+  private vacate(h: Human, id: string) {
+    if (!h.seat) return;
+    const it = this.interactables.find((i) => i.id === h.seat);
+    if (it?.kind === 'desk') {
+      const station = this.stations.find((s) => s.ws.id === it.workstationId);
+      if (station?.occupant === id) station.occupant = undefined;
+    } else if (this.seatUsers.get(h.seat) === id) this.seatUsers.delete(h.seat);
+    h.seat = undefined;
+    h.actor.standAnim = undefined;
+    h.actor.scheduler.current = IDLE_INTENT;
+    if (it) h.actor.stand({ x: it.approach.x * TILE + TILE / 2, y: it.approach.y * TILE + 12, tile: it.approach, facing: 'down' });
+  }
+
+  private playerClick(tile: TilePoint) {
+    const h = this.player;
+    if (!h || this.edit) return;
+    const it = interactableAt(this.interactables, tile);
+    if (it) return this.playerUse(it);
+    if (!this.nav.isWalkable(tile.x, tile.y)) return;
+    this.vacate(h, PLAYER_ID);
+    h.pending = undefined;
+    h.actor.walkTo(this.nav, tile, 'player', [tile]);
+  }
+
+  private playerUse(it: Interactable) {
+    const h = this.player;
+    if (!h) return;
+    if (h.seat === it.id) {
+      this.vacate(h, PLAYER_ID);
+      return;
+    }
+    const occupant = this.occupantOf(it);
+    if (occupant && occupant !== PLAYER_ID && !this.actors.has(occupant)) return; // a teammate is using it
+    if (occupant && this.actors.has(occupant)) return; // an agent is working there
+    this.vacate(h, PLAYER_ID);
+    h.pending = it.id;
+    const t = h.actor.tile();
+    if (t.x === it.approach.x && t.y === it.approach.y) this.arrive(h);
+    else h.actor.walkTo(this.nav, it.approach, 'player', [it.approach]);
+  }
+
+  /** E: use the nearest thing within reach, or get up. */
+  private playerInteract() {
+    const h = this.player;
+    if (!h?.actor.isVisible) return;
+    if (h.seat) {
+      this.vacate(h, PLAYER_ID);
+      return;
+    }
+    const t = h.actor.tile();
+    const near = this.interactables
+      .map((it) => ({ it, d: Math.max(Math.abs(it.approach.x - t.x), Math.abs(it.approach.y - t.y)) }))
+      .filter((c) => c.d <= 1 && !this.occupantOf(c.it))
+      .sort((a, b) => a.d - b.d)[0];
+    if (near) this.playerUse(near.it);
+  }
+
+  private arrive(h: Human) {
+    h.actor.halt();
+    const id = h.pending;
+    h.pending = undefined;
+    const it = id ? this.interactables.find((i) => i.id === id) : undefined;
+    if (it && (!this.occupantOf(it) || this.occupantOf(it) === PLAYER_ID)) this.occupy(h, PLAYER_ID, it);
+  }
+
+  private updatePlayer(dt: number) {
+    const h = this.player;
+    if (!h) return;
+    const a = h.actor;
+    let dx = 0;
+    let dy = 0;
+    for (const k of this.keys) {
+      const v = MOVE_KEYS[k];
+      if (v) {
+        dx += v[0];
+        dy += v[1];
+      }
+    }
+    if ((dx || dy) && !this.edit) {
+      if (h.seat) this.vacate(h, PLAYER_ID);
+      h.pending = undefined;
+      const len = Math.hypot(dx, dy);
+      let x = a.x;
+      let y = a.y;
+      // Small sub-steps so a long frame can't carry you through thin furniture.
+      let remaining = (PLAYER_SPEED * dt) / 1000;
+      while (remaining > 0) {
+        const step = Math.min(2, remaining);
+        remaining -= step;
+        const nx = x + (dx / len) * step;
+        const ny = y + (dy / len) * step;
+        const stuck = !this.freeAt(x, y);
+        if (stuck || this.freeAt(nx, y)) x = nx;
+        if (stuck || this.freeAt(x, ny)) y = ny;
+      }
+      const facing: Facing = dx ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
+      a.stepTo(x, y, facing);
+      this.keyMoving = true;
+      if (this.followId !== PLAYER_ID) {
+        this.followId = PLAYER_ID;
+        this.emitCamera();
+      }
+      return;
+    }
+    if (this.keyMoving) {
+      this.keyMoving = false;
+      a.halt();
+    }
+    if (a.move(dt) === 'arrived' && a.arrivedKind === 'player') this.arrive(h);
+  }
+
+  private updatePeer(id: string, h: Human, dt: number) {
+    const p = h.target;
+    const a = h.actor;
+    if (!p) {
+      if (a.isVisible) {
+        this.vacate(h, id);
+        a.hide();
+      }
+      return;
+    }
+    const it = p.seat && p.pose !== 'walk' && p.pose !== 'stand' ? this.interactables.find((i) => i.id === p.seat) : undefined;
+    if (it) {
+      if (h.seat === it.id) return;
+      this.vacate(h, id);
+      if (!a.isVisible) a.spawnAt(it);
+      if (this.occupy(h, id, it)) return;
+    } else if (h.seat) this.vacate(h, id);
+    if (!a.isVisible) {
+      a.spawnAt(p);
+      a.halt(p.facing);
+    }
+    const dx = p.x - a.x;
+    const dy = p.y - a.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 96) {
+      a.stand({ x: p.x, y: p.y, tile: { x: Math.floor(p.x / TILE), y: Math.floor((p.y - 4) / TILE) }, facing: p.facing });
+      return;
+    }
+    if (dist < 0.5) {
+      if (p.pose === 'walk') a.stepTo(p.x, p.y, p.facing);
+      else if (a.isWalking || a.currentFacing !== p.facing) a.halt(p.facing);
+      return;
+    }
+    const step = Math.min(dist, (PEER_SPEED * dt) / 1000);
+    const facing: Facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
+    a.stepTo(a.x + (dx / dist) * step, a.y + (dy / dist) * step, facing);
   }
 
   /** World → host-element coordinates of an agent's head, for DOM popovers. */
@@ -883,8 +1291,9 @@ export class OfficeWorld {
 
   destroy() {
     this.destroyed = true;
+    this.removeKeyListeners?.();
     if (!this.initialized) return;
-    for (const a of this.actors.values()) a.destroy();
+    for (const a of [...this.actors.values(), ...this.humanActors()]) a.destroy();
     this.actors.clear();
     this.app.destroy(true, { children: true });
   }

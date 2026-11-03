@@ -8,6 +8,7 @@ import { OfficeEditor } from './OfficeEditor';
 import { useEditor } from './editorStore';
 import { useGuide } from '../guide/guideStore';
 import { worldApi } from './worldApi';
+import { useTeam } from '../../team/teamStore';
 
 export function OfficeView() {
   const { t } = useTranslation();
@@ -20,6 +21,8 @@ export function OfficeView() {
   const [camera, setCamera] = useState<CameraState>({ zoom: 3 });
   const [paused, setPaused] = useState(false);
   const editing = useEditor((s) => s.active);
+  // In a team office the floor is shared; the setup card would cover teammates.
+  const inTeam = useTeam((s) => s.status === 'online');
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -47,7 +50,8 @@ export function OfficeView() {
         )}
 
         <OfficeEditor />
-        {mode === 'live' && agentCount === 0 && !editing && <LiveEmptyState link={link} hooksReady={!!hooks?.installed && !hooks.stale} />}
+        {!editing && <WalkHints />}
+        {mode === 'live' && agentCount === 0 && !editing && !inTeam && <LiveEmptyState link={link} hooksReady={!!hooks?.installed && !hooks.stale} />}
 
         {/* camera + mode toolbar */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
@@ -174,6 +178,45 @@ function LiveEmptyState({ link, hooksReady }: { link: 'offline' | 'connecting' |
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+const HINTS_KEY = 'agentville.hints.walk';
+
+/** How to move your own character; hidden once dismissed. */
+function WalkHints() {
+  const { t } = useTranslation('team');
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(HINTS_KEY) === 'hidden';
+    } catch {
+      return false;
+    }
+  });
+  if (hidden) return null;
+  return (
+    <div className="absolute bottom-3 left-3 max-w-[300px] rounded-lg bg-panel/90 px-3 py-2 text-[11.5px] leading-relaxed text-muted shadow-lg ring-1 ring-line-strong backdrop-blur">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-semibold text-fg">{t('hints.title')}</span>
+        <button
+          onClick={() => {
+            setHidden(true);
+            try {
+              localStorage.setItem(HINTS_KEY, 'hidden');
+            } catch {
+              // fine: hidden for this session
+            }
+          }}
+          className="text-[11px] text-faint hover:text-fg"
+        >
+          {t('hints.dismiss')}
+        </button>
+      </div>
+      <p>
+        <kbd className="rounded bg-ink/70 px-1 font-mono text-[10.5px] text-fg ring-1 ring-line">W A S D</kbd> {t('hints.move')}
+      </p>
+      <p>{t('hints.use')}</p>
     </div>
   );
 }

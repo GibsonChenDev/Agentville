@@ -13,6 +13,8 @@ const LOCALES: { id: LocalePreference; key: string }[] = [
 ];
 
 const SHORTCUTS: [string, string][] = [
+  ['W A S D', 'walk'],
+  ['E', 'interact'],
   ['+ / −', 'zoom'],
   ['← ↑ → ↓', 'pan'],
   ['F', 'follow'],

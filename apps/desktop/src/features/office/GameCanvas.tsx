@@ -1,11 +1,53 @@
+import { appearanceFromSeed, sanitizeAppearance, type AgentRecord } from '@agentville/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OfficeWorld, type CameraState, type WorldAgent } from '../../game/engine/OfficeWorld';
+import { OfficeWorld, type CameraState, type HumanInfo, type PeerInfo, type WorldAgent } from '../../game/engine/OfficeWorld';
 import { i18n } from '../../i18n';
 import { STATUS_TONE, currentCategory } from '../../presentation/status';
 import { inMode, sceneFor, useApp, type AppState } from '../../state/store';
+import { usePlayer } from '../../team/playerStore';
+import { team } from '../../team/teamClient';
+import { onlinePeers, useTeam, type TeamState } from '../../team/teamStore';
 import { canPlace, useEditor } from './editorStore';
 import { worldApi } from './worldApi';
+
+/** Teammates' agents: anonymous characters at desks. Only their number is known. */
+function peerAgents(team: TeamState): WorldAgent[] {
+  const t = i18n.t.bind(i18n);
+  const out: WorldAgent[] = [];
+  for (const m of onlinePeers(team)) {
+    for (let i = 0; i < m.agents; i++) {
+      const id = `peer:${m.id}:${i}`;
+      const record: AgentRecord = { id, name: t('team:agentOf', { name: m.name }), role: 'generalist', origin: 'external', kind: 'agent', appearance: appearanceFromSeed(id), createdAt: i };
+      // Alternate screens so a row of teammates' agents doesn't look cloned; both read as "working".
+      out.push({ record, status: i % 2 ? 'executing_tool' : 'writing', badge: { name: record.name, status: t('team:working'), tone: 'busy' } });
+    }
+  }
+  return out;
+}
+
+function peers(team: TeamState): PeerInfo[] {
+  const t = i18n.t.bind(i18n);
+  return onlinePeers(team).map((m) => ({
+    id: `peer:${m.id}`,
+    name: m.name,
+    appearance: sanitizeAppearance(m.appearance, appearanceFromSeed(m.id)),
+    presence: m.presence,
+    badge: {
+      name: m.name,
+      status: m.agents ? t('team:agentsWorking', { count: m.agents }) : t('team:noAgents'),
+      tone: m.agents ? 'busy' : 'neutral',
+      subtitle: m.agents ? t('team:agentsShort', { count: m.agents }) : undefined,
+    },
+  }));
+}
+
+function playerInfo(): HumanInfo {
+  const t = i18n.t.bind(i18n);
+  const p = usePlayer.getState();
+  const name = p.name || t('team:you');
+  return { name, appearance: p.appearance, badge: { name, status: t('team:youHint'), tone: 'neutral' } };
+}
 
 function worldAgents(s: AppState): WorldAgent[] {
   const t = i18n.t.bind(i18n);
@@ -40,11 +82,16 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
     const world = new OfficeWorld({
       onSelect: (id) => useApp.getState().select(id),
       onCamera,
+      onPresence: (p) => team.sendPresence(p),
+      onPlayerClick: () => usePlayer.getState().openEditor(true),
     });
     let cancelled = false;
     const push = () => {
       const s = useApp.getState();
-      world.sync(worldAgents(s), s.selectedAgentId, { reduceMotion: s.prefs.reduceMotion, alwaysShowLabels: s.prefs.alwaysShowLabels });
+      const teamState = useTeam.getState();
+      world.sync([...worldAgents(s), ...peerAgents(teamState)], s.selectedAgentId, { reduceMotion: s.prefs.reduceMotion, alwaysShowLabels: s.prefs.alwaysShowLabels });
+      world.syncPeers(peers(teamState));
+      world.setPlayer(playerInfo());
     };
     const initial = useApp.getState();
     world
@@ -59,12 +106,12 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
         push();
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-    const unsub = useApp.subscribe(push);
+    const unsubs = [useApp.subscribe(push), useTeam.subscribe(push), usePlayer.subscribe(push)];
     // Renderer labels come from the same i18n source and refresh on language change.
     i18n.on('languageChanged', push);
     return () => {
       cancelled = true;
-      unsub();
+      for (const u of unsubs) u();
       i18n.off('languageChanged', push);
       worldApi.current = null;
       world.destroy();

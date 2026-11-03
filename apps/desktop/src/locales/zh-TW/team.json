@@ -1,0 +1,84 @@
+{
+  "you": "你",
+  "youHint": "這是你 · 點擊可更換造型",
+  "agentOf": "{{name}} 的 agent",
+  "working": "工作中",
+  "noAgents": "沒有執行中的 agent",
+  "agentsWorking_one": "{{count}} 個 agent 工作中",
+  "agentsWorking_other": "{{count}} 個 agent 工作中",
+  "agentsShort_one": "🤖 {{count}}",
+  "agentsShort_other": "🤖 {{count}}",
+  "sectionTitle": "團隊辦公室",
+  "status": {
+    "idle": "未連線",
+    "connecting": "連線中…",
+    "online": "在線",
+    "reconnecting": "重新連線中…",
+    "offline": "離線"
+  },
+  "panel": {
+    "pitch": "和團隊共用這間辦公室：看到彼此走動，以及每個人有幾個 agent 在工作。你的 prompt、檔案與工具內容都只留在你的電腦上。",
+    "create": "建立",
+    "join": "加入",
+    "editMe": "我的人物",
+    "connectingName": "團隊辦公室",
+    "reconnect": "重試",
+    "inviteCode": "邀請代碼 — 分享給隊友",
+    "copy": "複製",
+    "copied": "已複製",
+    "rotate": "產生新代碼（舊代碼會失效）",
+    "ownerHint": "辦公室建立者",
+    "privacy": "隊友只看得到你的人物，以及你執行中的 agent 數量。",
+    "leave": "離開",
+    "confirmLeave": "確定離開辦公室？"
+  },
+  "dialog": {
+    "createTitle": "建立團隊辦公室",
+    "createBody": "建立後會得到一組邀請代碼，分享給隊友。所有加入的人都會看到同一間辦公室。",
+    "joinTitle": "加入團隊辦公室",
+    "joinBody": "輸入隊友分享給你的邀請代碼。只需要輸入一次。",
+    "roomName": "團隊名稱",
+    "roomNamePlaceholder": "例如：App 團隊",
+    "code": "邀請代碼",
+    "nickname": "你的暱稱",
+    "nicknamePlaceholder": "隊友看到的名字",
+    "showServer": "伺服器設定",
+    "hideServer": "隱藏伺服器設定",
+    "server": "轉發伺服器",
+    "serverHint": "除非你的團隊自架伺服器，否則保持預設即可。",
+    "serverRequired": "請輸入團隊的轉發伺服器網址（部署方式見 docs/TEAM.md）。",
+    "serverInvalid": "請使用 https:// 開頭的網址（http:// 只限 127.0.0.1）。",
+    "privacy": "🔒 會分享給團隊：你的暱稱、人物造型與位置，以及你有幾個 agent 在執行。絕不分享：prompt、檔案、工具、專案路徑或任何 Claude Code 內容。",
+    "createCta": "建立辦公室",
+    "joinCta": "加入",
+    "working": "連線中…"
+  },
+  "editor": {
+    "title": "我的人物",
+    "body": "這是辦公室裡的你。在團隊辦公室中，隊友會看到這個造型與暱稱。"
+  },
+  "card": {
+    "memberPrivate": "{{name}} 的 Claude Code 活動是私人的。你只能看到他的人物，以及他有幾個 agent 在執行。",
+    "agentPrivate": "這是 {{name}} 的 agent。它在做什麼只有 {{name}} 看得到。"
+  },
+  "hints": {
+    "title": "四處走走",
+    "move": "WASD 或點擊地板走路",
+    "use": "點擊椅子、沙發或遊戲機來使用 · 按 E 使用／起身",
+    "dismiss": "隱藏"
+  },
+  "error": {
+    "network": "無法連到轉發伺服器，請檢查網路與伺服器網址。",
+    "server": "轉發伺服器發生問題，請稍後再試。",
+    "no_server": "請先設定轉發伺服器網址。",
+    "invalid_code": "找不到這組邀請代碼對應的團隊辦公室。",
+    "room_full": "這間團隊辦公室已滿。",
+    "rate_limited": "錯誤代碼輸入太多次，請等幾分鐘再試。",
+    "bad_request": "請確認輸入的名稱。",
+    "unauthorized": "這間團隊辦公室已不存在，或你的成員資格已結束。",
+    "forbidden": "只有建立辦公室的人可以這麼做。",
+    "not_found": "轉發伺服器無法辨識這個請求，網址正確嗎？",
+    "removed": "你已離開團隊辦公室。",
+    "version": "這個 Agentville 版本太舊，無法連到團隊伺服器，請更新。"
+  }
+}

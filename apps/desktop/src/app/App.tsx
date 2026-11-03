@@ -10,6 +10,9 @@ import { startHistory } from '../persistence/historyRecorder';
 import { startAlerts } from '../features/alerts/alerts';
 import { Welcome } from '../features/onboarding/Welcome';
 import { GuideDialog } from '../features/guide/GuideDialog';
+import { PlayerEditor } from '../features/team/PlayerEditor';
+import { TeamDialog } from '../features/team/TeamDialog';
+import { team } from '../team/teamClient';
 import { useApp } from '../state/store';
 import { useShortcuts } from './useShortcuts';
 
@@ -22,6 +25,7 @@ export function App() {
       .then(() => startHistory());
     void bridge.start();
     startAlerts();
+    team.start();
   }, []);
   useEffect(() => {
     const id = setInterval(() => useApp.getState().sweepStale(Date.now()), 30_000);
@@ -41,6 +45,8 @@ export function App() {
       <CharacterEditor />
       <Welcome />
       <GuideDialog />
+      <TeamDialog />
+      <PlayerEditor />
     </div>
   );
 }

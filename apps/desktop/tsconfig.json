@@ -16,6 +16,9 @@
     },
     {
       "path": "../../packages/claude-integration"
+    },
+    {
+      "path": "../../packages/team-protocol"
     }
   ]
 }

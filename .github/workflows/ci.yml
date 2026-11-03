@@ -30,3 +30,19 @@ jobs:
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
       - name: Production web build
         run: npm run build
+
+  relay:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/relay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/relay/package-lock.json
+      - run: npm ci
+      - name: Typecheck the Worker against the Cloudflare runtime types
+        run: npm run typecheck

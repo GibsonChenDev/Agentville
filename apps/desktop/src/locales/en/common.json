@@ -87,6 +87,8 @@
     "justNow": "just now"
   },
   "shortcuts": {
+    "walk": "Walk your character",
+    "interact": "Use a chair, sofa or arcade / get up",
     "title": "Keyboard shortcuts",
     "zoom": "Zoom in / out",
     "pan": "Pan camera",

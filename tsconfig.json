@@ -8,6 +8,9 @@
       "path": "packages/claude-integration"
     },
     {
+      "path": "packages/team-protocol"
+    },
+    {
       "path": "apps/desktop"
     }
   ]

@@ -1,0 +1,84 @@
+{
+  "you": "you",
+  "youHint": "That's you · click to change your look",
+  "agentOf": "{{name}}'s agent",
+  "working": "Working",
+  "noAgents": "No agents running",
+  "agentsWorking_one": "{{count}} agent working",
+  "agentsWorking_other": "{{count}} agents working",
+  "agentsShort_one": "🤖 {{count}}",
+  "agentsShort_other": "🤖 {{count}}",
+  "sectionTitle": "Team office",
+  "status": {
+    "idle": "Disconnected",
+    "connecting": "Connecting…",
+    "online": "Online",
+    "reconnecting": "Reconnecting…",
+    "offline": "Offline"
+  },
+  "panel": {
+    "pitch": "Share this office with your team: see each other walk around and how many agents everyone has working. Your prompts, files and tools stay on your computer.",
+    "create": "Create",
+    "join": "Join",
+    "editMe": "My character",
+    "connectingName": "Team office",
+    "reconnect": "Try again",
+    "inviteCode": "Invite code — share it with teammates",
+    "copy": "Copy",
+    "copied": "Copied",
+    "rotate": "Generate a new code (the old one stops working)",
+    "ownerHint": "Created this office",
+    "privacy": "Teammates only see your character and your number of running agents.",
+    "leave": "Leave",
+    "confirmLeave": "Leave this office?"
+  },
+  "dialog": {
+    "createTitle": "Create a team office",
+    "createBody": "You'll get an invite code to share. Everyone who joins sees the same office.",
+    "joinTitle": "Join a team office",
+    "joinBody": "Enter the invite code a teammate shared with you. You only need to do this once.",
+    "roomName": "Team name",
+    "roomNamePlaceholder": "e.g. App team",
+    "code": "Invite code",
+    "nickname": "Your nickname",
+    "nicknamePlaceholder": "How teammates will see you",
+    "showServer": "Server settings",
+    "hideServer": "Hide server settings",
+    "server": "Relay server",
+    "serverHint": "Leave as is unless your team runs its own relay.",
+    "serverRequired": "Enter your team's relay address (see docs/TEAM.md to deploy one).",
+    "serverInvalid": "Use an https:// address (http:// is allowed only for 127.0.0.1).",
+    "privacy": "🔒 Shared with the team: your nickname, your character and where it stands, and how many of your agents are running. Never shared: prompts, files, tools, project paths or anything else from Claude Code.",
+    "createCta": "Create office",
+    "joinCta": "Join",
+    "working": "Connecting…"
+  },
+  "editor": {
+    "title": "My character",
+    "body": "This is you in the office. In a team office your teammates see this look and nickname."
+  },
+  "card": {
+    "memberPrivate": "{{name}}'s Claude Code activity is private. You can see their character and how many agents they have running.",
+    "agentPrivate": "This is one of {{name}}'s agents. What it's working on stays private to {{name}}."
+  },
+  "hints": {
+    "title": "Walk around",
+    "move": "WASD or click the floor to walk",
+    "use": "Click a chair, sofa or arcade to use it · E to use / get up",
+    "dismiss": "Hide"
+  },
+  "error": {
+    "network": "Couldn't reach the relay server. Check your connection and the server address.",
+    "server": "The relay server had a problem. Try again in a moment.",
+    "no_server": "Set the relay server address first.",
+    "invalid_code": "That invite code doesn't match any team office.",
+    "room_full": "That team office is full.",
+    "rate_limited": "Too many wrong codes. Wait a few minutes and try again.",
+    "bad_request": "Please check the names you entered.",
+    "unauthorized": "This team office no longer exists or your membership ended.",
+    "forbidden": "Only the person who created the office can do that.",
+    "not_found": "The relay server doesn't recognise this request — is the address right?",
+    "removed": "You left the team office.",
+    "version": "This version of Agentville is too old for the team server. Please update."
+  }
+}

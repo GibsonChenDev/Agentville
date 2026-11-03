@@ -32,6 +32,12 @@ Monitor Mode also shows real coordination, still without an API key:
 - **Git worktrees**: sessions are grouped by repository with their branch; worktrees are marked.
 - **Conflicts**: two sessions editing the same file in one working tree within 10 minutes raise a warning.
 
+## Team office ／ 團隊辦公室
+
+Share one office with your team: everyone walks around as their own character (W A S D or click the floor; sit at desks, on sofas and beanbags, play the arcade) and sees how many agents each teammate has working, as anonymous characters at desks. Prompts, files and tools never leave your computer — only your nickname, look, position and agent **count** are shared.
+
+Sidebar → **Team office / 團隊辦公室** → **Create / 建立** (you get an invite code such as `AGV-7K3P-Q9M2`) or **Join / 加入** (enter a teammate's code once). It runs on a small Cloudflare relay in `server/relay`; see [docs/TEAM.md](docs/TEAM.md) for privacy details and how to deploy your own.
+
 ## Customizing ／ 自訂
 
 - **Characters / 角色**: select someone → **Customize outfit / 自訂服裝**. Hair, skin, outfit, accessory, desk equipment and preferred desk, with a live animated preview. Customizations follow the project folder, so every new session in that project keeps the look.
@@ -82,4 +88,4 @@ docs/                    Architecture, art direction, localization, integration,
 
 ## Keyboard
 
-`+`/`−` zoom · arrows pan · `F` follow selected · `]` next agent · `Esc` deselect · `` ` `` activity log · `⌘,` settings. Trackpad: two-finger pan, pinch to zoom.
+`W A S D` walk · `E` use / get up · `+`/`−` zoom · arrows pan · `F` follow selected · `]` next agent · `Esc` deselect · `` ` `` activity log · `⌘,` settings. Trackpad: two-finger pan, pinch to zoom.

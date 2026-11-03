@@ -46,6 +46,8 @@ export interface AppState {
   collab: CollabState;
   /** User-edited office layouts; themes without one use the default scene. */
   layouts: Partial<Record<Theme, SceneDefinition>>;
+  /** While in a team office: the team's shared layouts, which replace the local ones. */
+  teamLayouts?: Partial<Record<Theme, SceneDefinition>>;
   persistenceError?: string;
   runtime: Record<string, AgentRuntime>;
   /** Append-only, bounded event log (newest last). */
@@ -187,11 +189,24 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   saveLayout: async (theme, scene) => {
+    const team = get().teamLayouts;
+    if (team) {
+      set({ teamLayouts: { ...team, [theme]: scene } });
+      layoutSink.current?.(theme, scene);
+      return;
+    }
     set((s) => ({ layouts: { ...s.layouts, [theme]: scene } }));
     await repository.putLayout(theme, toLayoutDoc(scene));
   },
 
   resetLayout: async (theme) => {
+    const team = get().teamLayouts;
+    if (team) {
+      const { [theme]: _removed, ...rest } = team;
+      set({ teamLayouts: rest });
+      layoutSink.current?.(theme, null);
+      return;
+    }
     set((s) => {
       const { [theme]: _removed, ...layouts } = s.layouts;
       return { layouts };
@@ -389,8 +404,12 @@ function effective(base: Record<string, AgentRecord>, profiles: Record<string, A
   return Object.fromEntries(Object.entries(base).map(([id, a]) => [id, applyProfile(a, profiles[profileKeyFor(a)])]));
 }
 
-/** The office layout currently in effect for a theme. */
-export function sceneFor(s: Pick<AppState, 'layouts'>, theme: Theme): SceneDefinition {
+/** Where layout edits go while in a team office (set by the team client). */
+export const layoutSink: { current?: (theme: Theme, scene: SceneDefinition | null) => void } = {};
+
+/** The office layout currently in effect for a theme: the team's while in a team office. */
+export function sceneFor(s: Pick<AppState, 'layouts' | 'teamLayouts'>, theme: Theme): SceneDefinition {
+  if (s.teamLayouts) return s.teamLayouts[theme] ?? DEFAULT_SCENES[theme];
   return s.layouts[theme] ?? DEFAULT_SCENES[theme];
 }
 

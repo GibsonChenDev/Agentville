@@ -43,6 +43,7 @@ const TONE_COLORS: Record<BadgeInfo['tone'], number> = {
 const FONT = '-apple-system, "SF Pro Text", "Segoe UI", "PingFang TC", "Heiti TC", "Microsoft JhengHei UI", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif';
 
 type Phase = 'hidden' | 'walking' | 'seated' | 'standing' | 'leaving';
+type Destination = 'seat' | 'spot' | 'door' | 'player';
 
 export class CharacterActor {
   readonly root = new Container();
@@ -62,7 +63,7 @@ export class CharacterActor {
   private path: { x: number; y: number }[] = [];
   private phase: Phase = 'hidden';
   private facing: Facing = 'down';
-  private destination: 'seat' | 'spot' | 'door' | null = null;
+  private destination: Destination | null = null;
   private anim: AnimName = 'idle_front';
   private animStart = 0;
   private iconKind: IconKind | null = null;
@@ -71,6 +72,10 @@ export class CharacterActor {
   selected = false;
   hovered = false;
   showStatus = false;
+  /** Standing animation that replaces the intent-driven one (e.g. playing the arcade). */
+  standAnim?: AnimName;
+  /** People (you and teammates) don't get the floating activity icon agents have. */
+  hideIcon = false;
   record: AgentRecord;
 
   constructor(
@@ -134,7 +139,7 @@ export class CharacterActor {
     this.root.alpha = 1;
   }
 
-  walkTo(nav: NavGrid, target: TilePoint, kind: 'seat' | 'spot' | 'door', allow: TilePoint[]) {
+  walkTo(nav: NavGrid, target: TilePoint, kind: Destination, allow: TilePoint[]) {
     const from = this.tile();
     const start = nav.isWalkable(from.x, from.y) ? from : (nav.nearestWalkable(from) ?? from);
     const tiles = nav.findPath(start, target, [...allow, start]);
@@ -187,6 +192,29 @@ export class CharacterActor {
     return null;
   }
 
+  /** Direct control (keyboard): moves to (x, y) this frame, animating a walk. */
+  stepTo(x: number, y: number, facing: Facing) {
+    this.path = [];
+    this.destination = null;
+    this.settle = undefined;
+    this.x = x;
+    this.y = y;
+    this.facing = facing;
+    this.phase = 'walking';
+  }
+
+  /** Stops walking where the character is. */
+  halt(facing?: Facing) {
+    this.path = [];
+    this.destination = null;
+    if (facing) this.facing = facing;
+    if (this.phase !== 'hidden') this.phase = 'standing';
+  }
+
+  get currentFacing() {
+    return this.facing;
+  }
+
   get arrivedKind() {
     return this.destination;
   }
@@ -235,6 +263,8 @@ export class CharacterActor {
       const view = this.facing === 'up' ? 'back' : 'front';
       const activity: Activity = intent.activity === 'talk' ? 'idle' : intent.activity;
       anim = `sit_${view}_${activity}` as AnimName;
+    } else if (this.standAnim) {
+      anim = this.standAnim;
     } else if (intent.place === 'meeting') {
       anim = sideDir ? 'stand_talk_side' : this.facing === 'up' ? 'stand_talk_back' : 'stand_talk_front';
       flip = this.facing === 'right';
@@ -277,7 +307,7 @@ export class CharacterActor {
     this.ring.position.set(0, this.phase === 'seated' ? -2 : 0);
 
     // floating activity icon
-    const kind = this.phase === 'walking' || this.phase === 'leaving' ? null : iconForActivity(intent.activity, intent.screen);
+    const kind = this.hideIcon || this.phase === 'walking' || this.phase === 'leaving' ? null : iconForActivity(intent.activity, intent.screen);
     if (kind !== this.iconKind) {
       this.iconKind = kind;
       this.icon.texture = kind ? this.world.icons[kind] : Texture.EMPTY;

@@ -6,6 +6,7 @@ import { useApp } from '../../state/store';
 import { Portrait } from './Portrait';
 import { StatusDot } from './StatusDot';
 import { ConflictWarnings } from './TeamPanels';
+import { PeerCard } from '../team/PeerCard';
 
 const ORIGIN_STYLE = {
   managed: 'bg-teal/15 text-teal ring-teal/30',
@@ -42,6 +43,7 @@ export function Inspector() {
     return undefined;
   }, [events, id]);
 
+  if (id?.startsWith('peer:')) return <PeerCard worldId={id} width={width} />;
   if (!agent || !runtime) {
     return (
       <aside className="flex h-full shrink-0 flex-col items-center justify-center border-l border-line bg-panel px-8 text-center" style={{ width }}>

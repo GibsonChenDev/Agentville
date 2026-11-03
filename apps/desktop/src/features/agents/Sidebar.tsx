@@ -9,6 +9,7 @@ import { useEditor } from '../office/editorStore';
 import { useGuide } from '../guide/guideStore';
 import { isMac } from '../../integration/platform';
 import { Portrait } from './Portrait';
+import { TeamPanel } from '../team/TeamPanel';
 import { StatusDot } from './StatusDot';
 import { AgentChips, ConflictWarnings, ObservedTasks, projectKey, projectLabel, sharedTreeCount } from './TeamPanels';
 
@@ -69,11 +70,8 @@ export function Sidebar() {
       </div>
 
       <div className="scroll-thin flex-1 overflow-y-auto pb-3">
-        <SectionTitle>{t('sidebar.workspace')}</SectionTitle>
-        <div className="mx-2 mb-4 flex items-center gap-2 rounded-md bg-panel-2 px-2.5 py-1.5 text-[12.5px]">
-          <span className="h-2 w-2 rounded-sm bg-amber" aria-hidden />
-          <span className="truncate">{t('sidebar.defaultWorkspace')}</span>
-        </div>
+        <SectionTitle>{t('team:sectionTitle')}</SectionTitle>
+        <TeamPanel />
 
         <SectionTitle>{t('sidebar.office')}</SectionTitle>
         <div className="mb-4 grid gap-1.5 px-2" role="radiogroup" aria-label={t('sidebar.office')}>

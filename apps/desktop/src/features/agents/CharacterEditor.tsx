@@ -37,7 +37,7 @@ const SWATCHES: Partial<Record<keyof CharacterAppearance, Record<string, string>
 const swatchNs = (field: keyof CharacterAppearance) => (field === 'skin' ? 'skin' : field === 'hairColor' ? 'hairColor' : 'color');
 
 /** Animated pixel preview of an appearance, drawn at an integer scale. */
-function Preview({ appearance, anim, scale = 6 }: { appearance: CharacterAppearance; anim: AnimName; scale?: number }) {
+export function Preview({ appearance, anim, scale = 6 }: { appearance: CharacterAppearance; anim: AnimName; scale?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const sheet = useMemo(() => buildCharacterSheet(appearance), [appearance]);
   useEffect(() => {
@@ -79,7 +79,7 @@ function EquipmentPreview({ appearance }: { appearance: CharacterAppearance }) {
   return <img src={url} width={34 * 3} height={40 * 3} alt="" className="pixelated" />;
 }
 
-function OptionRow<K extends keyof CharacterAppearance>({ field, value, onChange }: { field: K; value: CharacterAppearance[K]; onChange: (v: CharacterAppearance[K]) => void }) {
+export function OptionRow<K extends keyof CharacterAppearance>({ field, value, onChange }: { field: K; value: CharacterAppearance[K]; onChange: (v: CharacterAppearance[K]) => void }) {
   const { t } = useTranslation('agents');
   const options = APPEARANCE_OPTIONS[field] as readonly CharacterAppearance[K][];
   const swatch = SWATCHES[field];
@@ -116,7 +116,7 @@ function OptionRow<K extends keyof CharacterAppearance>({ field, value, onChange
   );
 }
 
-const FIELD_GROUPS: (keyof CharacterAppearance)[][] = [
+export const FIELD_GROUPS: (keyof CharacterAppearance)[][] = [
   ['hairStyle', 'hairColor', 'skin', 'face'],
   ['top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'shoesColor', 'accessory'],
 ];
