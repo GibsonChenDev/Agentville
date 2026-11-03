@@ -1,0 +1,52 @@
+{
+  "title": "商店",
+  "howToEarn": "你的 agent 會幫你賺金幣：每完成一次回覆 +{{perTurn}}，使用工具另有加成（每天最多 {{cap}}）。",
+  "today": "今日已賺：{{today}} / {{cap}}",
+  "offline": "目前連不到伺服器。恢復連線後就能看到金幣與購買項目。",
+  "tab": {
+    "look": "造型",
+    "decor": "辦公室裝飾"
+  },
+  "colorItem": "{{color}}服裝配色",
+  "wear": "穿上",
+  "wearing": "穿著中",
+  "place": "擺到辦公室",
+  "placeFromOffice": "進入辦公室後才能擺放",
+  "locked": "未解鎖",
+  "lockedHint": "用 agent 賺來的金幣在商店購買",
+  "wallet": {
+    "title": "金幣 · 今日已賺 {{today}} / {{cap}} · 點擊打開商店",
+    "offline": "金幣（離線）",
+    "shop": "商店"
+  },
+  "account": {
+    "coins": "金幣",
+    "codeTitle": "復原碼",
+    "codeBody": "你的帳號沒有密碼——這組代碼就是鑰匙。它保存你的人物、金幣、購買項目、團隊辦公室與遊戲紀錄。在另一台電腦（或重灌後）輸入它，就能把一切找回來。",
+    "codeWarning": "請存放在安全的地方（例如密碼管理器）。拿到代碼的人就能使用你的帳號；遺失後無法找回。",
+    "creating": "正在建立你的帳號…",
+    "show": "顯示",
+    "hide": "隱藏",
+    "copy": "複製",
+    "copied": "已複製",
+    "restoreTitle": "使用既有帳號",
+    "restoreBody": "貼上你在另一台電腦的復原碼，這台電腦就會切換到那個帳號。",
+    "restore": "復原",
+    "restored": "帳號已復原。"
+  },
+  "error": {
+    "network": "連不到伺服器。",
+    "server": "伺服器發生問題，請再試一次。",
+    "no_server": "尚未設定伺服器。",
+    "insufficient_funds": "金幣還不夠。",
+    "owned": "你已經擁有這個項目。",
+    "unknown_item": "這個項目已停售。",
+    "unauthorized": "找不到這組復原碼對應的帳號。",
+    "bad_request": "請求內容有誤。",
+    "rate_limited": "嘗試太多次，請稍候。",
+    "invalid_code": "代碼無效。",
+    "room_full": "已滿。",
+    "forbidden": "沒有權限。",
+    "not_found": "找不到。"
+  }
+}

@@ -764,6 +764,67 @@ function drawAccessory(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       }
       return;
     }
+    case 'flower': {
+      // A blossom tucked over the left ear.
+      const petal = '#ff8fb8';
+      const fx = pose.view === 'side' ? x0 + 8 : pose.view === 'back' ? x0 + 9 : x0;
+      const fy = y0 + 1;
+      for (const [dx, dy2] of [
+        [1, 0],
+        [0, 1],
+        [2, 1],
+        [1, 2],
+      ] as const)
+        pc.px(fx + dx, fy + dy2, petal);
+      pc.px(fx + 1, fy + 1, '#ffd166');
+      pc.px(fx + 2, fy + 3, '#5c9e5a');
+      return;
+    }
+    case 'cat_ears': {
+      const fur = shade(r.hair, 0.05);
+      const inner = '#f2a3b5';
+      const ears = pose.view === 'side' ? [x0 + 5] : [x0 + 1, x0 + 8];
+      for (const ex of ears) {
+        pc.px(ex + 1, y0 - 4, fur);
+        pc.hline(ex, y0 - 3, 3, fur);
+        pc.hline(ex, y0 - 2, 3, fur);
+        if (pose.view !== 'back') pc.px(ex + 1, y0 - 2, inner);
+      }
+      return;
+    }
+    case 'wizard_hat': {
+      const hat = '#4b3b9a';
+      const band = '#ffd166';
+      pc.rect(x0 - 1, y0, 14, 2, hat);
+      pc.hline(x0 - 2, y0 + 1, 16, shade(hat, -0.2));
+      pc.rect(x0 + 2, y0 - 3, 8, 3, hat);
+      pc.rect(x0 + 3, y0 - 6, 6, 3, hat);
+      pc.rect(x0 + 4, y0 - 8, 4, 2, hat);
+      pc.px(x0 + 6, y0 - 9, hat);
+      pc.px(x0 + 7, y0 - 10, shade(hat, 0.15));
+      pc.hline(x0 + 2, y0 - 1, 8, band);
+      if (pose.view !== 'back') {
+        pc.px(x0 + 4, y0 - 5, band);
+        pc.px(x0 + 7, y0 - 7, WHITE);
+      }
+      return;
+    }
+    case 'crown': {
+      const gold = '#f2c230';
+      const dark = '#b58410';
+      pc.rect(x0 + 1, y0 - 2, 10, 2, gold);
+      pc.hline(x0 + 1, y0 - 1, 10, dark);
+      for (const cx of [x0 + 1, x0 + 5, x0 + 10]) pc.vline(cx, y0 - 4, 2, gold);
+      pc.px(x0 + 6, y0 - 4, gold);
+      pc.px(x0 + 3, y0 - 3, gold);
+      pc.px(x0 + 8, y0 - 3, gold);
+      if (pose.view !== 'back') {
+        pc.px(x0 + 5, y0 - 2, '#e5625c');
+        pc.px(x0 + 2, y0 - 2, '#5cc7e8');
+        pc.px(x0 + 9, y0 - 2, '#5cc77a');
+      }
+      return;
+    }
     case 'lanyard': {
       if (pose.view !== 'front') return;
       const y = 16 + dy;

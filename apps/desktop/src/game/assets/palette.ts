@@ -33,6 +33,8 @@ export const OUTFIT: Record<OutfitColor, Color> = {
   cream: '#eee2cb',
   denim: '#4c6c99',
   forest: '#30604a',
+  neon: '#3ff0c8',
+  gold: '#e8b923',
 };
 
 export const INK = '#231d2b';

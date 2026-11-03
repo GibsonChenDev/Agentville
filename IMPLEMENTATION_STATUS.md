@@ -47,6 +47,17 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Lobby, accounts, coins, shop, arcade, tour (2026-11-03)
+
+| Check | Result |
+|---|---|
+| Account rules (recovery codes, earning limits, daily cap, purchases, rooms, scores) | ✅ unit tests |
+| Arcade games (2048 merging/game over, snake, flappy, breakout) | ✅ unit tests |
+| Relay on local Cloudflare runtime + `scripts/team-smoke.mjs` | ✅ 25/25 (rooms + accounts: create, profile, restore with retyped code, earn 2 turns + 3 tools = 23, buy, no double buy, insufficient funds, score, bad code) |
+| In the browser pane (two separate app windows) | ✅ account auto-created with 200 coins · tour · walk-in on launch · out the door to the lobby · "New office" door → create → walk into the new office · arcade opens on reaching the cabinet, all four games play · shop buy/wear · agent turn → "+11 🪙" and server credit · recovery code restores character, coins and team office on the other window · lobby door into the team office |
+| Bugs found and fixed while testing | Enter skipped tour steps · arrow keys panned the office behind dialogs · clicks on the top of tall furniture missed it · coin tracker and account creation could start twice |
+| Deployed relay with accounts | ⏳ deploys when pushed to main (Cloudflare build) |
+
 ## Team office (2026-11-03)
 
 | Check | Result |

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { applyLocale, type LocalePreference } from '../../i18n';
 import { useApp, type SettingsTab } from '../../state/store';
 import { MonitoringSetup } from './MonitoringSetup';
+import { AccountSection } from './AccountSection';
 import { unlockAudio } from '../alerts/sounds';
 import { clearHistory } from '../../persistence/historyRecorder';
 
@@ -61,7 +62,7 @@ export function SettingsDialog() {
         </button>
       </div>
       <div className="flex gap-1 border-b border-line px-4 pt-2" role="tablist">
-        {(['general', 'monitoring'] as SettingsTab[]).map((id) => (
+        {(['general', 'account', 'monitoring'] as SettingsTab[]).map((id) => (
           <button
             key={id}
             role="tab"
@@ -73,6 +74,11 @@ export function SettingsDialog() {
           </button>
         ))}
       </div>
+      {tab === 'account' && open && (
+        <div className="scroll-thin max-h-[72vh] overflow-y-auto px-5 py-4">
+          <AccountSection />
+        </div>
+      )}
       {tab === 'monitoring' && open && (
         <div className="scroll-thin max-h-[72vh] overflow-y-auto px-5 py-4">
           <MonitoringSetup />

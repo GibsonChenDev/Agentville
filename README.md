@@ -38,6 +38,14 @@ Share one office with your team: everyone walks around as their own character (W
 
 Sidebar → **Team office / 團隊辦公室** → **Create / 建立** (you get an invite code such as `AGV-7K3P-Q9M2`) or **Join / 加入** (enter a teammate's code once). It runs on a small Cloudflare relay in `server/relay`; see [docs/TEAM.md](docs/TEAM.md) for privacy details and how to deploy your own.
 
+## Your character, coins & the arcade ／ 人物、金幣與遊戲機
+
+- Walk with **W A S D** or by clicking; sit on chairs, sofas and beanbags (**E** to get up); click an arcade cabinet to play Snake, Breakout, Flappy or 2048.
+- Walk out of the office door to reach the **lobby**: a door for every office you belong to, plus one to create or join a team office.
+- Your agents earn you **coins** (+10 per finished reply, tool bonus, 500/day) to spend in the **shop** on accessories, outfit colours and office decorations.
+- Your account is created automatically; **Settings → Account** shows the recovery code that restores everything on another computer.
+- A short tour runs on first launch; the in-app guide covers everything in detail.
+
 ## Customizing ／ 自訂
 
 - **Characters / 角色**: select someone → **Customize outfit / 自訂服裝**. Hair, skin, outfit, accessory, desk equipment and preferred desk, with a live animated preview. Customizations follow the project folder, so every new session in that project keeps the look.

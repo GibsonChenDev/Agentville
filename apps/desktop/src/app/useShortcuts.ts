@@ -14,7 +14,8 @@ export function useShortcuts() {
         s.toggleSettings(true, 'general');
         return;
       }
-      if (e.metaKey || e.ctrlKey || e.altKey || s.settingsOpen) return;
+      // Dialogs (settings, the arcade, the shop…) own the keyboard while open.
+      if (e.metaKey || e.ctrlKey || e.altKey || s.settingsOpen || document.querySelector('dialog[open]')) return;
       const world = worldApi.current;
       const pan = 48;
       switch (e.key) {

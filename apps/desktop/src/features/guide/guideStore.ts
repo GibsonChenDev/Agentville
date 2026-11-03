@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type GuideSection = 'start' | 'office' | 'teams' | 'help';
+export type GuideSection = 'start' | 'world' | 'office' | 'together' | 'teams' | 'help';
 
 export const useGuide = create<{ section?: GuideSection; open: (s?: GuideSection) => void; close: () => void }>((set) => ({
   open: (section = 'start') => set({ section }),

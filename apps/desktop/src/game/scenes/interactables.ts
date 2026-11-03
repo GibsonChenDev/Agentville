@@ -12,7 +12,7 @@ export type InteractKind = 'desk' | 'sofa' | 'arcade';
 export interface Interactable {
   id: string;
   kind: InteractKind;
-  /** Tiles that select this thing when clicked. */
+  /** Tiles that select this thing when clicked (including the parts of tall sprites drawn above the footprint). */
   hit: TilePoint[];
   /** Walkable tile to stand on before using it. */
   approach: TilePoint;
@@ -56,14 +56,15 @@ export function interactablesFor(scene: SceneDefinition): Interactable[] {
         { dx: 0, px: 15 },
         { dx: 2, px: 33 },
       ].forEach(({ dx, px }, i) =>
-        out.push({ id: `sofa:${p.id}:${i}`, kind: 'sofa', hit: [{ x: p.x + dx, y: p.y }, ...(i === 0 ? [{ x: p.x + 1, y: p.y }] : [])], approach: { x: p.x + dx, y: p.y + 1 }, x: p.x * TILE + px, y: p.y * TILE + 13, facing: 'down', z }),
+        out.push({ id: `sofa:${p.id}:${i}`, kind: 'sofa', hit: [{ x: p.x + dx, y: p.y }, { x: p.x + dx, y: p.y - 1 }, ...(i === 0 ? [{ x: p.x + 1, y: p.y }, { x: p.x + 1, y: p.y - 1 }] : [])], approach: { x: p.x + dx, y: p.y + 1 }, x: p.x * TILE + px, y: p.y * TILE + 13, facing: 'down', z }),
       );
     }
     if (p.kind === 'beanbag') {
       out.push({ id: `bean:${p.id}`, kind: 'sofa', hit: [{ x: p.x, y: p.y }], approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 8, y: p.y * TILE + 12, facing: 'down', z });
     }
     if (p.kind === 'arcade') {
-      out.push({ id: `arcade:${p.id}`, kind: 'arcade', hit: [{ x: p.x, y: p.y }], approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 8, y: (p.y + 1) * TILE + 12, facing: 'up', z: (p.y + 1) * TILE + 12 });
+      // The cabinet stands about three tiles tall: clicking anywhere on it counts.
+      out.push({ id: `arcade:${p.id}`, kind: 'arcade', hit: [{ x: p.x, y: p.y }, { x: p.x, y: p.y - 1 }, { x: p.x, y: p.y - 2 }], approach: { x: p.x, y: p.y + 1 }, x: p.x * TILE + 8, y: (p.y + 1) * TILE + 12, facing: 'up', z: (p.y + 1) * TILE + 12 });
     }
   }
   return out;

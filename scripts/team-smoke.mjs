@@ -99,5 +99,30 @@ a.sock.close();
 await post(`/v1/rooms/${alice.roomId}/leave`, {}, alice.token);
 const gone = await post('/v1/join', { code: rotated.body.code, name: 'Late', appearance: look });
 check(gone.status === 404, 'empty room is deleted');
+// ── accounts
+const acct = await post('/v1/accounts', {});
+check(acct.status === 200 && acct.body.account.coins > 0, `account created with ${acct.body.account.coins} starter coins`);
+const recovery = acct.body.code;
+const me = async (path, body, c = recovery) => {
+  const res = await fetch(`${server}/v1/me${path}`, { method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${c}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  return { status: res.status, body: await res.json() };
+};
+const prof = await me('/profile', { name: 'Alice', appearance: look });
+check(prof.status === 200 && prof.body.account.profile.name === 'Alice', 'profile saved');
+const restored = await me('', undefined, recovery.toLowerCase().replace(/-/g, ''));
+check(restored.status === 200 && restored.body.account.profile.name === 'Alice', 'recovery code (retyped) restores the account');
+const earned = await me('/earn', { turns: 2, tools: 3 });
+check(earned.body.credited === 23, `2 turns + 3 tools credited ${earned.body.credited} coins`);
+const bought = await me('/buy', { item: 'deco.lava_lamp' });
+check(bought.status === 200 && bought.body.account.inventory.includes('deco.lava_lamp'), 'bought a lava lamp');
+const again = await me('/buy', { item: 'deco.lava_lamp' });
+check(again.status === 400 && again.body.error === 'owned', 'cannot buy twice');
+const poor = await me('/buy', { item: 'acc.crown' });
+check(poor.body.error === 'insufficient_funds', 'cannot buy without enough coins');
+const score = await me('/score', { game: 'snake', score: 42 });
+check(score.body.account.scores.snake === 42, 'arcade best score saved');
+const wrong = await me('', undefined, 'AAAAA-AAAAA-AAAAA-AAAAA-AAAAA');
+check(wrong.status === 401, 'unknown recovery code rejected');
+
 console.log('\nAll relay checks passed.');
 process.exit(0);

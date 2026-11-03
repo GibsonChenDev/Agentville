@@ -9,8 +9,13 @@ export const FACES = ['smile', 'calm', 'focused', 'cheerful'] as const;
 export const TOPS = ['hoodie', 'tee', 'shirt', 'blazer', 'sweater', 'vest'] as const;
 export const BOTTOMS = ['jeans', 'chinos', 'skirt', 'shorts', 'joggers'] as const;
 export const SHOES = ['sneakers', 'boots', 'loafers', 'hightops'] as const;
-export const ACCESSORIES = ['none', 'glasses', 'headphones', 'cap', 'beanie', 'scarf', 'lanyard'] as const;
-export const OUTFIT_COLORS = ['coral', 'mustard', 'sage', 'teal', 'navy', 'plum', 'charcoal', 'cream', 'denim', 'forest'] as const;
+const BASE_ACCESSORIES = ['none', 'glasses', 'headphones', 'cap', 'beanie', 'scarf', 'lanyard'] as const;
+const BASE_OUTFIT_COLORS = ['coral', 'mustard', 'sage', 'teal', 'navy', 'plum', 'charcoal', 'cream', 'denim', 'forest'] as const;
+/** Bought in the shop (see CATALOG in team-protocol); never chosen for auto-generated looks. */
+export const PREMIUM_ACCESSORIES = ['flower', 'cat_ears', 'wizard_hat', 'crown'] as const;
+export const PREMIUM_OUTFIT_COLORS = ['neon', 'gold'] as const;
+export const ACCESSORIES = [...BASE_ACCESSORIES, ...PREMIUM_ACCESSORIES] as const;
+export const OUTFIT_COLORS = [...BASE_OUTFIT_COLORS, ...PREMIUM_OUTFIT_COLORS] as const;
 export const EQUIPMENT = ['laptop', 'monitor', 'dual_monitor', 'desktop_tower', 'tablet', 'debug_rig'] as const;
 
 export type HairStyle = (typeof HAIR_STYLES)[number];
@@ -60,12 +65,12 @@ export function appearanceFromSeed(seed: string): CharacterAppearance {
     skin: pick(SKIN_TONES),
     face: pick(FACES),
     top: pick(TOPS),
-    topColor: pick(OUTFIT_COLORS),
+    topColor: pick(BASE_OUTFIT_COLORS),
     bottom: pick(BOTTOMS),
     bottomColor: pick(['denim', 'charcoal', 'navy', 'cream', 'forest'] as const),
     shoes: pick(SHOES),
     shoesColor: pick(['charcoal', 'cream', 'coral', 'navy'] as const),
-    accessory: pick(ACCESSORIES),
+    accessory: pick(BASE_ACCESSORIES),
     equipment: pick(EQUIPMENT),
   };
 }

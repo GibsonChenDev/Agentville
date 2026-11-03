@@ -10,6 +10,7 @@ import { useGuide } from '../guide/guideStore';
 import { isMac } from '../../integration/platform';
 import { Portrait } from './Portrait';
 import { TeamPanel } from '../team/TeamPanel';
+import { chooseOfficeTheme, useOfficeTheme } from '../../world/officeTheme';
 import { StatusDot } from './StatusDot';
 import { AgentChips, ConflictWarnings, ObservedTasks, projectKey, projectLabel, sharedTreeCount } from './TeamPanels';
 
@@ -37,12 +38,12 @@ export function Sidebar() {
   const agents = useApp((s) => s.agents);
   const runtime = useApp((s) => s.runtime);
   const selected = useApp((s) => s.selectedAgentId);
-  const theme = useApp((s) => s.prefs.theme);
+  const theme = useOfficeTheme();
   const width = useApp((s) => s.prefs.sidebarWidth);
   const mode = useApp((s) => s.mode);
   const editing = useEditor((s) => s.active);
   const [showDeparted, setShowDeparted] = useState(false);
-  const { select, setTheme, toggleSettings } = useApp.getState();
+  const { select, toggleSettings } = useApp.getState();
 
   const groups = useMemo(() => {
     const list = Object.values(agents)
@@ -81,7 +82,7 @@ export function Sidebar() {
               role="radio"
               aria-checked={theme === id}
               disabled={editing && theme !== id}
-              onClick={() => setTheme(id)}
+              onClick={() => chooseOfficeTheme(id)}
               className={`group flex items-center gap-2.5 rounded-md p-1.5 text-left transition-colors ${theme === id ? 'bg-panel-3 ring-1 ring-amber/60' : 'hover:bg-panel-2'} disabled:opacity-40`}
             >
               <img src={themeThumb(id)} alt="" className="pixelated h-[30px] w-[45px] shrink-0 rounded-[3px] object-cover" />
@@ -136,6 +137,7 @@ export function Sidebar() {
 
       <div className="m-2 flex gap-1">
         <button
+          data-tour="settings"
           onClick={() => toggleSettings(true)}
           className="flex flex-1 items-center gap-2 rounded-md px-2.5 py-2 text-[12.5px] text-muted hover:bg-panel-2 hover:text-fg"
           title={isMac ? '⌘,' : 'Ctrl+,'}
@@ -143,7 +145,7 @@ export function Sidebar() {
           <GearIcon />
           {t('sidebar.settings')}
         </button>
-        <button onClick={() => useGuide.getState().open('start')} className="flex items-center gap-1.5 rounded-md px-2.5 py-2 text-[12.5px] text-muted hover:bg-panel-2 hover:text-fg">
+        <button data-tour="guide" onClick={() => useGuide.getState().open('start')} className="flex items-center gap-1.5 rounded-md px-2.5 py-2 text-[12.5px] text-muted hover:bg-panel-2 hover:text-fg">
           <span aria-hidden className="grid h-3.5 w-3.5 place-items-center rounded-full text-[10px] font-bold ring-1 ring-current">?</span>
           {t('sidebar.guide')}
         </button>

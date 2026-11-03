@@ -4,6 +4,7 @@ import { TeamApiError, normalizeServer } from '../../team/api';
 import { usePlayer } from '../../team/playerStore';
 import { team } from '../../team/teamClient';
 import { DEFAULT_TEAM_SERVER, useTeam, type TeamError } from '../../team/teamStore';
+import { usePlace } from '../../world/placeStore';
 
 /** Create a team office (you get the invite code) or join one with a code. */
 export function TeamDialog() {
@@ -46,9 +47,11 @@ export function TeamDialog() {
     setError(undefined);
     useTeam.getState().setServer(normalizeServer(server)!);
     try {
-      if (mode === 'create') await team.create(roomName.trim(), name.trim());
-      else await team.join(code, name.trim());
+      const roomId = mode === 'create' ? await team.create(roomName.trim(), name.trim()) : await team.join(code, name.trim());
       close();
+      // Walk into the new office: through the "new office" door when you're in the lobby.
+      const inLobby = usePlace.getState().place.kind === 'lobby';
+      void usePlace.getState().go({ kind: 'team', roomId }, inLobby ? { viaDoor: 'new' } : undefined);
     } catch (err) {
       setError(err instanceof TeamApiError ? err.code : 'server');
     } finally {
@@ -62,6 +65,20 @@ export function TeamDialog() {
       {mode && (
         <form onSubmit={(e) => void submit(e)}>
           <div className="border-b border-line px-5 py-3">
+            <div className="mb-2 flex gap-1 rounded-lg bg-ink/50 p-0.5" role="tablist">
+              {(['create', 'join'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  onClick={() => useTeam.getState().openDialog(m)}
+                  className={`flex-1 rounded-md py-1 text-[12px] font-medium ${mode === m ? 'bg-panel-3 text-fg ring-1 ring-line-strong' : 'text-muted hover:text-fg'}`}
+                >
+                  {t(m === 'create' ? 'panel.create' : 'panel.join')}
+                </button>
+              ))}
+            </div>
             <h2 id="team-dialog-title" className="text-[15px] font-semibold">
               {t(mode === 'create' ? 'dialog.createTitle' : 'dialog.joinTitle')}
             </h2>

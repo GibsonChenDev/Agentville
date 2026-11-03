@@ -5,11 +5,15 @@ import { usePlayer } from '../../team/playerStore';
 import { team } from '../../team/teamClient';
 import { useTeam } from '../../team/teamStore';
 import { Portrait } from '../agents/Portrait';
+import { samePlace, usePlace, type Place } from '../../world/placeStore';
 
 /** Sidebar section: create/join a team office, or see who's in it and invite more people. */
 export function TeamPanel() {
   const { t } = useTranslation('team');
   const membership = useTeam((s) => s.membership);
+  const rooms = useTeam((s) => s.rooms);
+  const place = usePlace((s) => s.place);
+  const go = usePlace((s) => s.go);
   const status = useTeam((s) => s.status);
   const room = useTeam((s) => s.room);
   const members = useTeam((s) => s.members);
@@ -19,10 +23,40 @@ export function TeamPanel() {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const offices = (
+    <div className="mx-2 mb-2 space-y-0.5" role="list" data-tour="offices">
+      {[{ key: 'personal', place: { kind: 'personal' } as Place, icon: '🏠', label: t('place.personal') }, ...rooms.map((r) => ({ key: r.roomId, place: { kind: 'team', roomId: r.roomId } as Place, icon: '👥', label: r.name }))].map((o) => {
+        const here = samePlace(o.place, place);
+        return (
+          <button
+            key={o.key}
+            role="listitem"
+            onClick={() => void go(o.place)}
+            className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] ${here ? 'bg-panel-3 ring-1 ring-amber/50' : 'hover:bg-panel-2'}`}
+          >
+            <span aria-hidden>{o.icon}</span>
+            <span className="min-w-0 flex-1 truncate">{o.label}</span>
+            {here && <span className="shrink-0 text-[10.5px] text-amber">{t('place.here')}</span>}
+          </button>
+        );
+      })}
+      <button
+        onClick={() => void go({ kind: 'lobby' })}
+        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] ${place.kind === 'lobby' ? 'bg-panel-3 ring-1 ring-amber/50' : 'text-muted hover:bg-panel-2 hover:text-fg'}`}
+      >
+        <span aria-hidden>🚪</span>
+        <span className="flex-1">{t('place.lobby')}</span>
+        {place.kind === 'lobby' && <span className="text-[10.5px] text-amber">{t('place.here')}</span>}
+      </button>
+    </div>
+  );
+
   if (!membership) {
     return (
-      <div className="mx-2 mb-4 rounded-md bg-panel-2 p-2.5">
-        <p className="text-[11.5px] leading-relaxed text-muted">{t('panel.pitch')}</p>
+      <>
+      {offices}
+      <div className="mx-2 mb-4 rounded-md bg-panel-2 p-2.5" data-tour="team">
+        <p className="text-[11.5px] leading-relaxed text-muted">{t(rooms.length ? 'panel.pitchMore' : 'panel.pitch')}</p>
         {error && <p className="mt-1.5 text-[11.5px] text-coral">{t(`error.${error}`)}</p>}
         <div className="mt-2 flex gap-1.5">
           <button onClick={() => useTeam.getState().openDialog('create')} className="flex-1 rounded-md bg-amber px-2 py-1 text-[12px] font-semibold text-ink">
@@ -37,6 +71,7 @@ export function TeamPanel() {
           {t('panel.editMe')}
         </button>
       </div>
+      </>
     );
   }
 
@@ -54,7 +89,9 @@ export function TeamPanel() {
   };
 
   return (
-    <div className="mx-2 mb-4 rounded-md bg-panel-2 p-2.5">
+    <>
+    {offices}
+    <div className="mx-2 mb-4 rounded-md bg-panel-2 p-2.5" data-tour="team">
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 shrink-0 rounded-full ${tone}`} aria-hidden />
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{room?.name ?? t('panel.connectingName')}</span>
@@ -128,5 +165,6 @@ export function TeamPanel() {
         )}
       </div>
     </div>
+    </>
   );
 }

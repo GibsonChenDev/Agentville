@@ -28,12 +28,24 @@ Anyone in the office can switch the map or edit the furniture; changes appear fo
 
 Controls: `W A S D` walk · click the floor to walk there · click a chair, sofa, beanbag or arcade to use it · `E` use the nearest thing / get up · click your own character to change your look.
 
+## Accounts, coins and the shop ／ 帳號、金幣與商店
+
+- **Account without sign-up.** On first launch the app asks the relay for a new account and gets back a 25-character **recovery code** (`XXXXX-XXXXX-XXXXX-XXXXX-XXXXX`, 125 random bits). The code is the only credential: the server stores the account under a hash of it and never stores the code itself. Settings → Account shows it; typing it on another computer restores the character, coins, purchases, team offices and arcade records.
+- **Coins.** Every turn a live agent finishes (Claude Code's `Stop` hook) earns 10 coins, plus 1 per tool used during that turn (bonus capped at 10). The server enforces the limits — at most one turn per 15 s on average (burst of 10) and 500 coins per day — so forged events can't farm coins. New accounts start with 200.
+- **Shop.** Accessories (flower, cat ears, wizard hat, crown), outfit colours (neon, gold) and decorations (lava lamp, trophy, office cat, jukebox, aquarium). Prices live in `packages/team-protocol/src/account.ts` (`CATALOG`). Everything that was free before stays free.
+- **Arcade.** Snake, Breakout, Flappy and 2048 on every arcade cabinet; best scores are saved to the account.
+
+## Lobby ／ 大廳
+
+Walking out of an office's door leads to the lobby hallway: one door for your office, one per team office, and "＋ New office" (create or join). Walking into a door fades to the office and you walk in through its door. The app reopens in the last office you were in.
+
 ## The relay server ／ 轉發伺服器
 
 `server/relay` is a Cloudflare Worker with two SQLite-backed Durable Objects:
 
 - **Room** — one per team office: members, the shared theme and layouts, and live presence over [hibernatable WebSockets](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) (idle rooms cost nothing; keep-alive pings are answered without waking the room).
-- **Directory** — one global instance mapping invite codes to rooms and limiting wrong-code guesses (10 per IP per 10 minutes).
+- **Directory** — one global instance mapping invite codes to rooms and limiting wrong-code guesses (10 per IP per 10 minutes) and new accounts (30 per IP per hour).
+- **Account** — one per account: profile, coins, inventory, team-office memberships and best scores (pure rules in `packages/team-protocol/src/account.ts`, unit-tested).
 
 Room logic lives in `src/roomCore.ts` with no Cloudflare dependencies and is unit-tested in `src/roomCore.test.ts`.
 
@@ -47,6 +59,9 @@ Room logic lives in `src/roomCore.ts` with no Cloudflare dependencies and is uni
 | POST | `/v1/rooms/:id/rotate` | `Authorization: Bearer <token>` (creator only) | `{ code }` |
 | POST | `/v1/rooms/:id/leave` | `Authorization: Bearer <token>` | `{ ok: true }` |
 | GET | `/v1/rooms/:id/ws` | WebSocket; first frame `{ t: "auth", token, v: 1 }` | live messages, see `packages/team-protocol` |
+| POST | `/v1/accounts` | — | `{ code, account }` (new account) |
+| GET | `/v1/me` | `Authorization: Bearer <recovery code>` | `{ account }` |
+| POST | `/v1/me/profile` · `/earn` · `/buy` · `/rooms` · `/score` | `{ name, appearance }` · `{ turns, tools }` · `{ item }` · `{ rooms }` · `{ game, score }` | `{ account }` (earn also returns `credited`) |
 
 Limits: 50 members per office, 64 KB per message, 30 messages/s per connection (burst 60).
 

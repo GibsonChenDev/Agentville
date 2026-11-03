@@ -1,6 +1,7 @@
 import { appearanceFromSeed, sanitizeAppearance, type CharacterAppearance } from '@agentville/domain';
 import { cleanName } from '@agentville/team-protocol';
 import { create } from 'zustand';
+import { useAccount } from '../account/accountStore';
 
 /**
  * You, as a character in the office: a nickname and a look. Stored locally;
@@ -10,7 +11,8 @@ interface PlayerState {
   name: string;
   appearance: CharacterAppearance;
   editorOpen: boolean;
-  save: (name: string, appearance: CharacterAppearance) => void;
+  /** Saves locally and to your account (unless `sync: false`, used when the account is the source). */
+  save: (name: string, appearance: CharacterAppearance, opts?: { sync?: boolean }) => void;
   openEditor: (open: boolean) => void;
 }
 
@@ -40,10 +42,11 @@ function persist(v: { name: string; appearance: CharacterAppearance }) {
 export const usePlayer = create<PlayerState>((set) => ({
   ...load(),
   editorOpen: false,
-  save: (name, appearance) => {
+  save: (name, appearance, opts) => {
     const next = { name: cleanName(name) ?? '', appearance };
     persist(next);
     set(next);
+    if (opts?.sync !== false) useAccount.getState().saveProfile(next.name, appearance);
   },
   openEditor: (editorOpen) => set({ editorOpen }),
 }));

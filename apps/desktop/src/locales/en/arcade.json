@@ -1,0 +1,28 @@
+{
+  "title": "Arcade",
+  "menu": "Games",
+  "best": "Best: {{score}}",
+  "gameOver": "GAME OVER",
+  "score": "Score {{score}}",
+  "newBest": "New best!",
+  "again": "Enter / Space to play again",
+  "escHint": "Esc for the game list",
+  "game": {
+    "snake": {
+      "name": "Snake",
+      "how": "Arrow keys or WASD. Eat, grow, don't bite yourself."
+    },
+    "breakout": {
+      "name": "Breakout",
+      "how": "Mouse or ←/→ to move, Space or click to launch."
+    },
+    "flappy": {
+      "name": "Flappy",
+      "how": "Space, ↑ or click to flap through the gaps."
+    },
+    "g2048": {
+      "name": "2048",
+      "how": "Arrow keys or WASD to slide; equal tiles merge."
+    }
+  }
+}

@@ -1,25 +1,26 @@
-import type { MemberView, RoomView } from '@agentville/team-protocol';
+import type { MemberView, RoomRef, RoomView } from '@agentville/team-protocol';
 import { create } from 'zustand';
-import { normalizeServer } from './api';
+import { useAccount } from '../account/accountStore';
+import { normalizeServer, type TeamApiError } from './api';
 
 /**
- * Team office state. Only membership (server, room, member token) is stored
- * on this computer; the room and its members come live from the relay.
+ * Team offices you belong to, and the live state of the one you're in. The
+ * list is kept on this computer and in your account; the room and its members
+ * come live from the relay while you're inside.
  */
-export interface Membership {
+export interface Membership extends RoomRef {
   server: string;
-  roomId: string;
-  memberId: string;
-  token: string;
-  owner: boolean;
 }
 
 export type TeamStatus = 'idle' | 'connecting' | 'online' | 'reconnecting';
 /** Localized via `team:error.<code>`. */
-export type TeamError = 'network' | 'server' | 'invalid_code' | 'room_full' | 'rate_limited' | 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'removed' | 'version' | 'no_server';
+export type TeamError = TeamApiError['code'] | 'removed' | 'version';
 
 export interface TeamState {
   server: string;
+  /** Team offices you've joined (doors in the lobby). */
+  rooms: RoomRef[];
+  /** The team office you're in; undefined = your personal office or the lobby. */
   membership?: Membership;
   status: TeamStatus;
   error?: TeamError;
@@ -27,35 +28,42 @@ export interface TeamState {
   members: Record<string, MemberView>;
   dialog?: 'create' | 'join';
   setServer: (server: string) => void;
-  setMembership: (m?: Membership) => void;
+  setRooms: (rooms: RoomRef[], opts?: { sync?: boolean }) => void;
+  /** Makes `roomId` the current team office (undefined: none). */
+  setActive: (roomId?: string) => void;
   openDialog: (dialog?: 'create' | 'join') => void;
 }
 
-/** Built-in relay. Empty until one is deployed; users can always enter their own. */
-export const DEFAULT_TEAM_SERVER = '';
+/** Built-in relay (server/relay, deployed from main by Cloudflare). Users can enter their own. */
+export const DEFAULT_TEAM_SERVER = 'https://agentville-relay.gibson-backend.workers.dev';
 
 const KEY = 'agentville.team.v1';
 
-function load(): { server: string; membership?: Membership } {
+interface Saved {
+  server: string;
+  rooms: RoomRef[];
+}
+
+function load(): Saved {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { server?: unknown; membership?: Partial<Membership> } | null;
+    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { server?: unknown; rooms?: unknown; membership?: Partial<RoomRef> } | null;
     const server = typeof raw?.server === 'string' ? (normalizeServer(raw.server) ?? DEFAULT_TEAM_SERVER) : DEFAULT_TEAM_SERVER;
+    const rooms = Array.isArray(raw?.rooms) ? (raw.rooms as RoomRef[]).filter((r) => r && typeof r.roomId === 'string' && typeof r.token === 'string') : [];
+    // v0.1 kept a single membership.
     const m = raw?.membership;
-    const membership =
-      m && typeof m.server === 'string' && typeof m.roomId === 'string' && typeof m.memberId === 'string' && typeof m.token === 'string'
-        ? { server: m.server, roomId: m.roomId, memberId: m.memberId, token: m.token, owner: m.owner === true }
-        : undefined;
-    return { server, membership };
+    if (m && typeof m.roomId === 'string' && typeof m.memberId === 'string' && typeof m.token === 'string' && !rooms.some((r) => r.roomId === m.roomId))
+      rooms.push({ roomId: m.roomId, memberId: m.memberId, token: m.token, owner: m.owner === true, name: typeof m.name === 'string' ? m.name : 'Team' });
+    return { server, rooms };
   } catch {
-    return { server: DEFAULT_TEAM_SERVER };
+    return { server: DEFAULT_TEAM_SERVER, rooms: [] };
   }
 }
 
-function persist(s: { server: string; membership?: Membership }) {
+function persist(s: Saved) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ server: s.server, membership: s.membership }));
+    localStorage.setItem(KEY, JSON.stringify({ server: s.server, rooms: s.rooms }));
   } catch {
-    // storage unavailable: membership lasts for this session
+    // storage unavailable: the account still keeps the list
   }
 }
 
@@ -67,9 +75,19 @@ export const useTeam = create<TeamState>((set, get) => ({
     set({ server });
     persist(get());
   },
-  setMembership: (membership) => {
-    set(membership ? { membership } : { membership, room: undefined, members: {}, status: 'idle' });
+  setRooms: (rooms, opts) => {
+    const active = get().membership;
+    const still = active && rooms.find((r) => r.roomId === active.roomId);
+    if (active && !still) set({ membership: undefined, room: undefined, members: {}, status: 'idle' });
+    else if (active && still) set({ membership: { ...still, server: active.server } });
+    set({ rooms });
     persist(get());
+    if (opts?.sync !== false) useAccount.getState().saveRooms(rooms);
+  },
+  setActive: (roomId) => {
+    const ref = roomId ? get().rooms.find((r) => r.roomId === roomId) : undefined;
+    const server = normalizeServer(get().server) ?? DEFAULT_TEAM_SERVER;
+    set(ref ? { membership: { ...ref, server } } : { membership: undefined, room: undefined, members: {}, status: 'idle' });
   },
   openDialog: (dialog) => set({ dialog, error: undefined }),
 }));

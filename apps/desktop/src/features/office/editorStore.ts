@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { addFurniture, moveFurniture, removeFurniture, setDeskFacing, validateScene, type EditResult, type LayoutError } from '../../game/scenes/editing';
 import { DEFAULT_SCENES, type SceneDefinition } from '../../game/scenes/layouts';
 import { sceneFor, useApp } from '../../state/store';
+import { currentOfficeTheme } from '../../world/officeTheme';
 
 /**
  * Office editor session. Edits apply to a draft scene that the world renders
@@ -41,7 +42,7 @@ export const useEditor = create<EditorState>((set, get) => {
     saving: false,
     start: () => {
       const app = useApp.getState();
-      const theme = app.prefs.theme;
+      const theme = currentOfficeTheme();
       app.select(undefined);
       app.follow(undefined);
       set({ active: true, theme, draft: sceneFor(app, theme), selectedId: undefined, placing: undefined, error: undefined, dirty: false });

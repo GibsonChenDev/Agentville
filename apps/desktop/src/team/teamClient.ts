@@ -92,19 +92,16 @@ function teamLayouts(room: RoomView): Partial<Record<OfficeTheme, SceneDefinitio
   return out;
 }
 
-/** Switches this app to the room's office (unknown future themes are ignored). */
-function applyTheme(theme: string) {
-  if ((OFFICE_THEMES as readonly string[]).includes(theme) && useApp.getState().prefs.theme !== theme) useApp.getState().setTheme(theme as OfficeTheme);
-}
-
 function handle(msg: ServerMessage, m: Membership) {
   const team = useTeam.getState();
   switch (msg.t) {
     case 'welcome': {
       retries = 0;
       useTeam.setState({ status: 'online', error: undefined, room: msg.room, members: Object.fromEntries(msg.members.map((x) => [x.id, x])) });
+      // Joined with a code: the office's real name arrives here.
+      const ref = team.rooms.find((r) => r.roomId === m.roomId);
+      if (ref && ref.name !== msg.room.name) useTeam.getState().setRooms(team.rooms.map((r) => (r.roomId === m.roomId ? { ...r, name: msg.room.name } : r)));
       useApp.setState({ teamLayouts: teamLayouts(msg.room) });
-      applyTheme(msg.room.theme);
       keepalive = setInterval(() => send({ t: 'ping' }), KEEPALIVE_MS);
       sentAgents = -1;
       syncAgents(true);
@@ -141,7 +138,6 @@ function handle(msg: ServerMessage, m: Membership) {
     }
     case 'theme':
       if (team.room) useTeam.setState({ room: { ...team.room, theme: msg.theme } });
-      applyTheme(msg.theme);
       return;
     case 'layout': {
       if (!team.room) return;
@@ -186,12 +182,19 @@ function sendProfile() {
   if (name) send({ t: 'profile', name, appearance: { ...appearance } });
 }
 
-function leaveLocally(error?: TeamError) {
+/** Called when you're no longer in the current team office (left, removed, or it was deleted). */
+export const teamEvents: { onLeft?: (roomId: string) => void } = {};
+
+/** Disconnects; with `forget`, also drops the office from your list (left or removed). */
+function leaveLocally(error?: TeamError, forget = true) {
+  const roomId = useTeam.getState().membership?.roomId;
   closeSocket();
   retries = 0;
-  useTeam.getState().setMembership(undefined);
+  useTeam.getState().setActive(undefined);
+  if (forget && roomId) useTeam.getState().setRooms(useTeam.getState().rooms.filter((r) => r.roomId !== roomId));
   useTeam.setState({ error });
   useApp.setState({ teamLayouts: undefined });
+  if (forget && roomId) teamEvents.onLeft?.(roomId);
 }
 
 function serverOrThrow() {
@@ -200,13 +203,14 @@ function serverOrThrow() {
   return server;
 }
 
-async function enter(run: (server: string) => Promise<{ roomId: string; memberId: string; token: string; owner: boolean }>, name: string) {
+/** Creates or joins an office and adds it to your list; walking in is up to the caller. */
+async function enter(run: (server: string) => Promise<{ roomId: string; memberId: string; token: string; owner: boolean }>, name: string, roomName: string): Promise<string> {
   const server = serverOrThrow();
   const res = await run(server);
   usePlayer.getState().save(name, usePlayer.getState().appearance);
-  leaveLocally();
-  useTeam.getState().setMembership({ server, roomId: res.roomId, memberId: res.memberId, token: res.token, owner: res.owner });
-  connect();
+  const rooms = useTeam.getState().rooms.filter((r) => r.roomId !== res.roomId);
+  useTeam.getState().setRooms([...rooms, { roomId: res.roomId, memberId: res.memberId, token: res.token, owner: res.owner, name: roomName }]);
+  return res.roomId;
 }
 
 export const team = {
@@ -227,11 +231,6 @@ export const team = {
     };
     useApp.subscribe((s, prev) => {
       if (s.agents !== prev.agents || s.runtime !== prev.runtime) syncAgents();
-      const room = useTeam.getState().room;
-      if (s.prefs.theme !== prev.prefs.theme && room && useTeam.getState().status === 'online' && room.theme !== s.prefs.theme) {
-        useTeam.setState({ room: { ...room, theme: s.prefs.theme } });
-        send({ t: 'theme', theme: s.prefs.theme });
-      }
     });
     usePlayer.subscribe((s, prev) => {
       if (s.name !== prev.name || s.appearance !== prev.appearance) sendProfile();
@@ -239,17 +238,41 @@ export const team = {
     window.addEventListener('online', () => {
       if (useTeam.getState().status === 'reconnecting') connect();
     });
-    if (useTeam.getState().membership) connect();
   },
 
-  create: (roomName: string, name: string) => enter((server) => teamApi.create(server, roomName, name, { ...usePlayer.getState().appearance }), name),
+  /** Switches the map of the team office you're in, for everyone. */
+  setTheme(theme: OfficeTheme) {
+    const room = useTeam.getState().room;
+    if (!room || room.theme === theme) return;
+    useTeam.setState({ room: { ...room, theme } });
+    send({ t: 'theme', theme });
+  },
+
+  /** Goes into one of your team offices (connects to it). */
+  open(roomId: string) {
+    if (useTeam.getState().membership?.roomId === roomId && ws) return;
+    closeSocket();
+    useApp.setState({ teamLayouts: undefined });
+    useTeam.getState().setActive(roomId);
+    retries = 0;
+    connect();
+  },
+
+  /** Steps out of the current team office (you stay a member). */
+  close() {
+    if (!useTeam.getState().membership) return;
+    leaveLocally(undefined, false);
+  },
+
+  create: (roomName: string, name: string) => enter((server) => teamApi.create(server, roomName, name, { ...usePlayer.getState().appearance }), name, roomName),
 
   join: (code: string, name: string) => {
     const normalized = normalizeInviteCode(code);
     if (!normalized) return Promise.reject(new TeamApiError('invalid_code'));
-    return enter((server) => teamApi.join(server, normalized, name, { ...usePlayer.getState().appearance }), name);
+    return enter((server) => teamApi.join(server, normalized, name, { ...usePlayer.getState().appearance }), name, normalized);
   },
 
+  /** Leaves the current team office for good. */
   async leave() {
     const m = useTeam.getState().membership;
     if (m) await teamApi.leave(m.server, m.roomId, m.token).catch(() => undefined);

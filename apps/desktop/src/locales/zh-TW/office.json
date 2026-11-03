@@ -52,6 +52,11 @@
     "server_rack": "伺服器機櫃",
     "water_cooler": "飲水機",
     "arcade": "大型電玩機台",
-    "beanbag": "懶骨頭"
+    "beanbag": "懶骨頭",
+    "lava_lamp": "熔岩燈",
+    "trophy": "獎盃",
+    "cat": "辦公室貓咪",
+    "jukebox": "點唱機",
+    "aquarium": "水族箱"
   }
 }

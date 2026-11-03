@@ -556,6 +556,94 @@ export function drawBeanbag(t: ThemeStyle): PixelCanvas {
   return pc.outline(-0.5);
 }
 
+// ───────────────────────────────── shop decorations
+
+export function drawLavaLamp(): PixelCanvas {
+  const pc = new PixelCanvas(10, 24);
+  const glass = '#ff6fa8';
+  pc.rect(3, 19, 4, 4, '#3a3a44');
+  pc.hline(2, 22, 6, '#2a2a32');
+  pc.round(2, 5, 6, 14, glass);
+  pc.vline(3, 7, 9, shade(glass, 0.25));
+  pc.round(4, 8, 3, 3, '#ffd166');
+  pc.round(3, 13, 3, 4, '#ffd166');
+  pc.rect(3, 3, 4, 2, '#3a3a44');
+  return pc.outline(-0.5);
+}
+
+export function drawTrophy(): PixelCanvas {
+  const pc = new PixelCanvas(14, 26);
+  const gold = '#f2c230';
+  const dark = '#b58410';
+  pc.rect(2, 16, 10, 9, '#5a4636');
+  pc.hline(2, 16, 10, '#7a604a');
+  pc.rect(5, 19, 4, 2, gold);
+  pc.rect(5, 12, 4, 4, dark);
+  pc.round(2, 2, 10, 9, gold);
+  pc.vline(4, 3, 6, shade(gold, 0.3));
+  pc.vline(10, 3, 6, dark);
+  pc.round(0, 3, 3, 5, dark);
+  pc.round(11, 3, 3, 5, dark);
+  pc.hline(4, 11, 6, dark);
+  return pc.outline(-0.5);
+}
+
+export function drawCat(): PixelCanvas {
+  const pc = new PixelCanvas(18, 12);
+  const cushion = '#6a8fd6';
+  const fur = '#e89a4c';
+  pc.ellipse(9, 8, 8, 3, cushion);
+  pc.hline(2, 10, 14, shade(cushion, -0.25));
+  pc.ellipse(9, 6, 6, 3, fur);
+  pc.round(3, 3, 5, 4, fur);
+  pc.px(3, 2, fur);
+  pc.px(6, 2, fur);
+  pc.hline(4, 5, 1, '#3a2a20');
+  pc.hline(6, 5, 1, '#3a2a20');
+  for (const x of [9, 12]) pc.vline(x, 4, 2, shade(fur, -0.2));
+  pc.hline(11, 8, 5, shade(fur, -0.15));
+  return pc.outline(-0.5);
+}
+
+export function drawJukebox(): PixelCanvas {
+  const pc = new PixelCanvas(20, 32);
+  const wood = '#7a3b2e';
+  pc.round(1, 1, 18, 30, wood);
+  pc.round(3, 3, 14, 12, '#ffb347');
+  pc.round(5, 5, 10, 8, '#ff6f61');
+  pc.round(7, 7, 6, 5, '#ffd166');
+  pc.rect(4, 17, 12, 6, '#2b2233');
+  for (let x = 5; x < 15; x += 2) pc.vline(x, 18, 4, '#62e6ff');
+  pc.rect(4, 25, 12, 4, shade(wood, -0.2));
+  pc.vline(18, 4, 24, shade(wood, -0.3));
+  return pc.outline(-0.45);
+}
+
+export function drawAquarium(): PixelCanvas {
+  const pc = new PixelCanvas(34, 28);
+  const water = '#3e8fd1';
+  pc.rect(2, 16, 30, 11, '#3b3440');
+  pc.hline(2, 16, 30, '#524857');
+  pc.rect(1, 2, 32, 14, water, 0.9);
+  pc.hline(1, 2, 32, '#bfe6ff');
+  pc.rect(2, 4, 30, 2, shade(water, 0.15));
+  pc.rect(1, 13, 32, 3, '#d9c48f');
+  pc.vline(6, 7, 6, '#4caf6a');
+  pc.vline(7, 9, 4, '#4caf6a');
+  pc.vline(26, 8, 5, '#4caf6a');
+  pc.rect(12, 7, 4, 2, '#ff8a3d');
+  pc.px(11, 8, '#ff8a3d');
+  pc.px(14, 7, '#232029');
+  pc.rect(20, 10, 3, 2, '#ffd166');
+  pc.px(23, 10, '#ffd166');
+  pc.px(18, 5, WHITE);
+  pc.px(19, 3, WHITE);
+  return pc.outline(-0.45);
+}
+
+/** Decorations sold in the shop (see CATALOG in team-protocol). */
+export const SHOP_FURNITURE = ['lava_lamp', 'trophy', 'cat', 'jukebox', 'aquarium'] as const;
+
 export const FURNITURE: Record<string, FurnitureDef> = {
   desk: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: (t) => drawDesk(t) },
   plant_monstera: { fw: 1, fh: 1, bottomPad: 1, ox: -6, blocks: true, draw: (t) => drawMonstera(t) },
@@ -580,5 +668,10 @@ export const FURNITURE: Record<string, FurnitureDef> = {
   water_cooler: { fw: 1, fh: 1, bottomPad: 0, ox: 1, blocks: true, draw: () => drawWaterCooler() },
   arcade: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, light: { x: 10, y: 14, r: 26, color: 'accent', strength: 0.7 }, draw: (t) => drawArcade(t) },
   beanbag: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, draw: (t) => drawBeanbag(t) },
+  lava_lamp: { fw: 1, fh: 1, bottomPad: 0, ox: 3, blocks: true, light: { x: 5, y: 10, r: 22, color: 'accent', strength: 0.6 }, draw: () => drawLavaLamp() },
+  trophy: { fw: 1, fh: 1, bottomPad: 0, ox: 1, blocks: true, draw: () => drawTrophy() },
+  cat: { fw: 1, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawCat() },
+  jukebox: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, light: { x: 10, y: 9, r: 26, color: 'warm', strength: 0.6 }, draw: () => drawJukebox() },
+  aquarium: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, light: { x: 17, y: 8, r: 26, color: 'screen', strength: 0.5 }, draw: () => drawAquarium() },
 };
 

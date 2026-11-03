@@ -3,10 +3,10 @@
 import 'pixi.js/unsafe-eval';
 import type { AgentRecord, CharacterAppearance, Equipment, Facing, OfficeTheme, TilePoint, Workstation } from '@agentville/domain';
 import type { PoseKind, Presence } from '@agentville/team-protocol';
-import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { intentFor, type VisualIntent } from '../animations/intent';
 import { drawDocument, drawGlow } from '../assets/icons';
-import { THEMES, type ThemeStyle } from '../assets/themes';
+import { LOBBY_STYLE, THEMES, type ThemeStyle } from '../assets/themes';
 import { CharacterActor, type BadgeInfo, type Seat, type Spot } from '../characters/CharacterActor';
 import { FURNITURE, SERVER_LEDS, drawChair, drawDesk, drawEquipment } from '../furniture/furniture';
 import { drawScreen } from '../furniture/screens';
@@ -59,6 +59,19 @@ export interface PeerInfo extends HumanInfo {
 
 export const PLAYER_ID = 'player:self';
 
+/** A door you can walk through: lobby doors lead to offices, an office's door leads back to the lobby. */
+export interface WorldDoor {
+  id: string;
+  /** Floor tile right in front of the door; stepping onto it goes through. */
+  tile: TilePoint;
+  label?: string;
+  /** Draw it swinging open (closed lobby doors); office doorways are always open. */
+  opens?: boolean;
+}
+
+/** World key: an office theme, or the lobby hallway. */
+export type SceneKey = OfficeTheme | 'lobby';
+
 interface Human {
   actor: CharacterActor;
   badge: BadgeInfo;
@@ -67,6 +80,10 @@ interface Human {
   seat?: string;
   /** Interactable to use once the walk there ends (player only). */
   pending?: string;
+  /** Door to go through once the walk there ends (player only). */
+  pendingDoor?: string;
+  /** Where a click-walk is heading, to resume it if the layout changes underneath. */
+  walkTarget?: TilePoint;
   /** Latest network presence (teammates only). */
   target?: Presence;
 }
@@ -96,6 +113,7 @@ interface StationView {
 }
 
 const ZOOMS = [1, 2, 3, 4, 5, 6];
+const SIGN_FONT = '-apple-system, "SF Pro Text", "Segoe UI", "PingFang TC", "Microsoft JhengHei UI", "Noto Sans TC", system-ui, sans-serif';
 const SCREEN_FPS = 8;
 const GLOW_TINT: Record<string, string> = {
   code: '#7fd1ff',
@@ -161,6 +179,17 @@ export class OfficeWorld {
   private keyMoving = false;
   private lastPresence?: { p: Presence; at: number };
   private removeKeyListeners?: () => void;
+  private sceneKey: SceneKey = 'loft';
+  private doors: WorldDoor[] = [];
+  private doorSigns = new Map<string, { root: Container; text: Text; bg: Graphics; key: string }>();
+  private doorOpen = new Graphics();
+  /** Door the player is standing in (fires once until they step off it). */
+  private doorUnder?: string;
+  private doorAnim?: { tile: TilePoint; start: number; fromX: number; fromY: number; done: () => void; opens: boolean };
+  /** Next scene: bring the player in through this door. */
+  private arrival?: TilePoint;
+  private arrivalOpenUntil = 0;
+  private arrivalGraceUntil = 0;
   private destroyed = false;
   private initialized = false;
 
@@ -171,17 +200,21 @@ export class OfficeWorld {
       /** Your avatar moved or sat down; sent to teammates. */
       onPresence?: (p: Presence) => void;
       onPlayerClick?: () => void;
+      /** The player walked through a door. */
+      onDoor?: (id: string) => void;
+      /** The player stepped up to an arcade cabinet. */
+      onArcade?: () => void;
     },
   ) {}
 
-  async init(host: HTMLElement, theme: OfficeTheme, scene?: SceneDefinition) {
+  async init(host: HTMLElement, theme: SceneKey, scene?: SceneDefinition) {
     await this.app.init({
       resizeTo: host,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
       antialias: false,
       roundPixels: true,
-      background: THEMES[theme].void,
+      background: theme === 'lobby' ? LOBBY_STYLE.void : THEMES[theme].void,
       preference: 'webgl',
     });
     if (this.destroyed) {
@@ -210,9 +243,11 @@ export class OfficeWorld {
 
   // ───────────────────────────────── scene building
 
-  setTheme(themeId: OfficeTheme, scene: SceneDefinition = DEFAULT_SCENES[themeId]) {
+  setTheme(themeId: SceneKey, scene?: SceneDefinition) {
     if (this.destroyed) return;
-    this.theme = THEMES[themeId];
+    if (!scene) scene = themeId === 'lobby' ? this.scene : DEFAULT_SCENES[themeId];
+    this.sceneKey = themeId;
+    this.theme = themeId === 'lobby' ? LOBBY_STYLE : THEMES[themeId];
     this.scene = scene;
     this.furnitureSprites.clear();
     this.app.renderer.background.color = this.theme.void;
@@ -320,10 +355,16 @@ export class OfficeWorld {
       h.actor.standAnim = undefined;
       h.actor.scheduler.current = IDLE_INTENT;
       if (id !== PLAYER_ID) h.actor.hide();
+      else if (this.arrival) this.arriveThrough(h, this.arrival);
+      else if (h.walkTarget && h.actor.isWalking && this.nav.isWalkable(h.walkTarget.x, h.walkTarget.y)) h.actor.walkTo(this.nav, h.walkTarget, 'player', [h.walkTarget]);
       else if (playerSeat && this.nav.isWalkable(playerSeat.x, playerSeat.y)) h.actor.stand({ x: playerSeat.x * TILE + TILE / 2, y: playerSeat.y * TILE + 12, tile: playerSeat, facing: 'down' });
       else if (h.actor.isVisible && this.freeAt(h.actor.x, h.actor.y)) h.actor.halt();
       else this.placeAtDoor(h);
     }
+    this.arrival = undefined;
+    this.doorOpen = new Graphics();
+    this.doorOpen.eventMode = 'none';
+    this.fxBelow.addChild(this.doorOpen);
     this.emitPresence();
     this.drawEditGrid();
     this.applyEditView();
@@ -332,7 +373,7 @@ export class OfficeWorld {
   /** Swaps the layout of the current theme in place, keeping the camera where it is. */
   setScene(scene: SceneDefinition) {
     const { cx, cy } = this;
-    this.setTheme(this.theme.id, scene);
+    this.setTheme(this.sceneKey, scene);
     this.cx = cx;
     this.cy = cy;
     this.clampCamera();
@@ -427,7 +468,7 @@ export class OfficeWorld {
     if (!this.initialized) return;
     const motionChanged = options.reduceMotion !== this.options.reduceMotion;
     this.options = options;
-    if (motionChanged) this.setTheme(this.theme.id);
+    if (motionChanged) this.setTheme(this.sceneKey, this.scene);
     const now = performance.now();
     const ids = new Set(agents.map((a) => a.record.id));
     for (const [id, actor] of this.actors) {
@@ -564,11 +605,12 @@ export class OfficeWorld {
       actor.root.eventMode = this.edit ? 'none' : 'auto';
     }
 
+    this.updateDoorAnim(now);
     this.updatePlayer(dt);
     for (const [id, h] of this.peers) this.updatePeer(id, h, dt);
     for (const [, h] of this.allHumans()) {
       h.actor.render(now, h.actor.scheduler.current, this.options.reduceMotion);
-      h.actor.root.alpha = this.edit ? 0.35 : 1;
+      if (!(this.doorAnim && h === this.player)) h.actor.root.alpha = this.edit ? 0.35 : 1;
       h.actor.root.eventMode = this.edit ? 'none' : 'auto';
     }
     this.emitPresence();
@@ -594,6 +636,14 @@ export class OfficeWorld {
     for (const [, h] of this.allHumans()) {
       h.actor.renderBadge(h.badge, toScreen, this.zoom);
       if (this.edit) h.actor.badge.visible = false;
+    }
+    this.updateCoinPops(now, toScreen);
+    for (const door of this.doors) {
+      const sign = this.doorSigns.get(door.id);
+      if (!sign) continue;
+      const p = toScreen(door.tile.x * TILE + TILE, this.scene.wallRows * TILE - 46);
+      sign.root.position.set(Math.round(p.x), Math.round(p.y));
+      sign.root.visible = !this.edit && this.zoom >= 2;
     }
   }
 
@@ -667,6 +717,36 @@ export class OfficeWorld {
     sprite.zIndex = 100_000;
     this.entities.addChild(sprite);
     this.handoffs.push({ sprite, from: fromId, to: toId, start: performance.now() });
+  }
+
+  private coinPops: { root: Container; agentId: string; start: number }[] = [];
+
+  /** A "+N 🪙" that floats up from an agent who just earned you coins. */
+  coinPop(agentId: string, amount: number) {
+    const actor = this.actors.get(agentId);
+    if (!actor?.isVisible || this.coinPops.length > 20) return;
+    const root = new Container();
+    const text = new Text({ text: `+${amount} 🪙`, style: { fontFamily: SIGN_FONT, fontSize: 13, fontWeight: '800', fill: 0xffd166, stroke: { color: 0x2a1d0a, width: 3 } } });
+    text.anchor.set(0.5, 1);
+    root.addChild(text);
+    root.eventMode = 'none';
+    this.overlay.addChild(root);
+    this.coinPops.push({ root, agentId, start: performance.now() });
+  }
+
+  private updateCoinPops(now: number, toScreen: (x: number, y: number) => { x: number; y: number }) {
+    this.coinPops = this.coinPops.filter((c) => {
+      const actor = this.actors.get(c.agentId);
+      const age = now - c.start;
+      if (!actor || age > 1600) {
+        c.root.destroy({ children: true });
+        return false;
+      }
+      const p = toScreen(actor.root.x, actor.root.y - 44);
+      c.root.position.set(Math.round(p.x), Math.round(p.y - age / 25));
+      c.root.alpha = age < 1100 ? 1 : 1 - (age - 1100) / 500;
+      return true;
+    });
   }
 
   private docTextures = new Map<string, Texture>();
@@ -1030,7 +1110,9 @@ export class OfficeWorld {
     if (this.player) this.refreshHuman(this.player, info);
     else {
       this.player = this.makeHuman(PLAYER_ID, info);
-      this.placeAtDoor(this.player);
+      if (this.arrival) this.arriveThrough(this.player, this.arrival);
+      else this.placeAtDoor(this.player);
+      this.arrival = undefined;
     }
   }
 
@@ -1125,6 +1207,7 @@ export class OfficeWorld {
       a.stand({ x: it.x, y: it.y, tile: it.approach, facing: 'up' });
       a.standAnim = 'stand_play_back';
       a.scheduler.current = IDLE_INTENT;
+      if (id === PLAYER_ID) this.callbacks.onArcade?.();
     } else {
       a.sit({ x: it.x, y: it.y, tile: it.approach, facing: it.facing === 'up' ? 'up' : 'down', z: it.z });
       a.scheduler.current = it.kind === 'desk' ? TYPING_INTENT : IDLE_INTENT;
@@ -1148,13 +1231,135 @@ export class OfficeWorld {
 
   private playerClick(tile: TilePoint) {
     const h = this.player;
-    if (!h || this.edit) return;
+    if (!h || this.edit || this.doorAnim) return;
+    // A click on a door (on the wall or the floor in front of it) walks you through it.
+    const door = this.doors.find((d) => tile.x >= d.tile.x && tile.x <= d.tile.x + 1 && tile.y >= 1 && tile.y <= d.tile.y);
+    if (door) {
+      this.vacate(h, PLAYER_ID);
+      h.pending = undefined;
+      const t = h.actor.tile();
+      if (t.x === door.tile.x && t.y === door.tile.y) return this.callbacks.onDoor?.(door.id);
+      h.pendingDoor = door.id;
+      h.walkTarget = door.tile;
+      h.actor.walkTo(this.nav, door.tile, 'player', [door.tile]);
+      return;
+    }
     const it = interactableAt(this.interactables, tile);
     if (it) return this.playerUse(it);
     if (!this.nav.isWalkable(tile.x, tile.y)) return;
     this.vacate(h, PLAYER_ID);
     h.pending = undefined;
+    h.pendingDoor = undefined;
+    h.walkTarget = tile;
     h.actor.walkTo(this.nav, tile, 'player', [tile]);
+  }
+
+  /** Doors in this scene (lobby doors, or an office's way out). */
+  setDoors(doors: WorldDoor[]) {
+    if (!this.initialized) return;
+    this.doors = doors;
+    for (const [id, sign] of this.doorSigns) {
+      if (doors.some((d) => d.id === id && d.label)) continue;
+      sign.root.destroy({ children: true });
+      this.doorSigns.delete(id);
+    }
+    for (const d of doors) {
+      if (!d.label) continue;
+      let sign = this.doorSigns.get(d.id);
+      if (!sign) {
+        const root = new Container();
+        const bg = new Graphics();
+        const text = new Text({ text: '', style: { fontFamily: SIGN_FONT, fontSize: 11, fontWeight: '700', fill: 0xfdf6e3 } });
+        root.addChild(bg, text);
+        root.eventMode = 'none';
+        this.overlay.addChild(root);
+        sign = { root, bg, text, key: '' };
+        this.doorSigns.set(d.id, sign);
+      }
+      if (sign.key !== d.label) {
+        sign.key = d.label;
+        sign.text.text = d.label;
+        const w = Math.ceil(sign.text.width + 14);
+        sign.bg.clear();
+        sign.bg.roundRect(-w / 2, -20, w, 20, 5).fill({ color: 0x1b1a24, alpha: 0.88 });
+        sign.bg.roundRect(-w / 2, -20, w, 20, 5).stroke({ color: 0xe0a93d, alpha: 0.6, width: 1 });
+        sign.text.position.set(-w / 2 + 7, -18);
+      }
+    }
+  }
+
+  /** Walks the player through a door (it swings open if it's a closed one); resolves when they're gone. */
+  enterDoor(id: string): Promise<void> {
+    const door = this.doors.find((d) => d.id === id);
+    const h = this.player;
+    if (!door || !h?.actor.isVisible || this.reduceMotionNow()) return Promise.resolve();
+    this.vacate(h, PLAYER_ID);
+    return new Promise((done) => {
+      this.doorAnim = { tile: door.tile, start: performance.now(), fromX: h.actor.x, fromY: h.actor.y, done, opens: !!door.opens };
+    });
+  }
+
+  /** The next scene brings the player in through the door in front of `tile`. */
+  arriveVia(tile: TilePoint) {
+    this.arrival = tile;
+  }
+
+  private reduceMotionNow() {
+    return this.options.reduceMotion;
+  }
+
+  private arriveThrough(h: Human, tile: TilePoint) {
+    const a = h.actor;
+    a.spawnAt({ x: tile.x * TILE + TILE, y: tile.y * TILE + 2 });
+    a.halt('down');
+    const inside = { x: tile.x, y: Math.min(tile.y + 2, this.scene.rows - 2) };
+    const target = this.nav.isWalkable(inside.x, inside.y) ? inside : (this.nav.nearestWalkable(inside) ?? tile);
+    h.walkTarget = target;
+    h.pendingDoor = undefined;
+    a.walkTo(this.nav, target, 'player', [target]);
+    const now = performance.now();
+    this.arrivalOpenUntil = now + 900;
+    this.arrivalGraceUntil = now + 1500;
+    this.doorUnder = undefined;
+  }
+
+  private updateDoorAnim(now: number) {
+    const g = this.doorOpen;
+    g.clear();
+    const anim = this.doorAnim;
+    const drawOpen = (tile: TilePoint) => {
+      const wallH = this.scene.wallRows * TILE;
+      const x = tile.x * TILE;
+      g.rect(x, 10, 32, wallH - 10).fill(0x15131c);
+      g.rect(x, wallH - 10, 32, 10).fill({ color: 0xffe2a8, alpha: 0.18 });
+      g.rect(x, 10, 5, wallH - 10).fill(0x8a5a35);
+    };
+    if (anim) {
+      const h = this.player;
+      const t = Math.min(1, (now - anim.start) / 550);
+      if (anim.opens) drawOpen(anim.tile);
+      if (h) {
+        const tx = anim.tile.x * TILE + TILE;
+        const ty = anim.tile.y * TILE + 2;
+        h.actor.stepTo(anim.fromX + (tx - anim.fromX) * t, anim.fromY + (ty - anim.fromY) * t, 'up');
+        h.actor.root.alpha = 1 - Math.max(0, t - 0.5) * 2;
+      }
+      if (t >= 1) {
+        this.doorAnim = undefined;
+        if (h) {
+          h.actor.halt('down');
+          h.actor.root.alpha = 1;
+        }
+        anim.done();
+      }
+      return;
+    }
+    if (now < this.arrivalOpenUntil) {
+      const d = this.doors.find((x) => x.opens);
+      const pt = this.player?.actor.tile();
+      const near = d && pt ? this.doors.filter((x) => x.opens).sort((a, b) => Math.abs(a.tile.x - pt.x) - Math.abs(b.tile.x - pt.x))[0] : undefined;
+      if (near) drawOpen(near.tile);
+    }
   }
 
   private playerUse(it: Interactable) {
@@ -1231,6 +1436,9 @@ export class OfficeWorld {
       const facing: Facing = dx ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
       a.stepTo(x, y, facing);
       this.keyMoving = true;
+      h.walkTarget = undefined;
+      h.pendingDoor = undefined;
+      this.checkDoor(h);
       if (this.followId !== PLAYER_ID) {
         this.followId = PLAYER_ID;
         this.emitCamera();
@@ -1241,7 +1449,31 @@ export class OfficeWorld {
       this.keyMoving = false;
       a.halt();
     }
-    if (a.move(dt) === 'arrived' && a.arrivedKind === 'player') this.arrive(h);
+    if (this.doorAnim) return;
+    if (a.move(dt) === 'arrived' && a.arrivedKind === 'player') {
+      h.walkTarget = undefined;
+      const door = h.pendingDoor;
+      h.pendingDoor = undefined;
+      if (door) {
+        a.halt('up');
+        this.doorUnder = door;
+        this.callbacks.onDoor?.(door);
+      } else this.arrive(h);
+    }
+  }
+
+  /** Stepping onto a door tile (by keyboard) goes through it, once per visit. */
+  private checkDoor(h: Human) {
+    const t = h.actor.tile();
+    const door = this.doors.find((d) => d.tile.x === t.x && d.tile.y === t.y);
+    if (!door) {
+      this.doorUnder = undefined;
+      return;
+    }
+    if (this.doorUnder === door.id || performance.now() < this.arrivalGraceUntil || this.doorAnim) return;
+    this.doorUnder = door.id;
+    this.keys.clear();
+    this.callbacks.onDoor?.(door.id);
   }
 
   private updatePeer(id: string, h: Human, dt: number) {

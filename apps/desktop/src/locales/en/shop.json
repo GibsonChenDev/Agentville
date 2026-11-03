@@ -1,0 +1,52 @@
+{
+  "title": "Shop",
+  "howToEarn": "Your agents earn you coins: +{{perTurn}} for every reply they finish, plus a bonus for the tools they use (up to {{cap}} a day).",
+  "today": "Earned today: {{today}} / {{cap}}",
+  "offline": "Can't reach the server right now. Coins and purchases will be back when you're online.",
+  "tab": {
+    "look": "Looks",
+    "decor": "Office decor"
+  },
+  "colorItem": "{{color}} outfit colour",
+  "wear": "Wear it",
+  "wearing": "Wearing",
+  "place": "Place in office",
+  "placeFromOffice": "Go into an office to place it",
+  "locked": "Locked",
+  "lockedHint": "Buy it in the shop with coins your agents earn",
+  "wallet": {
+    "title": "Coins · earned today {{today}} / {{cap}} · click to open the shop",
+    "offline": "Coins (offline)",
+    "shop": "Shop"
+  },
+  "account": {
+    "coins": "Coins",
+    "codeTitle": "Recovery code",
+    "codeBody": "Your account has no password — this code is the key. It keeps your character, coins, purchases, team offices and arcade records. Enter it on another computer (or after reinstalling) to get everything back.",
+    "codeWarning": "Keep it somewhere safe (e.g. a password manager). Anyone with the code can use your account; if you lose it, it can't be recovered.",
+    "creating": "Creating your account…",
+    "show": "Show",
+    "hide": "Hide",
+    "copy": "Copy",
+    "copied": "Copied",
+    "restoreTitle": "Use an existing account",
+    "restoreBody": "Paste the recovery code from your other computer. This computer switches to that account.",
+    "restore": "Restore",
+    "restored": "Account restored."
+  },
+  "error": {
+    "network": "Can't reach the server.",
+    "server": "The server had a problem. Try again.",
+    "no_server": "No server is set.",
+    "insufficient_funds": "Not enough coins yet.",
+    "owned": "You already own this.",
+    "unknown_item": "This item isn't sold anymore.",
+    "unauthorized": "That recovery code doesn't match any account.",
+    "bad_request": "Something was wrong with that request.",
+    "rate_limited": "Too many tries. Wait a little.",
+    "invalid_code": "Invalid code.",
+    "room_full": "Full.",
+    "forbidden": "Not allowed.",
+    "not_found": "Not found."
+  }
+}

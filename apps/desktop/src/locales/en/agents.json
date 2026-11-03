@@ -176,7 +176,11 @@
       "cap": "Cap",
       "beanie": "Beanie",
       "scarf": "Scarf",
-      "lanyard": "Lanyard"
+      "lanyard": "Lanyard",
+      "flower": "Flower",
+      "cat_ears": "Cat ears",
+      "wizard_hat": "Wizard hat",
+      "crown": "Crown"
     },
     "equipment": {
       "laptop": "Laptop",
@@ -196,7 +200,9 @@
       "charcoal": "Charcoal",
       "cream": "Cream",
       "denim": "Denim",
-      "forest": "Forest"
+      "forest": "Forest",
+      "neon": "Neon",
+      "gold": "Gold"
     }
   },
   "editor": {

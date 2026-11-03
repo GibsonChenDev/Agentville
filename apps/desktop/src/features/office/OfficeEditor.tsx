@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { THEMES } from '../../game/assets/themes';
 import { FURNITURE, drawDesk } from '../../game/furniture/furniture';
 import { EDITABLE_KINDS } from '../../game/scenes/editing';
+import { owns, useAccount } from '../../account/accountStore';
 import { useEditor } from './editorStore';
 
 const thumbs = new Map<string, string>();
@@ -20,6 +21,7 @@ function thumb(theme: OfficeTheme, kind: string) {
 
 /** Floating editor panel shown over the office while editing its layout. */
 export function OfficeEditor() {
+  const inventory = useAccount((s) => s.account?.inventory);
   const { t } = useTranslation('office');
   const ed = useEditor();
   const theme = ed.theme;
@@ -68,21 +70,26 @@ export function OfficeEditor() {
       </div>
 
       <div className="scroll-thin flex gap-1.5 overflow-x-auto px-3 py-2" role="listbox" aria-label={t('editor.palette')}>
-        {EDITABLE_KINDS.map((kind) => (
-          <button
-            key={kind}
-            role="option"
-            aria-selected={ed.placing === kind}
-            onClick={() => ed.setPlacing(ed.placing === kind ? undefined : kind)}
-            className={`flex w-[76px] shrink-0 flex-col items-center gap-1 rounded-lg p-1.5 text-center transition-colors ${ed.placing === kind ? 'bg-amber/15 ring-1 ring-amber/60' : 'hover:bg-panel-2'}`}
-            title={t(`furniture.${kind}`)}
-          >
-            <span className="grid h-[44px] w-full place-items-center">
-              <img src={thumb(theme, kind)} alt="" className="pixelated max-h-[44px] max-w-[60px] object-contain" style={{ zoom: 1 }} />
-            </span>
-            <span className="w-full truncate text-[10.5px] text-muted">{t(`furniture.${kind}`)}</span>
-          </button>
-        ))}
+        {EDITABLE_KINDS.map((kind) => {
+          // Shop decorations can be placed once bought; until then they open the shop.
+          const locked = !owns(inventory, 'furniture', kind);
+          return (
+            <button
+              key={kind}
+              role="option"
+              aria-selected={ed.placing === kind}
+              onClick={() => (locked ? useAccount.getState().openShop(true) : ed.setPlacing(ed.placing === kind ? undefined : kind))}
+              className={`relative flex w-[76px] shrink-0 flex-col items-center gap-1 rounded-lg p-1.5 text-center transition-colors ${ed.placing === kind ? 'bg-amber/15 ring-1 ring-amber/60' : 'hover:bg-panel-2'}`}
+              title={locked ? t('shop:lockedHint') : t(`furniture.${kind}`)}
+            >
+              <span className={`grid h-[44px] w-full place-items-center ${locked ? 'opacity-40 grayscale' : ''}`}>
+                <img src={thumb(theme, kind)} alt="" className="pixelated max-h-[44px] max-w-[60px] object-contain" style={{ zoom: 1 }} />
+              </span>
+              <span className="w-full truncate text-[10.5px] text-muted">{t(`furniture.${kind}`)}</span>
+              {locked && <span className="absolute top-1 right-1 text-[10px]" aria-label={t('shop:locked')}>🔒</span>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex min-h-[38px] items-center gap-2 border-t border-line px-3 py-1.5 text-[12px]">

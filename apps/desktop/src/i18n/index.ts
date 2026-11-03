@@ -10,6 +10,9 @@ import enOffice from '../locales/en/office.json';
 import enSettings from '../locales/en/settings.json';
 import enTasks from '../locales/en/tasks.json';
 import enTeam from '../locales/en/team.json';
+import enShop from '../locales/en/shop.json';
+import enArcade from '../locales/en/arcade.json';
+import enTour from '../locales/en/tour.json';
 import twAgents from '../locales/zh-TW/agents.json';
 import twCommon from '../locales/zh-TW/common.json';
 import twErrors from '../locales/zh-TW/errors.json';
@@ -20,16 +23,19 @@ import twOffice from '../locales/zh-TW/office.json';
 import twSettings from '../locales/zh-TW/settings.json';
 import twTasks from '../locales/zh-TW/tasks.json';
 import twTeam from '../locales/zh-TW/team.json';
+import twShop from '../locales/zh-TW/shop.json';
+import twArcade from '../locales/zh-TW/arcade.json';
+import twTour from '../locales/zh-TW/tour.json';
 
 export const SUPPORTED_LOCALES = ['en', 'zh-TW'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export type LocalePreference = Locale | 'system';
 
-export const NAMESPACES = ['common', 'agents', 'tasks', 'office', 'settings', 'errors', 'integration', 'setup', 'guide', 'team'] as const;
+export const NAMESPACES = ['common', 'agents', 'tasks', 'office', 'settings', 'errors', 'integration', 'setup', 'guide', 'team', 'shop', 'arcade', 'tour'] as const;
 
 export const resources = {
-  en: { common: enCommon, agents: enAgents, tasks: enTasks, office: enOffice, settings: enSettings, errors: enErrors, integration: enIntegration, setup: enSetup, guide: enGuide, team: enTeam },
-  'zh-TW': { common: twCommon, agents: twAgents, tasks: twTasks, office: twOffice, settings: twSettings, errors: twErrors, integration: twIntegration, setup: twSetup, guide: twGuide, team: twTeam },
+  en: { common: enCommon, agents: enAgents, tasks: enTasks, office: enOffice, settings: enSettings, errors: enErrors, integration: enIntegration, setup: enSetup, guide: enGuide, team: enTeam, shop: enShop, arcade: enArcade, tour: enTour },
+  'zh-TW': { common: twCommon, agents: twAgents, tasks: twTasks, office: twOffice, settings: twSettings, errors: twErrors, integration: twIntegration, setup: twSetup, guide: twGuide, team: twTeam, shop: twShop, arcade: twArcade, tour: twTour },
 } as const;
 
 /**

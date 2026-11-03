@@ -52,6 +52,11 @@
     "server_rack": "Server rack",
     "water_cooler": "Water cooler",
     "arcade": "Arcade cabinet",
-    "beanbag": "Beanbag"
+    "beanbag": "Beanbag",
+    "lava_lamp": "Lava lamp",
+    "trophy": "Trophy",
+    "cat": "Office cat",
+    "jukebox": "Jukebox",
+    "aquarium": "Aquarium"
   }
 }

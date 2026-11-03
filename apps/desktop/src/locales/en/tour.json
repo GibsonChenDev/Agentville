@@ -1,0 +1,35 @@
+{
+  "progress": "Step {{n}} of {{total}}",
+  "skip": "Skip tour",
+  "back": "Back",
+  "next": "Next",
+  "done": "Start exploring",
+  "you": {
+    "title": "This is you",
+    "body": "Walk with W A S D, or click a spot on the floor.\nClick your character to change your look."
+  },
+  "sit": {
+    "title": "Sit, relax, play",
+    "body": "Click a free chair, sofa or beanbag to sit down — press E to get up.\nClick the arcade cabinet to play Snake, Breakout, Flappy or 2048.\nWalk out the door in the back wall to reach the lobby."
+  },
+  "agents": {
+    "title": "Your agents",
+    "body": "Live shows the Claude Code sessions you run in a terminal, as characters at the desks. Demo plays a sample team so you can look around first."
+  },
+  "wallet": {
+    "title": "Coins and the shop",
+    "body": "Every reply an agent finishes earns you coins (+10, plus a bonus for tools, up to 500 a day). Click here to buy outfits and office decorations."
+  },
+  "offices": {
+    "title": "Your offices",
+    "body": "Your own office and every team office you've joined. Create a team office to get an invite code, or Join one with a teammate's code — you'll walk right in."
+  },
+  "account": {
+    "title": "Your account",
+    "body": "Created automatically, no sign-up. Settings → Account shows your recovery code: keep it safe to restore your character, coins and offices on another computer."
+  },
+  "guide": {
+    "title": "Need a hand?",
+    "body": "The guide explains everything step by step, including how to connect Claude Code. You can replay this tour from there."
+  }
+}

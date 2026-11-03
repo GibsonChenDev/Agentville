@@ -12,7 +12,13 @@ import { Welcome } from '../features/onboarding/Welcome';
 import { GuideDialog } from '../features/guide/GuideDialog';
 import { PlayerEditor } from '../features/team/PlayerEditor';
 import { TeamDialog } from '../features/team/TeamDialog';
+import { ShopDialog } from '../features/shop/ShopDialog';
+import { ArcadeDialog } from '../features/arcade/ArcadeDialog';
+import { Tour, startTourWhenReady } from '../features/tour/Tour';
 import { team } from '../team/teamClient';
+import { startPlace } from '../world/placeStore';
+import { useAccount } from '../account/accountStore';
+import { startEarning } from '../account/earner';
 import { useApp } from '../state/store';
 import { useShortcuts } from './useShortcuts';
 
@@ -26,6 +32,10 @@ export function App() {
     void bridge.start();
     startAlerts();
     team.start();
+    startPlace();
+    void useAccount.getState().start();
+    startEarning();
+    startTourWhenReady();
   }, []);
   useEffect(() => {
     const id = setInterval(() => useApp.getState().sweepStale(Date.now()), 30_000);
@@ -47,6 +57,9 @@ export function App() {
       <GuideDialog />
       <TeamDialog />
       <PlayerEditor />
+      <ShopDialog />
+      <ArcadeDialog />
+      <Tour />
     </div>
   );
 }

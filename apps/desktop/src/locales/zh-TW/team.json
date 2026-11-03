@@ -8,7 +8,7 @@
   "agentsWorking_other": "{{count}} 個 agent 工作中",
   "agentsShort_one": "🤖 {{count}}",
   "agentsShort_other": "🤖 {{count}}",
-  "sectionTitle": "團隊辦公室",
+  "sectionTitle": "辦公室",
   "status": {
     "idle": "未連線",
     "connecting": "連線中…",
@@ -30,7 +30,8 @@
     "ownerHint": "辦公室建立者",
     "privacy": "隊友只看得到你的人物，以及你執行中的 agent 數量。",
     "leave": "離開",
-    "confirmLeave": "確定離開辦公室？"
+    "confirmLeave": "確定離開辦公室？",
+    "pitchMore": "再建立一間團隊辦公室，或用邀請代碼加入。"
   },
   "dialog": {
     "createTitle": "建立團隊辦公室",
@@ -79,6 +80,17 @@
     "forbidden": "只有建立辦公室的人可以這麼做。",
     "not_found": "轉發伺服器無法辨識這個請求，網址正確嗎？",
     "removed": "你已離開團隊辦公室。",
-    "version": "這個 Agentville 版本太舊，無法連到團隊伺服器，請更新。"
+    "version": "這個 Agentville 版本太舊，無法連到團隊伺服器，請更新。",
+    "insufficient_funds": "金幣還不夠。",
+    "owned": "你已經擁有這個項目。",
+    "unknown_item": "這個項目已停售。"
+  },
+  "place": {
+    "personal": "我的辦公室",
+    "lobby": "大廳",
+    "lobbyHint": "走進一扇門就能進入辦公室",
+    "newOffice": "＋ 新辦公室",
+    "toLobby": "大廳",
+    "here": "目前位置"
   }
 }

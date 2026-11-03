@@ -1,6 +1,7 @@
 {
   "tabs": {
     "general": "一般",
+    "account": "帳號",
     "monitoring": "監控設定"
   },
   "intro": "監控模式會把你在終端機或 IDE 中啟動的 Claude Code 工作階段，變成辦公室裡的角色。它使用 Claude Code Hooks：不需要 API 金鑰、不會產生額外費用，除了 Claude Code 之外不必再安裝任何東西。",

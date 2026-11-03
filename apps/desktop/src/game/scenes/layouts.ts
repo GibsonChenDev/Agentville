@@ -5,6 +5,8 @@ export const TILE = 16;
 export type WallDecor =
   | { kind: 'window'; x: number; w: number; panes?: number }
   | { kind: 'door'; x: number }
+  /** A closed office door in the lobby; `plate` colours its name plate. */
+  | { kind: 'office_door'; x: number; plate: string }
   | { kind: 'poster'; x: number; y: number; variant: number }
   | { kind: 'clock'; x: number; y: number }
   | { kind: 'shelf'; x: number; y: number; w: number }
@@ -108,6 +110,7 @@ export const DEFAULT_SCENES: Record<OfficeTheme, SceneDefinition> = {
       f('bean', 'beanbag', 24, 15),
       f('succ', 'plant_succulent', 14, 11),
       f('water', 'water_cooler', 28, 10),
+      f('arcade', 'arcade', 27, 13),
     ],
   ),
   studio: build(
@@ -169,6 +172,7 @@ export const DEFAULT_SCENES: Record<OfficeTheme, SceneDefinition> = {
       f('succ2', 'plant_succulent', 11, 9),
       f('m3', 'plant_monstera', 28, 17),
       f('lamp', 'floor_lamp', 12, 14),
+      f('arcade', 'arcade', 28, 12),
     ],
   ),
   midnight: build(
@@ -230,3 +234,37 @@ export const DEFAULT_SCENES: Record<OfficeTheme, SceneDefinition> = {
     ],
   ),
 };
+
+// ───────────────────────────────── lobby
+
+export interface LobbyDoor {
+  id: string;
+  plate: string;
+}
+
+/** Door `i` of the lobby: the floor tile in front of it, where walking in begins. */
+export const lobbyDoorTile = (i: number): TilePoint => ({ x: 3 + i * 5, y: 4 });
+
+/** A hallway with one door per office, plants between them and a runner rug. */
+export function lobbyScene(doors: LobbyDoor[]): SceneDefinition {
+  const cols = Math.max(18, 6 + doors.length * 5);
+  const furniture: FurniturePlacement[] = [];
+  for (let i = 0; i <= doors.length; i++) {
+    const x = 1 + i * 5;
+    if (x < cols - 1) furniture.push(f(`plant-${i}`, i % 2 ? 'plant_fiddle' : 'plant_monstera', x, 4));
+  }
+  furniture.push(f('bench', 'sofa', Math.floor(cols / 2) - 1, 9), f('water', 'water_cooler', cols - 2, 9));
+  return {
+    theme: 'studio',
+    cols,
+    rows: 11,
+    wallRows: 4,
+    door: lobbyDoorTile(0),
+    furniture,
+    workstations: [],
+    meetingSpots: [],
+    loungeSpots: [],
+    wallDecor: [...doors.map((d, i) => ({ kind: 'office_door' as const, x: lobbyDoorTile(i).x * TILE, plate: d.plate })), ...doors.map((_, i) => ({ kind: 'pendant' as const, x: lobbyDoorTile(i).x * TILE + 16 }))],
+    rugs: [{ x: 2, y: 6, w: cols - 4, h: 2, style: 'stripe' }],
+  };
+}

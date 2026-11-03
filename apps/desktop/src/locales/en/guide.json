@@ -4,7 +4,9 @@
   "copied": "Copied",
   "nav": {
     "start": "Getting started",
+    "world": "Your character & lobby",
     "office": "Reading the office",
+    "together": "Team offices & coins",
     "teams": "Teams & worktrees",
     "help": "Questions"
   },
@@ -106,5 +108,31 @@
       "q": "Claude Code shows “hook … failed: connect ECONNREFUSED”",
       "a": "That appears when Agentville isn't running. It's harmless — Claude Code keeps working normally. Open Agentville to watch again, or remove the hooks (Settings → Monitoring setup → Advanced) if you don't use Agentville anymore."
     }
+  },
+  "tour": "Replay the quick tour",
+  "world": {
+    "intro": "You have your own character in the office. Your agents work at the desks; you can walk around, sit down, play the arcade, and visit other offices.",
+    "walkTitle": "Walk",
+    "walk": "Hold W A S D, or click a spot on the floor. Click a teammate to see who they are.",
+    "sitTitle": "Sit down",
+    "sit": "Click a free desk chair, a sofa place or a beanbag and your character walks there and sits. Press E (or click it again) to get up. A desk an agent is using stays theirs.",
+    "arcadeTitle": "Play the arcade",
+    "arcade": "Click the arcade cabinet. A game window opens: Snake, Breakout, Flappy and 2048. Keyboard or mouse; Esc returns to the game list. Your best scores are saved to your account.",
+    "lookTitle": "Change your look",
+    "look": "Click your own character, or “My character” in the sidebar. Items with a 🔒 are sold in the shop.",
+    "lobbyTitle": "The lobby and its doors",
+    "lobby": "Walk out through your office door (the doorway in the back wall) to reach the lobby. Every door there is an office: yours, each team office you joined, and “＋ New office” to create or join one. Walk into a door to go in. You can also jump between offices from the sidebar."
+  },
+  "together": {
+    "teamTitle": "Team offices",
+    "team": "Sidebar → Offices → Create: you get an invite code like AGV-7K3P-Q9M2. Teammates choose Join and type it once; after that the office is a door in their lobby. Everyone sees each other walk around, and anyone can switch the map or move furniture.",
+    "privacyTitle": "What teammates see",
+    "privacy": "Your nickname, your character and where it stands, and how many of your agents are running — shown as anonymous characters at desks. Never your prompts, files, tools or projects.",
+    "coinsTitle": "Coins",
+    "coins": "Each time one of your agents finishes a reply you get 10 coins, plus 1 per tool it used (up to 500 a day). Click the 🪙 counter at the top of the office to open the shop.",
+    "shopTitle": "Shop",
+    "shop": "Buy accessories, outfit colours and office decorations. Wear new looks straight from the shop; decorations are placed with “Edit office”.",
+    "accountTitle": "Your account and recovery code",
+    "account": "Your account is created automatically — no sign-up. It keeps your character, coins, purchases, team offices and arcade records. Settings → Account shows your recovery code: keep it safe, and enter it on another computer to get everything back."
   }
 }

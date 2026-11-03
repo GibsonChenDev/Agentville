@@ -8,7 +8,7 @@
   "agentsWorking_other": "{{count}} agents working",
   "agentsShort_one": "🤖 {{count}}",
   "agentsShort_other": "🤖 {{count}}",
-  "sectionTitle": "Team office",
+  "sectionTitle": "Offices",
   "status": {
     "idle": "Disconnected",
     "connecting": "Connecting…",
@@ -30,7 +30,8 @@
     "ownerHint": "Created this office",
     "privacy": "Teammates only see your character and your number of running agents.",
     "leave": "Leave",
-    "confirmLeave": "Leave this office?"
+    "confirmLeave": "Leave this office?",
+    "pitchMore": "Create another team office, or join one with an invite code."
   },
   "dialog": {
     "createTitle": "Create a team office",
@@ -79,6 +80,17 @@
     "forbidden": "Only the person who created the office can do that.",
     "not_found": "The relay server doesn't recognise this request — is the address right?",
     "removed": "You left the team office.",
-    "version": "This version of Agentville is too old for the team server. Please update."
+    "version": "This version of Agentville is too old for the team server. Please update.",
+    "insufficient_funds": "Not enough coins yet.",
+    "owned": "You already own this.",
+    "unknown_item": "This item isn't sold anymore."
+  },
+  "place": {
+    "personal": "My office",
+    "lobby": "Lobby",
+    "lobbyHint": "walk through a door to enter an office",
+    "newOffice": "＋ New office",
+    "toLobby": "Lobby",
+    "here": "You're here"
   }
 }

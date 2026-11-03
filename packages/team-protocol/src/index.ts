@@ -108,7 +108,7 @@ export interface MembershipResponse {
   token: string;
   owner: boolean;
 }
-export type ApiErrorCode = 'invalid_code' | 'room_full' | 'rate_limited' | 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found';
+export type ApiErrorCode = 'invalid_code' | 'room_full' | 'rate_limited' | 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'unknown_item' | 'owned' | 'insufficient_funds';
 
 // ───────────────────────────────── validation
 
@@ -243,3 +243,5 @@ export function normalizeInviteCode(input: string): string | null {
 export function isInviteCode(v: unknown): v is string {
   return typeof v === 'string' && CODE.test(v);
 }
+
+export * from './account';

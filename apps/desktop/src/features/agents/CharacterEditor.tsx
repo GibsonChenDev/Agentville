@@ -13,6 +13,8 @@ import { HAIR, OUTFIT, SKIN } from '../../game/assets/palette';
 import { THEMES } from '../../game/assets/themes';
 import { drawDesk, drawEquipment } from '../../game/furniture/furniture';
 import { sceneFor, useApp } from '../../state/store';
+import { lockedOption, useAccount } from '../../account/accountStore';
+import { useOfficeTheme } from '../../world/officeTheme';
 
 const PREVIEW_ANIMS: { id: string; anim: AnimName }[] = [
   { id: 'idle', anim: 'idle_front' },
@@ -65,7 +67,7 @@ export function Preview({ appearance, anim, scale = 6 }: { appearance: Character
 }
 
 function EquipmentPreview({ appearance }: { appearance: CharacterAppearance }) {
-  const theme = useApp((s) => s.prefs.theme);
+  const theme = useOfficeTheme();
   const url = useMemo(() => {
     const t = THEMES[theme];
     const c = document.createElement('canvas');
@@ -81,6 +83,10 @@ function EquipmentPreview({ appearance }: { appearance: CharacterAppearance }) {
 
 export function OptionRow<K extends keyof CharacterAppearance>({ field, value, onChange }: { field: K; value: CharacterAppearance[K]; onChange: (v: CharacterAppearance[K]) => void }) {
   const { t } = useTranslation('agents');
+  const inventory = useAccount((s) => s.account?.inventory);
+  // Shop items show a lock until bought; choosing one opens the shop instead.
+  const pick = (opt: CharacterAppearance[K]) => (lockedOption(inventory, field, opt as string) ? useAccount.getState().openShop(true) : onChange(opt));
+  const lock = (opt: CharacterAppearance[K]) => lockedOption(inventory, field, opt as string);
   const options = APPEARANCE_OPTIONS[field] as readonly CharacterAppearance[K][];
   const swatch = SWATCHES[field];
   return (
@@ -94,19 +100,23 @@ export function OptionRow<K extends keyof CharacterAppearance>({ field, value, o
               role="radio"
               aria-checked={value === opt}
               aria-label={t(`appearance.${swatchNs(field)}.${opt}`)}
-              title={t(`appearance.${swatchNs(field)}.${opt}`)}
-              onClick={() => onChange(opt)}
-              className={`h-6 w-6 rounded-full ring-offset-2 ring-offset-panel ${value === opt ? 'ring-2 ring-amber' : 'ring-1 ring-line-strong hover:ring-fg/40'}`}
+              title={lock(opt) ? `🔒 ${t(`appearance.${swatchNs(field)}.${opt}`)} · ${t('shop:lockedHint')}` : t(`appearance.${swatchNs(field)}.${opt}`)}
+              onClick={() => pick(opt)}
+              className={`grid h-6 w-6 place-items-center rounded-full text-[9px] ring-offset-2 ring-offset-panel ${value === opt ? 'ring-2 ring-amber' : 'ring-1 ring-line-strong hover:ring-fg/40'} ${lock(opt) ? 'opacity-50' : ''}`}
               style={{ background: swatch[opt as string] }}
-            />
+            >
+              {lock(opt) ? '🔒' : null}
+            </button>
           ) : (
             <button
               key={opt}
               role="radio"
               aria-checked={value === opt}
-              onClick={() => onChange(opt)}
-              className={`rounded-md px-2 py-1 text-[11.5px] ${value === opt ? 'bg-amber/15 text-amber ring-1 ring-amber/50' : 'text-muted ring-1 ring-line hover:bg-panel-3 hover:text-fg'}`}
+              onClick={() => pick(opt)}
+              title={lock(opt) ? t('shop:lockedHint') : undefined}
+              className={`rounded-md px-2 py-1 text-[11.5px] ${value === opt ? 'bg-amber/15 text-amber ring-1 ring-amber/50' : 'text-muted ring-1 ring-line hover:bg-panel-3 hover:text-fg'} ${lock(opt) ? 'opacity-60' : ''}`}
             >
+              {lock(opt) ? '🔒 ' : ''}
               {t(`appearance.${field}.${opt}`)}
             </button>
           ),
@@ -126,7 +136,7 @@ export function CharacterEditor() {
   const agentId = useApp((s) => s.customizing);
   const agent = useApp((s) => (agentId ? s.agents[agentId] : undefined));
   const base = useApp((s) => (agentId ? s.baseAgents[agentId] : undefined));
-  const theme = useApp((s) => s.prefs.theme);
+  const theme = useOfficeTheme();
   const scene = useApp((s) => sceneFor(s, theme));
   const dialog = useRef<HTMLDialogElement>(null);
 

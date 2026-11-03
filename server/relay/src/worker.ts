@@ -11,18 +11,30 @@ import {
   type Appearance,
   type LayoutDocWire,
   type MembershipResponse,
+  buy,
+  cleanProfile,
+  cleanRooms,
+  earn,
+  generateRecoveryCode,
+  newAccount,
+  normalizeRecoveryCode,
+  recordScore,
+  type AccountDoc,
 } from '../../../packages/team-protocol/src/index.ts';
 import { RoomCore, hex, random, sha256, type Conn, type ConnState, type RoomMeta, type RoomStore, type StoredMember } from './roomCore.ts';
 
 export interface Env {
   ROOM: DurableObjectNamespace<Room>;
   DIRECTORY: DurableObjectNamespace<Directory>;
+  ACCOUNT: DurableObjectNamespace<Account>;
 }
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const DEFAULT_THEME = 'loft';
 /** Wrong invite codes allowed per client IP per window before joins are refused. */
 const JOIN_FAILURES = { max: 10, windowMs: 10 * 60_000 };
+/** New accounts per client IP per hour. */
+const ACCOUNT_CREATES = { max: 30, windowMs: 60 * 60_000 };
 
 // ───────────────────────────────── HTTP entry
 
@@ -36,6 +48,8 @@ export default {
       if (req.method === 'GET' && parts[1] === 'health') return ok({ ok: true, version: VERSION });
       if (req.method === 'POST' && parts[1] === 'rooms' && parts.length === 2) return await createRoom(req, env);
       if (req.method === 'POST' && parts[1] === 'join' && parts.length === 2) return await joinRoom(req, env);
+      if (req.method === 'POST' && parts[1] === 'accounts' && parts.length === 2) return await createAccount(req, env);
+      if (parts[1] === 'me') return await me(req, env, parts.slice(2));
       if (parts[1] === 'rooms' && parts[2] && ROOM_ID.test(parts[2])) {
         const roomId = parts[2];
         const stub = roomStub(env, roomId);
@@ -100,6 +114,41 @@ async function joinRoom(req: Request, env: Env) {
   return ok({ roomId: found, memberId: member.memberId, token: member.token, owner: false } satisfies MembershipResponse);
 }
 
+// ───────────────────────────────── accounts
+
+async function createAccount(req: Request, env: Env) {
+  const ip = req.headers.get('CF-Connecting-IP') ?? 'local';
+  if (!(await directory(env).allowAccountCreate(ip))) return error('rate_limited', 429);
+  const code = generateRecoveryCode(random);
+  const account = await accountStub(env, await accountIdFor(code)).create();
+  return ok({ code, account });
+}
+
+/** `/v1/me…` — everything about the account whose recovery code is the bearer token. */
+async function me(req: Request, env: Env, rest: string[]) {
+  const raw = /^Bearer (.+)$/.exec(req.headers.get('Authorization') ?? '')?.[1];
+  const code = raw ? normalizeRecoveryCode(raw) : null;
+  if (!code) return error('unauthorized', 401);
+  const stub = accountStub(env, await accountIdFor(code));
+  const action = rest.join('/');
+  if (req.method === 'GET' && action === '') {
+    const account = await stub.get();
+    return account ? ok({ account }) : error('unauthorized', 401);
+  }
+  if (req.method !== 'POST') return error('not_found', 404);
+  const body = await readJson(req);
+  const r = await stub.act(action, body);
+  if (typeof r === 'string') return error(r as ApiErrorCode, r === 'unauthorized' ? 401 : r === 'not_found' ? 404 : 400);
+  return ok(r);
+}
+
+async function accountIdFor(code: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`agentville-account:${code}`));
+  return hex(new Uint8Array(digest)).slice(0, 32);
+}
+
+const accountStub = (env: Env, id: string) => env.ACCOUNT.get(env.ACCOUNT.idFromName(id));
+
 async function registerNewCode(env: Env, roomId: string) {
   for (let i = 0; i < 8; i++) {
     const code = generateInviteCode(random);
@@ -147,6 +196,18 @@ async function readJson(req: Request): Promise<Record<string, unknown> | null> {
 /** Maps invite codes to rooms and throttles code guessing. A single global instance. */
 export class Directory extends DurableObject<Env> {
   private failures = new Map<string, { count: number; since: number }>();
+  private creates = new Map<string, { count: number; since: number }>();
+
+  allowAccountCreate(ip: string): boolean {
+    const now = Date.now();
+    const c = this.creates.get(ip);
+    if (c && now - c.since < ACCOUNT_CREATES.windowMs) {
+      if (c.count >= ACCOUNT_CREATES.max) return false;
+      c.count += 1;
+    } else this.creates.set(ip, { count: 1, since: now });
+    if (this.creates.size > 10_000) this.creates.clear();
+    return true;
+  }
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -174,6 +235,74 @@ export class Directory extends DurableObject<Env> {
     this.failures.set(ip, fresh ? { count: 1, since: now } : { count: f.count + 1, since: f.since });
     if (this.failures.size > 10_000) this.failures.clear();
     return null;
+  }
+}
+
+// ───────────────────────────────── account
+
+/** One account: character, coins, purchases, team offices and best scores. */
+export class Account extends DurableObject<Env> {
+  private async load() {
+    return (await this.ctx.storage.get<AccountDoc>('account')) ?? null;
+  }
+
+  async create(): Promise<AccountDoc> {
+    const existing = await this.load();
+    if (existing) return existing;
+    const doc = newAccount(this.ctx.id.toString().slice(0, 32), Date.now());
+    await this.ctx.storage.put('account', doc);
+    return doc;
+  }
+
+  get() {
+    return this.load();
+  }
+
+  /** Applies one change; returns the response body or an error code. */
+  async act(action: string, body: Record<string, unknown> | null): Promise<Record<string, unknown> | string> {
+    const doc = await this.load();
+    if (!doc) return 'unauthorized';
+    let next: AccountDoc = doc;
+    let extra: Record<string, unknown> = {};
+    switch (action) {
+      case 'profile': {
+        const profile = cleanProfile(body);
+        if (!profile) return 'bad_request';
+        next = { ...doc, profile };
+        break;
+      }
+      case 'earn': {
+        const turns = Number(body?.turns);
+        const tools = Number(body?.tools ?? 0);
+        if (!Number.isInteger(turns) || turns < 1 || turns > 50 || !Number.isInteger(tools) || tools < 0 || tools > 5000) return 'bad_request';
+        const r = earn(doc, turns, tools, Date.now());
+        next = r.doc;
+        extra = { credited: r.credited };
+        break;
+      }
+      case 'buy': {
+        const r = buy(doc, String(body?.item ?? ''));
+        if (!r.ok) return r.error;
+        next = r.doc;
+        break;
+      }
+      case 'rooms': {
+        const rooms = cleanRooms(body?.rooms);
+        if (!rooms) return 'bad_request';
+        next = { ...doc, rooms };
+        break;
+      }
+      case 'score': {
+        const r = recordScore(doc, String(body?.game ?? ''), body?.score);
+        if (!r) return 'bad_request';
+        next = r;
+        break;
+      }
+      default:
+        return 'not_found';
+    }
+    if (next !== doc) await this.ctx.storage.put('account', next);
+    return { account: next, ...extra };
   }
 }
 

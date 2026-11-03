@@ -27,7 +27,7 @@ import type { BridgeState, BridgeStatus, HooksStatus } from '../integration/type
 import { loadPrefs, savePrefs, type Prefs } from './persistence';
 
 export type AppMode = 'demo' | 'live';
-export type SettingsTab = 'general' | 'monitoring';
+export type SettingsTab = 'general' | 'account' | 'monitoring';
 export type Link = 'offline' | 'connecting' | 'online';
 
 const MAX_EVENTS = 2000;

@@ -1,6 +1,7 @@
 {
   "tabs": {
     "general": "General",
+    "account": "Account",
     "monitoring": "Monitoring setup"
   },
   "intro": "Monitor Mode shows the Claude Code sessions you start in a terminal or IDE as characters in the office. It uses Claude Code hooks: no API key, no extra cost, and nothing else to install besides Claude Code.",

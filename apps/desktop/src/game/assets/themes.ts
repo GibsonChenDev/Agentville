@@ -69,3 +69,21 @@ export const THEMES: Record<OfficeTheme, ThemeStyle> = {
     accent: '#ff5fa2',
   },
 };
+
+/** The hallway with a door to every office. Not an office theme: no desks, no agents. */
+export const LOBBY_STYLE: ThemeStyle = {
+  id: 'studio',
+  void: '#191a24',
+  floor: { kind: 'tiles', base: '#c9b99a', alt: '#bfae8d', seam: '#a8977a' },
+  wall: { kind: 'panel', base: '#3f6f6a', alt: '#456f6b', mortar: '#2f5552', crown: '#24403e', baseboard: '#2a2a2f' },
+  cap: '#2b2d3a',
+  window: { skyTop: '#6fb7ea', skyBottom: '#d9efff', frame: '#e9e5de', night: false, scenery: 'hills' },
+  desk: { top: '#f4f1ea', edge: '#cfc8bb', leg: '#b98c5e' },
+  chair: '#e2705c',
+  rug: { base: '#7a2f3a', border: '#e0a93d', pattern: '#a8454f' },
+  sofa: '#4f7a6a',
+  darkness: { color: '#000000', alpha: 0 },
+  warmLight: '#ffe2a8',
+  screenGlow: '#bfe9ff',
+  accent: '#e0a93d',
+};

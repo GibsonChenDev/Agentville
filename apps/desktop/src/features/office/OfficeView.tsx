@@ -9,6 +9,8 @@ import { useEditor } from './editorStore';
 import { useGuide } from '../guide/guideStore';
 import { worldApi } from './worldApi';
 import { useTeam } from '../../team/teamStore';
+import { usePlace } from '../../world/placeStore';
+import { Wallet } from '../shop/Wallet';
 
 export function OfficeView() {
   const { t } = useTranslation();
@@ -23,6 +25,8 @@ export function OfficeView() {
   const editing = useEditor((s) => s.active);
   // In a team office the floor is shared; the setup card would cover teammates.
   const inTeam = useTeam((s) => s.status === 'online');
+  const inLobby = usePlace((s) => s.place.kind === 'lobby');
+  const fading = usePlace((s) => s.fading);
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -40,7 +44,7 @@ export function OfficeView() {
           <span className="truncate">{t('mode.demoBanner')}</span>
         </div>
       )}
-      <div className="relative min-h-0 flex-1 bg-ink">
+      <div className="relative min-h-0 flex-1 bg-ink" data-tour="office">
         <GameCanvas onCamera={setCamera} />
 
         {mode === 'demo' && (
@@ -51,11 +55,16 @@ export function OfficeView() {
 
         <OfficeEditor />
         {!editing && <WalkHints />}
-        {mode === 'live' && agentCount === 0 && !editing && !inTeam && <LiveEmptyState link={link} hooksReady={!!hooks?.installed && !hooks.stale} />}
+        {inLobby && (
+          <div className="pointer-events-none absolute top-14 left-1/2 -translate-x-1/2 rounded-lg bg-panel/90 px-3 py-1.5 text-[12px] text-muted shadow-lg ring-1 ring-line-strong backdrop-blur">
+            <span className="font-semibold text-fg">{t('team:place.lobby')}</span> · {t('team:place.lobbyHint')}
+          </div>
+        )}
+        {mode === 'live' && agentCount === 0 && !editing && !inTeam && !inLobby && <LiveEmptyState link={link} hooksReady={!!hooks?.installed && !hooks.stale} />}
 
         {/* camera + mode toolbar */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
-          <div className="flex rounded-lg bg-panel/90 p-0.5 shadow-lg ring-1 ring-line-strong backdrop-blur" role="radiogroup" aria-label={`${t('mode.demo')} / ${t('mode.live')}`}>
+          <div data-tour="mode" className="flex rounded-lg bg-panel/90 p-0.5 shadow-lg ring-1 ring-line-strong backdrop-blur" role="radiogroup" aria-label={`${t('mode.demo')} / ${t('mode.live')}`}>
             {(['demo', 'live'] as const).map((m) => (
               <button
                 key={m}
@@ -68,6 +77,7 @@ export function OfficeView() {
               </button>
             ))}
           </div>
+          <Wallet />
           {mode === 'demo' && (
             <div className="flex rounded-lg bg-panel/90 p-0.5 shadow-lg ring-1 ring-line-strong backdrop-blur">
               <ToolButton
@@ -95,7 +105,7 @@ export function OfficeView() {
         </div>
 
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
-          {!editing && (
+          {!editing && !inLobby && (
             <button
               onClick={() => useEditor.getState().start()}
               className="rounded-lg bg-panel/90 px-2.5 py-1 text-[11.5px] text-muted shadow-lg ring-1 ring-line-strong backdrop-blur hover:text-fg"
@@ -124,6 +134,7 @@ export function OfficeView() {
             </ToolButton>
           </div>
         </div>
+        <div className={`pointer-events-none absolute inset-0 bg-ink transition-opacity duration-300 ${fading ? 'opacity-100' : 'opacity-0'}`} aria-hidden />
       </div>
     </main>
   );

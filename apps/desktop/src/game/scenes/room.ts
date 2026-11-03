@@ -266,6 +266,29 @@ function drawDecor(pc: PixelCanvas, t: ThemeStyle, d: WallDecor, wallH: number) 
       pc.hline(x + 11, y - 7, 10, '#c8ffd6');
       return;
     }
+    case 'office_door': {
+      const x = d.x;
+      const y = 10;
+      const w = 32;
+      const h = wallH - y;
+      const frame = '#2a2a2f';
+      const leaf = '#8a5a35';
+      pc.rect(x - 3, y - 3, w + 6, h + 3, frame);
+      pc.hline(x - 3, y - 3, w + 6, shade(frame, 0.25));
+      pc.rect(x, y, w, h, leaf);
+      pc.vline(x + 15, y, h, shade(leaf, -0.3));
+      for (const px of [x + 3, x + 18]) {
+        pc.rect(px, y + 4, 11, 12, shade(leaf, 0.1));
+        pc.rect(px + 1, y + 5, 9, 10, '#bfe3f2', 0.85);
+        pc.hline(px + 2, y + 6, 4, WHITE, 0.8);
+      }
+      pc.rect(x + 12, y + h / 2 + 2, 2, 3, '#e0c070');
+      pc.rect(x + 17, y + h / 2 + 2, 2, 3, '#e0c070');
+      // name plate (the name itself is drawn as a sign by the renderer)
+      pc.rect(x + 2, y - 10, w - 4, 6, d.plate);
+      pc.hline(x + 2, y - 10, w - 4, shade(d.plate, 0.25));
+      return;
+    }
     case 'poster': {
       const palettes = [
         ['#e0a93d', '#e2705c', '#2f4170'],

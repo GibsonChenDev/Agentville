@@ -6,8 +6,9 @@ import { useApp } from '../../state/store';
 import { CommandLine } from '../setup/SetupChecklist';
 import { useSetup } from '../setup/setupStore';
 import { useGuide, type GuideSection } from './guideStore';
+import { useTour } from '../tour/Tour';
 
-const SECTIONS: GuideSection[] = ['start', 'office', 'teams', 'help'];
+const SECTIONS: GuideSection[] = ['start', 'world', 'office', 'together', 'teams', 'help'];
 const LEGEND: IconKind[] = ['think', 'read', 'type', 'exec', 'test', 'plan', 'delegate', 'raise', 'cheer', 'slump', 'talk'];
 
 const COMMANDS = {
@@ -97,7 +98,16 @@ export function GuideDialog() {
         <div className="scroll-thin overflow-y-auto px-5 py-4">
           {section === 'start' && (
             <>
-              <p className="mb-4 text-[12.5px] leading-relaxed text-muted">{t('start.intro')}</p>
+              <p className="mb-3 text-[12.5px] leading-relaxed text-muted">{t('start.intro')}</p>
+              <button
+                onClick={() => {
+                  useGuide.getState().close();
+                  useTour.getState().start();
+                }}
+                className="mb-4 rounded-md bg-amber/15 px-3 py-1.5 text-[12px] font-medium text-amber ring-1 ring-amber/40 hover:bg-amber/25"
+              >
+                ▶ {t('tour')}
+              </button>
               <ol className="space-y-4">
                 <Step n={1} title={t('start.install.title')}>
                   <p>{t('start.install.body')}</p>
@@ -138,6 +148,30 @@ export function GuideDialog() {
                 </Step>
               </ol>
             </>
+          )}
+
+          {section === 'world' && (
+            <div className="space-y-4">
+              <p className="text-[12.5px] leading-relaxed text-muted">{t('world.intro')}</p>
+              <ol className="space-y-3">
+                {(['walk', 'sit', 'arcade', 'look', 'lobby'] as const).map((k, i) => (
+                  <Step key={k} n={i + 1} title={t(`world.${k}Title`)}>
+                    <p>{t(`world.${k}`)}</p>
+                  </Step>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {section === 'together' && (
+            <div className="space-y-4 text-[12.5px] leading-relaxed text-muted">
+              {(['team', 'privacy', 'coins', 'shop', 'account'] as const).map((k) => (
+                <div key={k}>
+                  <h4 className="text-[13px] font-semibold text-fg">{t(`together.${k}Title`)}</h4>
+                  <p className="mt-1">{t(`together.${k}`)}</p>
+                </div>
+              ))}
+            </div>
           )}
 
           {section === 'office' && (

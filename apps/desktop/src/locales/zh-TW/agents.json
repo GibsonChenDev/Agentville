@@ -176,7 +176,11 @@
       "cap": "棒球帽",
       "beanie": "毛帽",
       "scarf": "圍巾",
-      "lanyard": "識別證"
+      "lanyard": "識別證",
+      "flower": "小花",
+      "cat_ears": "貓耳",
+      "wizard_hat": "巫師帽",
+      "crown": "皇冠"
     },
     "equipment": {
       "laptop": "筆電",
@@ -196,7 +200,9 @@
       "charcoal": "炭灰",
       "cream": "奶油白",
       "denim": "丹寧藍",
-      "forest": "森林綠"
+      "forest": "森林綠",
+      "neon": "螢光綠",
+      "gold": "金色"
     }
   },
   "editor": {
