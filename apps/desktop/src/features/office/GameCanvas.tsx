@@ -188,9 +188,19 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
         push();
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    // Several stores change together when you move between places (leave the team office, set the
+    // new place…). Rebuild once for the final state, never for the in-between ones: those would
+    // briefly draw the wrong office.
+    let queued = false;
     const update = () => {
-      applyScene();
-      push();
+      if (queued) return;
+      queued = true;
+      queueMicrotask(() => {
+        queued = false;
+        if (cancelled) return;
+        applyScene();
+        push();
+      });
     };
     teamEvents.onArrive = (member) => {
       const t = i18n.t.bind(i18n);

@@ -337,3 +337,94 @@ describe('team chat', () => {
     expect(o.store.chat()).toEqual([]);
   });
 });
+
+describe("teammates' agents: visible as characters, work stays private", () => {
+  it('only the number of agents crosses: extra details a client tries to send are stripped', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    const b = await o.connect('Bob');
+    b.inbox.length = 0;
+    await o.send(a, { t: 'agents', n: 3, names: ['fix login bug'], status: 'writing', tool: 'Bash', prompt: 'refactor the payment module', cwd: '/Users/alice/secret-project' });
+    expect(b.inbox).toEqual([{ t: 'agents', id: o.id('Alice'), n: 3 }]);
+  });
+
+  it('activity-shaped messages are refused outright and reach nobody', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    const b = await o.connect('Bob');
+    b.inbox.length = 0;
+    for (const m of [
+      { t: 'activity', agent: 'storefront', tool: 'Edit', file: 'src/pay.ts' },
+      { t: 'event', payload: { kind: 'prompt.submitted', preview: 'secret' } },
+      { t: 'agents', n: 99 },
+      { t: 'agents', n: '3' },
+    ]) {
+      a.inbox.length = 0;
+      await o.send(a, m);
+      expect(a.inbox, JSON.stringify(m)).toEqual([{ t: 'error', code: 'bad_message' }]);
+    }
+    expect(b.inbox).toEqual([]);
+  });
+
+  it('positions, looks and profiles carry no extra fields either', async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    const b = await o.connect('Bob');
+    b.inbox.length = 0;
+    await o.send(a, { t: 'presence', p: { x: 10, y: 20, facing: 'up', pose: 'sit', seat: 'ws-g1', screen: 'terminal: npm test' }, task: 'deploy' });
+    await o.send(a, { t: 'profile', name: 'Alice', appearance: look, branch: 'feature/secret' });
+    expect(b.inbox[0]).toEqual({ t: 'presence', id: o.id('Alice'), p: { x: 10, y: 20, facing: 'up', pose: 'sit', seat: 'ws-g1' } });
+    expect(b.inbox[1]).toEqual({ t: 'member', member: { id: o.id('Alice'), name: 'Alice', appearance: look, owner: true, online: true, agents: 0, presence: { x: 10, y: 20, facing: 'up', pose: 'sit', seat: 'ws-g1' } } });
+  });
+
+  it("what a teammate learns about you is exactly: id, name, look, owner, online, agent count, position, arcade scores", async () => {
+    const o = await office(['Alice', 'Bob']);
+    const a = await o.connect('Alice');
+    await o.send(a, { t: 'agents', n: 2 });
+    await o.send(a, { t: 'presence', p: { x: 1, y: 2, facing: 'down', pose: 'stand' } });
+    await o.send(a, { t: 'scores', s: { snake: 5 } });
+    const b = await o.connect('Bob');
+    const alice = o.welcomeOf(b).members.find((m) => m.id === o.id('Alice'))!;
+    expect(Object.keys(alice).sort()).toEqual(['agents', 'appearance', 'id', 'name', 'online', 'owner', 'presence', 'scores']);
+  });
+});
+
+describe('switching offices does not affect anyone else', () => {
+  it('leaving office X for office Y: X only sees you go offline; X keeps its map; Y sees you arrive', async () => {
+    const x = await office(['Alice', 'Bob']);
+    const y = await office(['Alice', 'Carol']);
+    const ax = await x.connect('Alice');
+    const bob = await x.connect('Bob');
+    const carol = await y.connect('Carol');
+    await x.send(ax, { t: 'theme', theme: 'garden' });
+    await x.send(ax, { t: 'agents', n: 4 });
+    bob.inbox.length = 0;
+    carol.inbox.length = 0;
+
+    // Alice walks out of X (its socket closes) and into Y.
+    x.core.onClose(ax);
+    const ay = await y.connect('Alice');
+    await y.send(ay, { t: 'agents', n: 4 });
+    await y.send(ay, { t: 'theme', theme: 'seaside' });
+
+    expect(bob.inbox).toEqual([{ t: 'offline', id: x.id('Alice') }]);
+    expect(carol.inbox.map((m) => m.t)).toEqual(['member', 'agents', 'theme']);
+    // X still shows the map chosen there, with Alice's agents gone.
+    const bob2 = await x.connect('Bob');
+    expect(x.welcomeOf(bob2).room.theme).toBe('garden');
+    expect(x.memberIn(bob2, 'Alice')).toMatchObject({ online: false, agents: 0 });
+  });
+
+  it("one person changing a map or layout in their office leaves other offices untouched", async () => {
+    const x = await office(['Alice', 'Bob']);
+    const y = await office(['Carol']);
+    const a = await x.connect('Alice');
+    const c = await y.connect('Carol');
+    c.inbox.length = 0;
+    await x.send(a, { t: 'theme', theme: 'midnight' });
+    await x.send(a, { t: 'layout', theme: 'midnight', doc: { version: 1, furniture: [{ id: 'desk-a', kind: 'desk', x: 3, y: 6 }], workstations: [{ id: 'ws-a', deskId: 'desk-a', facing: 'up' }] } });
+    expect(c.inbox).toEqual([]);
+    const c2 = await y.connect('Carol');
+    expect(y.welcomeOf(c2).room).toMatchObject({ theme: 'loft', layouts: {} });
+  });
+});

@@ -7,6 +7,7 @@ import { DEFAULT_SCENES, type SceneDefinition } from '../game/scenes/layouts';
 import { layoutSink, useApp, type AppState } from '../state/store';
 import { TeamApiError, normalizeServer, socketUrl, teamApi } from './api';
 import { usePlayer } from './playerStore';
+import { cachedOffice, forgetOffice, rememberOffice } from './officeCache';
 import { mergeChat, useTeam, type Membership, type TeamError } from './teamStore';
 
 /**
@@ -88,13 +89,29 @@ function scheduleReconnect() {
   retryTimer = setTimeout(connect, delay);
 }
 
-function teamLayouts(room: RoomView): Partial<Record<OfficeTheme, SceneDefinition>> {
+function teamLayouts(layouts: RoomView['layouts']): Partial<Record<OfficeTheme, SceneDefinition>> {
   const out: Partial<Record<OfficeTheme, SceneDefinition>> = {};
   for (const theme of OFFICE_THEMES) {
-    const doc = room.layouts[theme];
+    const doc = layouts[theme];
     if (doc) out[theme] = fromLayoutDoc(doc, DEFAULT_SCENES[theme]);
   }
   return out;
+}
+
+/** The layouts the office is drawn with right now, to skip rebuilding it when nothing changed. */
+let shownLayouts = '';
+
+/** Draws the office with these layouts, unless they're the ones already shown (a rebuild re-seats everyone). */
+function showLayouts(layouts: RoomView['layouts']) {
+  const json = JSON.stringify(layouts);
+  if (json === shownLayouts && useApp.getState().teamLayouts) return;
+  shownLayouts = json;
+  useApp.setState({ teamLayouts: teamLayouts(layouts) });
+}
+
+/** Remembers how the current office looks, so walking back in shows it straight away. */
+function remember(room: RoomView | undefined) {
+  if (room) rememberOffice(room.id, { theme: room.theme, layouts: room.layouts });
 }
 
 function handle(msg: ServerMessage, m: Membership) {
@@ -106,7 +123,9 @@ function handle(msg: ServerMessage, m: Membership) {
       // Joined with a code: the office's real name arrives here.
       const ref = team.rooms.find((r) => r.roomId === m.roomId);
       if (ref && ref.name !== msg.room.name) useTeam.getState().setRooms(team.rooms.map((r) => (r.roomId === m.roomId ? { ...r, name: msg.room.name } : r)));
-      useApp.setState({ teamLayouts: teamLayouts(msg.room) });
+      showLayouts(msg.room.layouts);
+      remember(msg.room);
+      useTeam.setState({ preview: undefined });
       keepalive = setInterval(() => send({ t: 'ping' }), KEEPALIVE_MS);
       sentAgents = -1;
       syncAgents(true);
@@ -154,7 +173,10 @@ function handle(msg: ServerMessage, m: Membership) {
       return;
     }
     case 'theme':
-      if (team.room) useTeam.setState({ room: { ...team.room, theme: msg.theme } });
+      if (team.room) {
+        useTeam.setState({ room: { ...team.room, theme: msg.theme } });
+        remember(useTeam.getState().room);
+      }
       return;
     case 'layout': {
       if (!team.room) return;
@@ -163,7 +185,8 @@ function handle(msg: ServerMessage, m: Membership) {
       else delete layouts[msg.theme];
       const room = { ...team.room, layouts };
       useTeam.setState({ room });
-      useApp.setState({ teamLayouts: teamLayouts(room) });
+      showLayouts(layouts);
+      remember(room);
       return;
     }
     case 'code':
@@ -221,9 +244,13 @@ function leaveLocally(error?: TeamError, forget = true) {
   retries = 0;
   useTeam.getState().setActive(undefined);
   if (forget && roomId) useTeam.getState().setRooms(useTeam.getState().rooms.filter((r) => r.roomId !== roomId));
-  useTeam.setState({ error });
+  useTeam.setState({ error, preview: undefined });
   useApp.setState({ teamLayouts: undefined });
-  if (forget && roomId) teamEvents.onLeft?.(roomId);
+  shownLayouts = '';
+  if (forget && roomId) {
+    forgetOffice(roomId);
+    teamEvents.onLeft?.(roomId);
+  }
 }
 
 function serverOrThrow() {
@@ -255,6 +282,8 @@ export const team = {
         if (doc) layouts[theme] = doc;
         else delete layouts[theme];
         useTeam.setState({ room: { ...room, layouts } });
+        shownLayouts = JSON.stringify(layouts);
+        remember(useTeam.getState().room);
       }
       send({ t: 'layout', theme, doc });
     };
@@ -277,6 +306,7 @@ export const team = {
     const room = useTeam.getState().room;
     if (!room || room.theme === theme) return;
     useTeam.setState({ room: { ...room, theme } });
+    remember(useTeam.getState().room);
     send({ t: 'theme', theme });
   },
 
@@ -284,8 +314,12 @@ export const team = {
   open(roomId: string) {
     if (useTeam.getState().membership?.roomId === roomId && ws) return;
     closeSocket();
-    useApp.setState({ teamLayouts: undefined });
     useTeam.getState().setActive(roomId);
+    // Draw the office as it looked last time (never your own office's layout) until the relay answers.
+    const cached = cachedOffice(roomId);
+    useTeam.setState({ room: undefined, preview: cached });
+    shownLayouts = '';
+    showLayouts(cached?.layouts ?? {});
     retries = 0;
     connect();
   },

@@ -47,6 +47,12 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Male/female characters, no flash entering offices, privacy tests (2026-11-03)
+
+- **Gender**: every character (you, teammates, agents) is male or female. Women's characters get lashes, lip colour and a slightly narrower waist; men's heavier brows. New styles: men's Polo shirt, suit with tie, cargo pants, undercut; women's blouse, cardigan, camisole, dress, pleated skirt, twin tails. Editors group hair, tops and bottoms as ♂ / unisex / ♀ (your own gender first); anyone can wear anything. Switching gender swaps only the other gender's items for defaults. Auto-generated agents are random male or female. Older saved looks get a gender from their hair and clothes.
+- **No flash entering an office**: each team office's map and layouts are remembered on this computer and shown at once; the first visit (and launch) stays dark until the office has loaded (max 1.5 s); identical layouts from the relay no longer rebuild the scene; rebuilds are coalesced per tick so in-between states (e.g. your own office while walking out to the lobby) are never drawn; the fade waits until the overlay is fully opaque.
+- **Tests**: switching offices leaves other offices and people untouched (relay + client); teammates' agents are visible as anonymous characters and nothing about their work crosses the relay (extra fields stripped, activity-shaped messages refused, member view keys pinned).
+
 ## Team chat (2026-11-03)
 
 - 💬 group chat in team offices: a window with the conversation history and an unread count, messages popping up over the sender's head.

@@ -112,7 +112,8 @@
       "shoes": "Shoes",
       "shoesColor": "Shoe color",
       "accessory": "Accessory",
-      "equipment": "Desk setup"
+      "equipment": "Desk setup",
+      "gender": "Body"
     },
     "hairStyle": {
       "short": "Short",
@@ -122,7 +123,9 @@
       "curly": "Curly",
       "buzz": "Buzz cut",
       "ponytail": "Ponytail",
-      "mohawk": "Mohawk"
+      "mohawk": "Mohawk",
+      "twintails": "Twin tails",
+      "undercut": "Undercut"
     },
     "hairColor": {
       "espresso": "Espresso",
@@ -154,14 +157,22 @@
       "shirt": "Shirt",
       "blazer": "Blazer",
       "sweater": "Sweater",
-      "vest": "Vest"
+      "vest": "Vest",
+      "polo": "Polo shirt",
+      "suit": "Suit jacket",
+      "blouse": "Blouse",
+      "cardigan": "Cardigan",
+      "camisole": "Camisole",
+      "dress": "Dress"
     },
     "bottom": {
       "jeans": "Jeans",
       "chinos": "Chinos",
       "skirt": "Skirt",
       "shorts": "Shorts",
-      "joggers": "Joggers"
+      "joggers": "Joggers",
+      "cargo": "Cargo pants",
+      "pleated": "Pleated skirt"
     },
     "shoes": {
       "sneakers": "Sneakers",
@@ -220,6 +231,15 @@
       "lavender": "Lavender",
       "ruby": "Ruby",
       "onyx": "Onyx black"
+    },
+    "gender": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "group": {
+      "male": "♂",
+      "female": "♀",
+      "any": "Unisex"
     }
   },
   "editor": {

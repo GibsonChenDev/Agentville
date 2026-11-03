@@ -3,12 +3,14 @@ import {
   BOTTOMS,
   EQUIPMENT,
   FACES,
+  GENDERS,
   HAIR_COLORS,
   HAIR_STYLES,
   OUTFIT_COLORS,
   SHOES,
   SKIN_TONES,
   TOPS,
+  inferGender,
   type CharacterAppearance,
 } from './appearance';
 import { AGENT_ROLES, type AgentRecord, type AgentRole } from './types';
@@ -37,6 +39,7 @@ export function profileKeyFor(agent: Pick<AgentRecord, 'id' | 'origin' | 'kind' 
 }
 
 const OPTIONS: { [K in keyof CharacterAppearance]: readonly CharacterAppearance[K][] } = {
+  gender: GENDERS,
   hairStyle: HAIR_STYLES,
   hairColor: HAIR_COLORS,
   skin: SKIN_TONES,
@@ -61,6 +64,8 @@ export function sanitizeAppearance(raw: unknown, fallback: CharacterAppearance):
     const value = r[key];
     if (typeof value === 'string' && (OPTIONS[key] as readonly string[]).includes(value)) (out as Record<string, string>)[key] = value;
   }
+  // Saved before characters had a gender (or by an older app): tell it from the hair and clothes.
+  if (!(GENDERS as readonly unknown[]).includes(r.gender)) out.gender = inferGender(out);
   return out;
 }
 
