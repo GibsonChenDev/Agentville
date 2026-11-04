@@ -1,5 +1,5 @@
 import type { CharacterAppearance } from '@agentville/domain';
-import { PixelCanvas, mix, shade, type Color } from '../engine/pixel';
+import { PixelCanvas, darkenWarm, mix, sameFamily, shade, type Color } from '../engine/pixel';
 import { BLUSH, HAIR, INK, OUTFIT, SKIN, WHITE } from './palette';
 
 /**
@@ -57,6 +57,9 @@ interface Resolved {
   a: CharacterAppearance;
 }
 
+/** Plain underwear, shown when the bottoms (briefs) or, on women's characters, the top (bandeau) are off. */
+const UNDERWEAR = '#ebe5da';
+
 function resolve(a: CharacterAppearance): Resolved {
   return { skin: SKIN[a.skin], hair: HAIR[a.hairColor], top: OUTFIT[a.topColor], bottom: OUTFIT[a.bottomColor], shoes: OUTFIT[a.shoesColor], a };
 }
@@ -76,17 +79,24 @@ export function drawCharacter(r: Resolved, pose: Pose): PixelCanvas {
   drawArms(pc, r, pose, dy, 'behind');
   drawHead(pc, r, pose, dy);
   drawHair(pc, r, pose, dy);
-  drawAccessory(pc, r, pose, dy);
+  // Neck, then face, then head, so a hat sits over glasses and a scarf. Looks
+  // from older clients may lack the newer slots.
+  for (const item of [r.a.neckwear, r.a.eyewear, r.a.accessory]) if (item && item !== 'none') drawAccessory(pc, r, pose, dy, item);
   drawArms(pc, r, pose, dy, 'front');
   drawExtras(pc, pose, dy);
-  pc.outline(-0.6);
+  // Skin gets a warm brown outline (faces, hands and, with clothes off, arms, chest and legs).
+  pc.outline(-0.6, undefined, (c) => (sameFamily(c, r.skin) ? darkenWarm(c, 0.75) : undefined));
   return pc;
 }
 
 // ───────────────────────────────── legs & shoes
 
 function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
-  const { bottom, skin, shoes } = r;
+  const { skin } = r;
+  // No bottoms: bare legs in briefs (a dress still covers them). No shoes: bare feet.
+  const bareLegs = r.a.bottom === 'none' && r.a.top !== 'dress';
+  const bottom = bareLegs ? skin : r.bottom;
+  const shoes = r.a.shoes === 'none' ? shade(skin, -0.06) : r.shoes;
   const b0 = bottom;
   const b1 = shade(bottom, -0.18);
   const b2 = shade(bottom, -0.32);
@@ -97,6 +107,13 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   const kind = dress || r.a.bottom === 'pleated' ? 'skirt' : r.a.bottom;
   const skirt = dress ? r.top : b0;
   const skirtLen = dress ? 5 : 4;
+  const u1 = shade(UNDERWEAR, -0.16);
+  /** Briefs over the hips, `w` wide from `x`. */
+  const briefs = (x: number, w: number, rows: number) => {
+    if (!bareLegs || rows <= 0) return;
+    pc.rect(x, top, w, rows, UNDERWEAR);
+    pc.hline(x, top + rows - 1, w, u1);
+  };
 
   if (pose.sit) {
     // Seated: short thighs facing camera / hidden behind.
@@ -107,6 +124,7 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
     } else if (pose.view === 'back') {
       pc.rect(8, top, 8, 3, shade(dress ? skirt : b0, -0.18));
     }
+    briefs(8, 8, pose.view === 'side' ? 0 : 2);
     return;
   }
 
@@ -131,6 +149,7 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.hline(lx - 1, top + legLen + 2, 5, shade(shoes, -0.4));
     }
     if (kind === 'skirt') pc.rect(8, top, 8, skirtLen, skirt);
+    briefs(9, 6, 2);
     return;
   }
 
@@ -161,7 +180,8 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   };
   leg(8, liftL, 11);
   leg(12, liftR, 12);
-  if (kind !== 'shorts' && kind !== 'skirt') pc.hline(8, top, 8, b1);
+  if (kind !== 'shorts' && kind !== 'skirt' && !bareLegs) pc.hline(8, top, 8, b1);
+  briefs(8, 8, 3);
   if (kind === 'skirt') {
     const s1 = shade(skirt, -0.18);
     pc.rect(7, top, 10, skirtLen, skirt);
@@ -177,7 +197,8 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
 // ───────────────────────────────── torso
 
 function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
-  const t0 = r.top;
+  const bare = r.a.top === 'none';
+  const t0 = bare ? r.skin : r.top;
   const t1 = shade(t0, -0.16);
   const t2 = shade(t0, -0.3);
   const hi = shade(t0, 0.14);
@@ -207,6 +228,20 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   }
 
   const kind = r.a.top;
+  if (bare) {
+    // No top: bare chest, with a bandeau on women's characters.
+    if (r.a.gender === 'female') {
+      pc.rect(x, y + 2, w, 3, UNDERWEAR);
+      pc.hline(x, y + 4, w, shade(UNDERWEAR, -0.16));
+      if (pose.view === 'front') pc.px(11, y + 3, shade(UNDERWEAR, -0.1));
+    } else if (pose.view === 'front') {
+      pc.px(9, y + 3, t1);
+      pc.px(14, y + 3, t1);
+      pc.px(11, y + 6, t1);
+      pc.px(12, y + 6, t1);
+    }
+    return;
+  }
   if (pose.view === 'front') {
     if (kind === 'hoodie') {
       pc.hline(8, y, 8, t1);
@@ -305,10 +340,10 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
 // ───────────────────────────────── arms
 
 const SHORT_SLEEVES = new Set(['tee', 'vest', 'polo', 'dress']);
-const SLEEVELESS = new Set(['camisole']);
+const SLEEVELESS = new Set(['camisole', 'none']);
 
 function drawArms(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number, layer: 'behind' | 'front') {
-  const sleeve = r.a.top === 'vest' ? '#ece5d6' : r.a.top === 'camisole' ? r.skin : r.top;
+  const sleeve = r.a.top === 'vest' ? '#ece5d6' : r.a.top === 'camisole' || r.a.top === 'none' ? r.skin : r.top;
   const s1 = shade(sleeve, -0.18);
   const skin = r.skin;
   const sk1 = shade(skin, -0.14);
@@ -819,11 +854,11 @@ function drawHair(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
 
 // ───────────────────────────────── accessories & props
 
-function drawAccessory(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
+/** One worn item from any slot (head, face or neck). */
+function drawAccessory(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number, acc: CharacterAppearance['accessory' | 'eyewear' | 'neckwear']) {
   const slumpDrop = pose.arms === 'slump' ? 1 : 0;
   const y0 = HEAD_Y + dy + slumpDrop;
   const x0 = 6;
-  const acc = r.a.accessory;
   const accent = r.top === OUTFIT.charcoal ? OUTFIT.coral : r.top;
   switch (acc) {
     case 'glasses': {

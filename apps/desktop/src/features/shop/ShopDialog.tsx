@@ -1,5 +1,5 @@
 import { CATALOG, EARN, ownedCount, type CatalogItem } from '@agentville/team-protocol';
-import type { CharacterAppearance } from '@agentville/domain';
+import { accessorySlot, type CharacterAppearance } from '@agentville/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAccount } from '../../account/accountStore';
@@ -25,7 +25,7 @@ function furnitureThumb(kind: string) {
 
 /** The look an item gives your character, for its preview and the "Wear it" button. */
 function withItem(a: CharacterAppearance, item: CatalogItem): CharacterAppearance {
-  if (item.kind === 'accessory') return { ...a, accessory: item.value as CharacterAppearance['accessory'] };
+  if (item.kind === 'accessory') return { ...a, [accessorySlot(item.value)]: item.value };
   if (item.kind === 'color') return { ...a, topColor: item.value as CharacterAppearance['topColor'] };
   return a;
 }
@@ -130,7 +130,7 @@ export function ShopDialog() {
               const count = ownedCount(account?.inventory, item.id);
               const owned = count > 0;
               const canBuyMore = count < item.max;
-              const wearing = item.kind === 'accessory' ? player.appearance.accessory === item.value : item.kind === 'color' ? player.appearance.topColor === item.value : false;
+              const wearing = item.kind === 'accessory' ? player.appearance[accessorySlot(item.value)] === item.value : item.kind === 'color' ? player.appearance.topColor === item.value : false;
               return (
                 <div key={item.id} className={`flex flex-col items-center rounded-lg bg-panel-2 p-3 ring-1 ${justBought === item.id ? 'ring-amber' : 'ring-line'}`}>
                   <div className="grid h-[84px] w-full place-items-center rounded-md bg-ink/40">

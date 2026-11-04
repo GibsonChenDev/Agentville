@@ -18,7 +18,8 @@ export function OfficeView() {
   const mode = useApp((s) => s.mode);
   const agentCount = useApp((s) => Object.values(s.agents).filter((a) => inMode(s.mode, a.origin) && s.runtime[a.id]?.status !== 'disconnected').length);
   const link = useApp((s) => s.link);
-  const hooks = useApp((s) => s.hooks);
+  // Any connected agent (Claude Code, Codex, …) counts: the office then waits for its sessions.
+  const hooksReady = useApp((s) => Object.values(s.hooks).some((h) => h?.installed && !h.stale));
   const followId = useApp((s) => s.followAgentId);
   const followName = useApp((s) => (s.followAgentId ? s.agents[s.followAgentId]?.name : undefined));
   const [camera, setCamera] = useState<CameraState>({ zoom: 3 });
@@ -64,7 +65,7 @@ export function OfficeView() {
             <span className="font-semibold text-fg">{t('team:place.lobby')}</span> · {t('team:place.lobbyHint')}
           </div>
         )}
-        {mode === 'live' && agentCount === 0 && !editing && !inTeam && !inLobby && <LiveEmptyState link={link} hooksReady={!!hooks?.installed && !hooks.stale} />}
+        {mode === 'live' && agentCount === 0 && !editing && !inTeam && !inLobby && <LiveEmptyState link={link} hooksReady={hooksReady} />}
 
         {/* camera + mode toolbar */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5">

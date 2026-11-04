@@ -1,17 +1,20 @@
-//! The local Claude Code hook receiver (Monitor Mode), built into the app.
+//! The local hook receiver (Monitor Mode), built into the app.
 //!
-//! * `POST /hooks/claude` — Claude Code http hooks, authenticated with the
-//!   per-install hook token. Always answered `{}` immediately: observe-only.
-//! * `GET /stream` — NDJSON stream of raw hooks for the UI (per-launch UI token).
-//! * `POST /rpc` — hook installation, git location, Claude Code status.
+//! * `POST /hooks/<provider>` — hooks from each observed agent (see
+//!   `providers`): Claude Code's http hooks, or Codex's command hooks via the
+//!   forwarder. Authenticated with the per-install hook token and always
+//!   answered `{}` immediately: observe-only.
+//! * `GET /stream` — NDJSON stream of raw hooks for the UI (per-launch UI token),
+//!   each tagged with its provider.
+//! * `POST /rpc` — hook installation per provider, git location, agent status.
 //!
 //! Loopback only. The receiver validates the envelope (JSON object, event name,
 //! session id) and stamps id/sequence/time; the UI's tested TypeScript
 //! normalizer turns raw hooks into domain events.
 
-use crate::{detect, gitinfo, hooks};
+use crate::{detect, gitinfo, hooks, providers};
 use serde_json::{json, Value};
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -30,9 +33,17 @@ pub struct ReceiverConfig {
     pub port: u16,
     pub ui_token: String,
     pub hook_token: String,
-    pub settings_path: PathBuf,
+    /// Hooks file per provider id; providers missing here can't be installed.
+    pub hook_paths: BTreeMap<String, PathBuf>,
+    /// Agentville's executable, which command hooks run as the forwarder.
+    pub exe: String,
     pub claude_path: Option<String>,
     pub allowed_origins: Vec<String>,
+}
+
+/// Every provider's real hooks file.
+pub fn default_hook_paths() -> BTreeMap<String, PathBuf> {
+    providers::ALL.iter().map(|p| (p.id.to_string(), p.hooks_path())).collect()
 }
 
 pub fn default_origins() -> Vec<String> {
@@ -42,11 +53,13 @@ pub fn default_origins() -> Vec<String> {
         .collect()
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 struct Stats {
     received: u64,
     rejected: u64,
     last_at: Option<i64>,
+    /// Accepted hooks per provider id: (count, last time).
+    by_provider: BTreeMap<&'static str, (u64, i64)>,
 }
 
 struct Shared {
@@ -144,8 +157,9 @@ impl Drop for Receiver {
 }
 
 fn status(s: &Shared) -> Value {
-    let st = *s.stats.lock().unwrap();
-    json!({ "version": VERSION, "port": s.port, "hooks": { "received": st.received, "rejected": st.rejected, "lastAt": st.last_at } })
+    let st = s.stats.lock().unwrap().clone();
+    let by: serde_json::Map<String, Value> = st.by_provider.iter().map(|(id, (n, at))| (id.to_string(), json!({ "received": n, "lastAt": at }))).collect();
+    json!({ "version": VERSION, "port": s.port, "hooks": { "received": st.received, "rejected": st.rejected, "lastAt": st.last_at, "providers": by } })
 }
 
 fn broadcast(s: &Shared, msg: &Value) {
@@ -203,7 +217,7 @@ fn handle(s: &Arc<Shared>, mut req: Request) {
     let path = req.url().split('?').next().unwrap_or("").to_string();
     let method = req.method().clone();
 
-    if method == Method::Post && path == "/hooks/claude" {
+    if let Some(provider) = path.strip_prefix("/hooks/").filter(|_| method == Method::Post).and_then(providers::get) {
         let mark_rejected = |s: &Shared| {
             s.stats.lock().unwrap().rejected += 1;
             s.status_dirty.store(true, Ordering::Relaxed);
@@ -225,7 +239,7 @@ fn handle(s: &Arc<Shared>, mut req: Request) {
         };
         let seq = s.seq.fetch_add(1, Ordering::Relaxed) + 1;
         let at = now_ms();
-        let hook = json!({ "id": format!("{}-{}", s.boot, seq), "seq": seq, "receivedAt": at, "body": raw });
+        let hook = json!({ "id": format!("{}-{}", s.boot, seq), "seq": seq, "receivedAt": at, "provider": provider.id, "body": raw });
         {
             let mut recent = s.recent.lock().unwrap();
             recent.push_back(hook.clone());
@@ -237,6 +251,8 @@ fn handle(s: &Arc<Shared>, mut req: Request) {
             let mut st = s.stats.lock().unwrap();
             st.received += 1;
             st.last_at = Some(at);
+            let p = st.by_provider.entry(provider.id).or_default();
+            *p = (p.0 + 1, at);
         }
         s.status_dirty.store(true, Ordering::Relaxed);
         broadcast(s, &json!({ "type": "hook", "hook": hook }));
@@ -311,31 +327,40 @@ fn stream(s: &Arc<Shared>, req: Request, cors_headers: Vec<Header>) {
 
 fn rpc(s: &Shared, req: &Value) -> Result<Value, String> {
     let method = req.get("method").and_then(Value::as_str).unwrap_or("");
-    let path = &s.cfg.settings_path;
+    // Hook methods name their provider; older UIs that don't mean Claude Code.
+    let provider_id = req.pointer("/params/provider").and_then(Value::as_str).unwrap_or(providers::CLAUDE.id);
+    let hook_file = || -> Result<(&'static providers::Provider, &PathBuf), String> {
+        let p = providers::get(provider_id).ok_or("unknown_provider")?;
+        Ok((p, s.cfg.hook_paths.get(p.id).ok_or("unknown_provider")?))
+    };
+    let target = hooks::Target { port: s.port, token: s.cfg.hook_token.clone(), exe: s.cfg.exe.clone() };
     let inspect = || -> Result<Value, String> {
+        let (p, path) = hook_file()?;
         let (v, _) = hooks::read_settings(path)?;
-        let i = hooks::inspect(&v, s.port, &s.cfg.hook_token);
-        Ok(json!({ "settingsPath": path.to_string_lossy(), "installed": i.installed, "stale": i.stale, "events": i.events }))
+        let i = hooks::inspect(p, &v, &target);
+        Ok(json!({ "provider": p.id, "settingsPath": path.to_string_lossy(), "installed": i.installed, "stale": i.stale, "events": i.events }))
     };
     match method {
         "status" => Ok(status(s)),
         "hooks.status" => inspect(),
         "hooks.preview" => {
+            let (p, path) = hook_file()?;
             let install = req.pointer("/params/action").and_then(Value::as_str) != Some("uninstall");
             let (v, raw) = hooks::read_settings(path)?;
-            let next = if install { hooks::with_agentville(&v, s.port, &s.cfg.hook_token) } else { hooks::without_agentville(&v) };
+            let next = if install { hooks::with_agentville(p, &v, &target) } else { hooks::without_agentville(&v) };
             let before = if raw.is_empty() { String::new() } else { hooks::serialize(&v) };
             let after = hooks::serialize(&next);
             let changed = before != after && !(before.is_empty() && after == "{}\n");
-            Ok(json!({ "settingsPath": path.to_string_lossy(), "before": before, "after": after, "changed": changed }))
+            Ok(json!({ "provider": p.id, "settingsPath": path.to_string_lossy(), "before": before, "after": after, "changed": changed }))
         }
         "hooks.install" | "hooks.uninstall" => {
+            let (p, path) = hook_file()?;
             let (v, _) = hooks::read_settings(path)?;
-            let next = if method == "hooks.install" { hooks::with_agentville(&v, s.port, &s.cfg.hook_token) } else { hooks::without_agentville(&v) };
+            let next = if method == "hooks.install" { hooks::with_agentville(p, &v, &target) } else { hooks::without_agentville(&v) };
             let mut backup = None;
             if next != v || !path.exists() && method == "hooks.install" {
                 backup = hooks::write_settings(path, &next, now_ms())?;
-                (s.log)(format!("{method} → {} (backup: {:?})", path.display(), backup));
+                (s.log)(format!("{method} ({}) → {} (backup: {:?})", p.id, path.display(), backup));
             }
             let mut out = inspect()?;
             out["backup"] = backup.map(|b| Value::String(b.to_string_lossy().into())).unwrap_or(Value::Null);
@@ -350,6 +375,18 @@ fn rpc(s: &Shared, req: &Value) -> Result<Value, String> {
             let logged_in = info.path.as_deref().filter(|_| info.ok).and_then(detect::claude_logged_in);
             Ok(json!({ "path": info.path, "version": info.version, "installed": info.ok, "loggedIn": logged_in }))
         }
+        // Whether an agent is installed, for providers without a full setup checklist.
+        "agent.detect" => match providers::get(provider_id).map(|p| p.id) {
+            Some("claude") => {
+                let info = detect::detect_claude(s.cfg.claude_path.as_deref());
+                Ok(json!({ "provider": "claude", "installed": info.ok, "path": info.path, "version": info.version }))
+            }
+            Some("codex") => {
+                let info = detect::detect_codex();
+                Ok(json!({ "provider": "codex", "installed": info.installed, "path": info.path, "version": info.version, "home": info.home }))
+            }
+            _ => Err("unknown_provider".into()),
+        },
         _ => Err("unknown_method".into()),
     }
 }
@@ -368,7 +405,9 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let settings = dir.join("settings.json");
         std::fs::write(&settings, r#"{"model":"opus"}"#).unwrap();
-        let cfg = ReceiverConfig { port: 0, ui_token: UI.into(), hook_token: HOOK.into(), settings_path: settings.clone(), claude_path: None, allowed_origins: vec!["http://localhost:1420".into()] };
+        let codex = dir.join("codex-hooks.json");
+        let hook_paths = BTreeMap::from([("claude".to_string(), settings.clone()), ("codex".to_string(), codex)]);
+        let cfg = ReceiverConfig { port: 0, ui_token: UI.into(), hook_token: HOOK.into(), hook_paths, exe: "/opt/av/agentville".into(), claude_path: None, allowed_origins: vec!["http://localhost:1420".into()] };
         (Receiver::start(cfg, |_| {}).unwrap(), settings)
     }
 
@@ -467,6 +506,43 @@ mod tests {
     }
 
     #[test]
+    fn tags_hooks_with_their_provider_and_counts_each() {
+        let (r, _) = start();
+        let auth = format!("Bearer {HOOK}");
+        let body = r#"{"hook_event_name":"Stop","session_id":"019a-thread"}"#;
+        assert_eq!(http(r.port(), "POST", "/hooks/codex?src=agentville", &[("Authorization", &auth)], body).0, 200);
+        assert_eq!(http(r.port(), "POST", "/hooks/claude", &[("Authorization", &auth)], body).0, 200);
+        // Unknown providers aren't hook endpoints (they fall through to the UI-token check).
+        assert_eq!(http(r.port(), "POST", "/hooks/other", &[("Authorization", &auth)], body).0, 401);
+        assert_eq!(http(r.port(), "POST", "/hooks/codex", &[("Authorization", "Bearer wrong-token-00000000")], body).0, 401);
+        let recent = r.shared.recent.lock().unwrap().clone();
+        assert_eq!(recent.iter().map(|h| h["provider"].as_str().unwrap()).collect::<Vec<_>>(), ["codex", "claude"]);
+        let st = rpc_call(r.port(), r#"{"method":"status"}"#)["result"].clone();
+        assert_eq!(st["hooks"]["received"], 2);
+        assert_eq!(st["hooks"]["providers"]["codex"]["received"], 1);
+        assert_eq!(st["hooks"]["providers"]["claude"]["received"], 1);
+    }
+
+    #[test]
+    fn installs_codex_hooks_in_their_own_file() {
+        let (r, settings) = start();
+        let codex = settings.with_file_name("codex-hooks.json");
+        let status = rpc_call(r.port(), r#"{"method":"hooks.status","params":{"provider":"codex"}}"#)["result"].clone();
+        assert_eq!((status["provider"].as_str(), status["installed"].as_bool()), (Some("codex"), Some(false)));
+        let installed = rpc_call(r.port(), r#"{"method":"hooks.install","params":{"provider":"codex"}}"#)["result"].clone();
+        assert_eq!((installed["installed"].as_bool(), installed["stale"].as_bool()), (Some(true), Some(false)));
+        let file: Value = serde_json::from_str(&std::fs::read_to_string(&codex).unwrap()).unwrap();
+        assert_eq!(file["hooks"]["Stop"][0]["hooks"][0]["command"], "/opt/av/agentville --agentville-hook codex");
+        assert!(!std::fs::read_to_string(&codex).unwrap().contains(HOOK));
+        // Claude's settings are untouched, and its status is independent.
+        assert_eq!(std::fs::read_to_string(&settings).unwrap(), r#"{"model":"opus"}"#);
+        assert_eq!(rpc_call(r.port(), r#"{"method":"hooks.status"}"#)["result"]["installed"], false);
+        rpc_call(r.port(), r#"{"method":"hooks.uninstall","params":{"provider":"codex"}}"#);
+        assert_eq!(serde_json::from_str::<Value>(&std::fs::read_to_string(&codex).unwrap()).unwrap(), json!({}));
+        assert_eq!(rpc_call(r.port(), r#"{"method":"hooks.status","params":{"provider":"nope"}}"#)["error"]["code"], "unknown_provider");
+    }
+
+    #[test]
     fn only_grants_cors_to_allowed_origins() {
         let (r, _) = start();
         let (_, head, _) = http(r.port(), "GET", "/health", &[("Origin", "http://localhost:1420")], "");
@@ -478,7 +554,7 @@ mod tests {
     #[test]
     fn reports_port_in_use() {
         let (r, _) = start();
-        let cfg = ReceiverConfig { port: r.port(), ui_token: UI.into(), hook_token: HOOK.into(), settings_path: PathBuf::from("/tmp/x"), claude_path: None, allowed_origins: vec![] };
+        let cfg = ReceiverConfig { port: r.port(), ui_token: UI.into(), hook_token: HOOK.into(), hook_paths: BTreeMap::new(), exe: String::new(), claude_path: None, allowed_origins: vec![] };
         let err = Receiver::start(cfg, |_| {}).err().unwrap();
         assert!(err.starts_with("port_in_use") || err.starts_with("listen_failed"), "{err}");
     }

@@ -171,7 +171,7 @@ export function OptionRow<K extends keyof CharacterAppearance>({ field, value, o
 
 export const FIELD_GROUPS: (keyof CharacterAppearance)[][] = [
   ['gender', 'hairStyle', 'hairColor', 'skin', 'face'],
-  ['top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'shoesColor', 'accessory'],
+  ['top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'shoesColor', 'accessory', 'eyewear', 'neckwear'],
 ];
 
 export function CharacterEditor() {
@@ -208,7 +208,7 @@ export function CharacterEditor() {
 
   const close = () => useApp.getState().openCustomizer(undefined);
   const key = agent ? profileKeyFor(agent) : '';
-  const scope = key.startsWith('project:') ? t('editor.scopeProject', { path: agent?.projectPath }) : key.startsWith('subagent:') ? t('editor.scopeSubagent', { type: agent?.agentType ?? '' }) : t('editor.scopeAgent');
+  const scope = key.includes('project:') ? t('editor.scopeProject', { path: agent?.projectPath }) : key.includes('subagent:') ? t('editor.scopeSubagent', { type: agent?.agentType ?? '' }) : t('editor.scopeAgent');
 
   const save = async () => {
     if (!agent || !base) return;
@@ -242,12 +242,14 @@ export function CharacterEditor() {
       ref={dialog}
       onClose={close}
       onClick={(e) => e.target === dialog.current && close()}
-      className="m-auto w-[860px] max-w-[95vw] rounded-xl bg-panel p-0 text-fg shadow-2xl ring-1 ring-line-strong backdrop:bg-black/55"
+      // A column (only while open: `flex` would override the closed dialog's display:none) so header and
+      // footer stay put and the body scrolls inside a window of any height.
+      className="m-auto max-h-[94vh] w-[860px] max-w-[95vw] overflow-hidden rounded-xl bg-panel p-0 text-fg shadow-2xl ring-1 ring-line-strong backdrop:bg-black/55 open:flex open:flex-col"
       aria-labelledby="char-editor-title"
     >
       {agent && (
         <>
-          <div className="flex items-center justify-between border-b border-line px-5 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-3">
             <div>
               <h2 id="char-editor-title" className="text-[15px] font-semibold">
                 {t('editor.title')}
@@ -259,8 +261,8 @@ export function CharacterEditor() {
             </button>
           </div>
 
-          <div className="grid max-h-[72vh] grid-cols-[230px_1fr] overflow-hidden">
-            <div className="flex flex-col items-center gap-3 border-r border-line bg-[repeating-linear-gradient(0deg,#2a2433_0_12px,#2e2738_12px_24px)] p-4">
+          <div className="grid min-h-0 flex-1 grid-cols-[230px_1fr] grid-rows-[minmax(0,1fr)]">
+            <div className="scroll-thin flex flex-col items-center gap-3 overflow-y-auto border-r border-line bg-[repeating-linear-gradient(0deg,#2a2433_0_12px,#2e2738_12px_24px)] p-4">
               <div className="grid h-[230px] w-full place-items-center rounded-lg bg-ink/30 ring-1 ring-line">
                 <Preview appearance={appearance} anim={anim} />
               </div>
@@ -335,7 +337,7 @@ export function CharacterEditor() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 border-t border-line px-5 py-3">
+          <div className="flex shrink-0 items-center gap-2 border-t border-line px-5 py-3">
             <button onClick={() => setAppearance(appearanceFromSeed(`${Math.random()}`))} className="rounded-md px-3 py-1.5 text-[12px] ring-1 ring-line-strong hover:bg-panel-3">
               🎲 {t('editor.randomize')}
             </button>

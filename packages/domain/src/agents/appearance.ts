@@ -7,15 +7,30 @@ export const HAIR_STYLES = ['short', 'bob', 'long', 'bun', 'curly', 'buzz', 'pon
 export const HAIR_COLORS = ['espresso', 'black', 'auburn', 'blonde', 'silver', 'teal', 'rose', 'ginger'] as const;
 export const SKIN_TONES = ['porcelain', 'light', 'tan', 'olive', 'brown', 'deep'] as const;
 export const FACES = ['smile', 'calm', 'focused', 'cheerful'] as const;
-export const TOPS = ['hoodie', 'tee', 'shirt', 'blazer', 'sweater', 'vest', 'polo', 'suit', 'blouse', 'cardigan', 'camisole', 'dress'] as const;
-export const BOTTOMS = ['jeans', 'chinos', 'skirt', 'shorts', 'joggers', 'cargo', 'pleated'] as const;
-export const SHOES = ['sneakers', 'boots', 'loafers', 'hightops'] as const;
-const BASE_ACCESSORIES = ['none', 'glasses', 'headphones', 'cap', 'beanie', 'scarf', 'lanyard'] as const;
+/**
+ * Every piece of clothing can be taken off: 'none' leaves the body in plain
+ * underwear (and a bandeau on women's characters when the top is off).
+ * Auto-generated looks never pick 'none'.
+ */
+const TOP_STYLES = ['hoodie', 'tee', 'shirt', 'blazer', 'sweater', 'vest', 'polo', 'suit', 'blouse', 'cardigan', 'camisole', 'dress'] as const;
+const BOTTOM_STYLES = ['jeans', 'chinos', 'skirt', 'shorts', 'joggers', 'cargo', 'pleated'] as const;
+const SHOE_STYLES = ['sneakers', 'boots', 'loafers', 'hightops'] as const;
+export const TOPS = ['none', ...TOP_STYLES] as const;
+export const BOTTOMS = ['none', ...BOTTOM_STYLES] as const;
+export const SHOES = ['none', ...SHOE_STYLES] as const;
+/** Head, face and neck are separate slots, so glasses go with a hat and a scarf. `accessory` is the head slot. */
+const BASE_ACCESSORIES = ['none', 'headphones', 'cap', 'beanie'] as const;
+const BASE_EYEWEAR = ['none', 'glasses'] as const;
+export const NECKWEAR = ['none', 'scarf', 'lanyard'] as const;
+/** Looks drawn before head/face/neck were separate slots, in their original order (keeps seeded looks unchanged). */
+const LEGACY_BASE_ACCESSORIES = ['none', 'glasses', 'headphones', 'cap', 'beanie', 'scarf', 'lanyard'] as const;
 const BASE_OUTFIT_COLORS = ['coral', 'mustard', 'sage', 'teal', 'navy', 'plum', 'charcoal', 'cream', 'denim', 'forest'] as const;
 /** Bought in the shop (see CATALOG in team-protocol); never chosen for auto-generated looks. */
-export const PREMIUM_ACCESSORIES = ['flower', 'cat_ears', 'wizard_hat', 'crown', 'bow', 'sunglasses', 'party_hat', 'bunny_ears', 'chef_hat', 'santa_hat', 'antenna', 'devil_horns', 'top_hat', 'viking', 'halo'] as const;
+export const PREMIUM_ACCESSORIES = ['flower', 'cat_ears', 'wizard_hat', 'crown', 'bow', 'party_hat', 'bunny_ears', 'chef_hat', 'santa_hat', 'antenna', 'devil_horns', 'top_hat', 'viking', 'halo'] as const;
 export const PREMIUM_OUTFIT_COLORS = ['neon', 'gold', 'sakura', 'mint', 'sky', 'lavender', 'ruby', 'onyx'] as const;
+export const PREMIUM_EYEWEAR = ['sunglasses'] as const;
 export const ACCESSORIES = [...BASE_ACCESSORIES, ...PREMIUM_ACCESSORIES] as const;
+export const EYEWEAR = [...BASE_EYEWEAR, ...PREMIUM_EYEWEAR] as const;
 export const OUTFIT_COLORS = [...BASE_OUTFIT_COLORS, ...PREMIUM_OUTFIT_COLORS] as const;
 export const EQUIPMENT = ['laptop', 'monitor', 'dual_monitor', 'desktop_tower', 'tablet', 'debug_rig'] as const;
 
@@ -28,6 +43,8 @@ export type Top = (typeof TOPS)[number];
 export type Bottom = (typeof BOTTOMS)[number];
 export type Shoes = (typeof SHOES)[number];
 export type Accessory = (typeof ACCESSORIES)[number];
+export type Eyewear = (typeof EYEWEAR)[number];
+export type Neckwear = (typeof NECKWEAR)[number];
 export type OutfitColor = (typeof OUTFIT_COLORS)[number];
 /** Visual only. Equipment never grants or implies runtime capabilities. */
 export type Equipment = (typeof EQUIPMENT)[number];
@@ -45,8 +62,23 @@ export interface CharacterAppearance {
   bottomColor: OutfitColor;
   shoes: Shoes;
   shoesColor: OutfitColor;
+  /** Head slot (hats, headphones, ears…). */
   accessory: Accessory;
+  eyewear: Eyewear;
+  neckwear: Neckwear;
   equipment: Equipment;
+}
+
+/** Which slot a shop accessory is worn in. */
+export function accessorySlot(value: string): 'accessory' | 'eyewear' | 'neckwear' {
+  return (EYEWEAR as readonly string[]).includes(value) ? 'eyewear' : (NECKWEAR as readonly string[]).includes(value) ? 'neckwear' : 'accessory';
+}
+
+/** Moves a pre-slots `accessory` (glasses, sunglasses, scarf, lanyard) into its own slot. */
+export function splitLegacyAccessory(accessory: string): Pick<CharacterAppearance, 'accessory' | 'eyewear' | 'neckwear'> | undefined {
+  if ((EYEWEAR as readonly string[]).includes(accessory) && accessory !== 'none') return { accessory: 'none', eyewear: accessory as Eyewear, neckwear: 'none' };
+  if ((NECKWEAR as readonly string[]).includes(accessory) && accessory !== 'none') return { accessory: 'none', eyewear: 'none', neckwear: accessory as Neckwear };
+  return undefined;
 }
 
 // ───────────────────────────────── men's / women's styles
@@ -65,9 +97,9 @@ export function styleGender(field: GenderedField, value: string): Gender | 'any'
   return (STYLE_GENDER[field] as Record<string, Gender>)[value] ?? 'any';
 }
 
-const LISTS = { hairStyle: HAIR_STYLES, top: TOPS, bottom: BOTTOMS } as const;
+const LISTS = { hairStyle: HAIR_STYLES, top: TOP_STYLES, bottom: BOTTOM_STYLES } as const;
 
-/** The styles that suit a gender by default: its own plus the unisex ones. */
+/** The styles that suit a gender by default: its own plus the unisex ones (never 'none'). */
 export function stylesFor<F extends GenderedField>(field: F, gender: Gender): CharacterAppearance[F][] {
   return (LISTS[field] as readonly string[]).filter((v) => styleGender(field, v) !== (gender === 'male' ? 'female' : 'male')) as CharacterAppearance[F][];
 }
@@ -129,9 +161,13 @@ export function appearanceFromSeed(seed: string): CharacterAppearance {
     topColor: pick(BASE_OUTFIT_COLORS),
     bottom: pick(stylesFor('bottom', gender)),
     bottomColor: pick(['denim', 'charcoal', 'navy', 'cream', 'forest'] as const),
-    shoes: pick(SHOES),
+    shoes: pick(SHOE_STYLES),
     shoesColor: pick(['charcoal', 'cream', 'coral', 'navy'] as const),
-    accessory: pick(BASE_ACCESSORIES),
+    ...slotsFor(pick(LEGACY_BASE_ACCESSORIES)),
     equipment: pick(EQUIPMENT),
   };
+}
+
+function slotsFor(legacy: string): Pick<CharacterAppearance, 'accessory' | 'eyewear' | 'neckwear'> {
+  return splitLegacyAccessory(legacy) ?? { accessory: legacy as Accessory, eyewear: 'none', neckwear: 'none' };
 }

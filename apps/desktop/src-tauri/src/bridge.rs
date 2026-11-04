@@ -87,7 +87,8 @@ impl Supervisor {
             port: cfg.hook_port,
             ui_token: ui_token.clone(),
             hook_token: cfg.hook_token.clone(),
-            settings_path: crate::hooks::settings_path(),
+            hook_paths: crate::receiver::default_hook_paths(),
+            exe: std::env::current_exe().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default(),
             claude_path: cfg.claude_path.clone(),
             allowed_origins: default_origins(),
         };

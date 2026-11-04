@@ -4,15 +4,18 @@
 //! operating system — settings, Claude Code detection and installation, the
 //! built-in hook receiver and local storage. The webview never spawns
 //! processes; it talks to the receiver over loopback with a per-launch token.
-//! No API keys and no runtime dependencies besides Claude Code itself.
+//! No API keys and no runtime dependencies besides the observed agents
+//! themselves (Claude Code, Codex — see `providers`).
 
 mod bridge;
 pub mod config;
 mod db;
 pub mod detect;
+pub mod forwarder;
 pub mod gitinfo;
 pub mod hooks;
 mod installer;
+pub mod providers;
 pub mod receiver;
 
 use bridge::{BridgeState, Connection, Supervisor};

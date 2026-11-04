@@ -80,6 +80,24 @@ export function shade(hex: Color, amount: number): Color {
   return result;
 }
 
+/**
+ * Darkens without the cool hue shift `shade` applies. For skin outlines: the
+ * shifted version of a light skin tone turns a saturated red, which reads as
+ * a sunburn around bare arms and legs.
+ */
+export function darkenWarm(hex: Color, amount: number): Color {
+  const hsl = toHsl(hex);
+  return fromHsl({ h: hsl.h, s: Math.min(1, hsl.s * 0.8), l: Math.max(0, hsl.l - amount * 0.55) });
+}
+
+/** Whether `hex` is `base` or one of its shades (same hue family, similar saturation). */
+export function sameFamily(hex: Color, base: Color, hueTolerance = 14): boolean {
+  const a = toHsl(hex);
+  const b = toHsl(base);
+  const dh = Math.abs(((a.h - b.h + 540) % 360) - 180);
+  return dh <= hueTolerance && Math.abs(a.s - b.s) <= 0.3 && a.l >= 0.2;
+}
+
 export function mix(a: Color, b: Color, t: number): Color {
   const [ar, ag, ab] = hexToRgb(a);
   const [br, bg, bb] = hexToRgb(b);
@@ -162,7 +180,7 @@ export class PixelCanvas {
    * one becomes a darkened, hue-shifted version of that neighbour. Gives all
    * sprites a consistent 1px outline that respects local colour.
    */
-  outline(strength = -0.55, alphaThreshold = 200) {
+  outline(strength = -0.55, alphaThreshold = 200, colorFor?: (neighbour: Color) => Color | undefined) {
     const img = this.ctx.getImageData(0, 0, this.w, this.h);
     const d = img.data;
     const out = new Uint8ClampedArray(d);
@@ -181,7 +199,8 @@ export class PixelCanvas {
         ].find(([nx, ny]) => opaque(nx!, ny!));
         if (!n) continue;
         const j = (n[1]! * W + n[0]!) * 4;
-        const [r, g, b] = hexToRgb(shade(rgbToHex(d[j]!, d[j + 1]!, d[j + 2]!), strength));
+        const neighbour = rgbToHex(d[j]!, d[j + 1]!, d[j + 2]!);
+        const [r, g, b] = hexToRgb(colorFor?.(neighbour) ?? shade(neighbour, strength));
         out[i] = r;
         out[i + 1] = g;
         out[i + 2] = b;

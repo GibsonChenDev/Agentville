@@ -23,6 +23,11 @@
       "how": "Start a new claude session in a terminal and send any prompt."
     }
   },
+  "ready": {
+    "title": "All set — monitoring",
+    "body": "Claude Code is connected to Agentville. Run claude in any project and its character walks into the office.",
+    "waiting": "Everything is in place. Run claude in any project and send a prompt; the first character will appear."
+  },
   "auto": {
     "title": "Set everything up automatically",
     "installClaude": "Install Claude Code with Anthropic's official installer:",

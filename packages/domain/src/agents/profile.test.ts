@@ -23,6 +23,12 @@ describe('agent profiles', () => {
     expect(profileKeyFor({ ...base, projectPath: undefined })).toBe('agent:ext-123');
   });
 
+  it('keeps each coding agent\'s looks apart in the same project', () => {
+    expect(profileKeyFor({ ...base, provider: 'claude' })).toBe('project:/Users/a/storefront');
+    expect(profileKeyFor({ ...base, provider: 'codex' })).toBe('codex:project:/Users/a/storefront');
+    expect(profileKeyFor({ ...base, provider: 'codex', kind: 'subagent', agentType: 'worker' })).toBe('codex:subagent:worker');
+  });
+
   it('sanitizes appearance option by option', () => {
     const fallback = appearanceFromSeed('f');
     const a = sanitizeAppearance({ hairStyle: 'bun', skin: 'plaid', accessory: 42 }, fallback);

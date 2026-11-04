@@ -1,4 +1,4 @@
-import { ACCESSORIES, OFFICE_THEMES, OUTFIT_COLORS, PREMIUM_ACCESSORIES, PREMIUM_OUTFIT_COLORS, appearanceFromSeed, sanitizeAppearance } from '@agentville/domain';
+import { ACCESSORIES, EYEWEAR, OFFICE_THEMES, OUTFIT_COLORS, PREMIUM_ACCESSORIES, PREMIUM_EYEWEAR, PREMIUM_OUTFIT_COLORS, appearanceFromSeed, sanitizeAppearance } from '@agentville/domain';
 import { CATALOG, cleanChat, cleanLayoutDoc, type ChatMessage, type MemberView } from '@agentville/team-protocol';
 import { describe, expect, it } from 'vitest';
 import { placementAllowance, ownerTag } from '../account/accountStore';
@@ -43,9 +43,9 @@ describe('outfits are visible to teammates', () => {
 
   it('the shop sells exactly the premium looks the character renderer knows', () => {
     const looks = CATALOG.filter((i) => i.kind !== 'furniture');
-    expect(looks.filter((i) => i.kind === 'accessory').map((i) => i.value).sort()).toEqual([...PREMIUM_ACCESSORIES].sort());
+    expect(looks.filter((i) => i.kind === 'accessory').map((i) => i.value).sort()).toEqual([...PREMIUM_ACCESSORIES, ...PREMIUM_EYEWEAR].sort());
     expect(looks.filter((i) => i.kind === 'color').map((i) => i.value).sort()).toEqual([...PREMIUM_OUTFIT_COLORS].sort());
-    for (const i of looks) expect([...ACCESSORIES, ...OUTFIT_COLORS] as string[]).toContain(i.value);
+    for (const i of looks) expect([...ACCESSORIES, ...EYEWEAR, ...OUTFIT_COLORS] as string[]).toContain(i.value);
   });
 });
 

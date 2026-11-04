@@ -1,4 +1,4 @@
-export type { BridgeStatus, ClaudeStatus, ExternalSession, HooksPreview, HooksStatus, RawHook, RpcRequest, StreamMessage } from './protocol';
+export type { AgentDetection, BridgeStatus, ClaudeStatus, ExternalSession, HooksPreview, HooksStatus, RawHook, RpcRequest, StreamMessage } from './protocol';
 
 export interface ToolInfo {
   path: string | null;

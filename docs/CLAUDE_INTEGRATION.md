@@ -9,7 +9,7 @@ Verified on 2026-11-02 against https://code.claude.com/docs/en/hooks with Claude
 | **A — Monitor Mode** (observe sessions started in a terminal / IDE) | ✅ implemented, macOS & Windows | Claude Code only (the app can install it). **No API key, no extra cost.** |
 | B — Managed agents (start / prompt / approve from Agentville via the Agent SDK) | ⏸ deferred by product decision | An Anthropic API key (the SDK quickstart requires `ANTHROPIC_API_KEY`; claude.ai login may not be offered by third-party products). |
 
-Everything below describes Mode A.
+Everything below describes Mode A for Claude Code. Codex is observed the same way through command hooks — see [CODEX_INTEGRATION.md](CODEX_INTEGRATION.md).
 
 ## How Monitor Mode works
 

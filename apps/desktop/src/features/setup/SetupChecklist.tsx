@@ -1,21 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { desktop, isTauri } from '../../integration/platform';
+import { lastHookAt } from '../../integration/protocol';
 import { formatRelative } from '../../presentation/format';
 import { useApp } from '../../state/store';
 import { useErrorText } from '../settings/MonitoringSetup';
 import { useGuide } from '../guide/guideStore';
-import { useSetup, useSteps, type StepId, type StepState } from './setupStore';
+import { setupReady, useSetup, useSteps, type StepId, type StepState } from './setupStore';
 
 function Mark({ state }: { state: StepState }) {
   const cls: Record<StepState, string> = {
     done: 'bg-leaf text-ink',
     todo: 'bg-coral/20 text-coral ring-1 ring-coral/40',
     running: 'bg-amber/20 text-amber ring-1 ring-amber/50 animate-pulse',
+    waiting: 'bg-teal/15 text-teal ring-1 ring-teal/40',
     blocked: 'bg-panel-3 text-faint ring-1 ring-line-strong',
     unknown: 'bg-panel-3 text-faint ring-1 ring-line-strong',
   };
-  const glyph: Record<StepState, string> = { done: '✓', todo: '!', running: '…', blocked: '·', unknown: '?' };
+  const glyph: Record<StepState, string> = { done: '✓', todo: '!', running: '…', waiting: '…', blocked: '·', unknown: '?' };
   return (
     <span className={`mt-[1px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full text-[11px] font-bold ${cls[state]}`} aria-hidden>
       {glyph[state]}
@@ -63,7 +65,7 @@ export function SetupChecklist({ compact = false }: { compact?: boolean }) {
   const errorText = useErrorText();
   const s = useSetup();
   const steps = useSteps();
-  const lastAt = useApp((a) => a.bridgeStatus?.hooks.lastAt);
+  const lastAt = useApp((a) => lastHookAt(a.bridgeStatus, 'claude'));
   const link = useApp((a) => a.link);
   const logRef = useRef<HTMLPreElement>(null);
   const [backup, setBackup] = useState<string>();
@@ -80,7 +82,7 @@ export function SetupChecklist({ compact = false }: { compact?: boolean }) {
   }, [s.install?.lines.length]);
 
   const command = s.plans?.claude.command ?? '';
-  const allDone = (['claude', 'receiver', 'hooks'] as StepId[]).every((k) => steps[k] === 'done') && steps.login !== 'todo';
+  const allDone = setupReady(steps);
   const running = s.auto === 'running' || s.install?.phase === 'running';
 
   const row = (id: StepId, action?: React.ReactNode, extra?: React.ReactNode) => (
@@ -97,6 +99,17 @@ export function SetupChecklist({ compact = false }: { compact?: boolean }) {
 
   return (
     <section className="space-y-3">
+      {isTauri && allDone && (
+        <div className="flex items-start gap-2.5 rounded-lg bg-leaf/10 p-3 ring-1 ring-leaf/35" role="status">
+          <span className="mt-[1px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-leaf text-[11px] font-bold text-ink" aria-hidden>
+            ✓
+          </span>
+          <span>
+            <span className="block text-[12.5px] font-semibold text-leaf">{t('ready.title')}</span>
+            <span className="block text-[11.5px] leading-relaxed text-muted">{steps.events === 'done' ? t('ready.body') : t('ready.waiting')}</span>
+          </span>
+        </div>
+      )}
       {isTauri && !allDone && (
         <div className="rounded-lg bg-amber/10 p-3 ring-1 ring-amber/35">
           <p className="text-[12.5px] font-semibold text-amber">{t('auto.title')}</p>

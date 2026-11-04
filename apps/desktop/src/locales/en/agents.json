@@ -111,7 +111,9 @@
       "bottomColor": "Bottom color",
       "shoes": "Shoes",
       "shoesColor": "Shoe color",
-      "accessory": "Accessory",
+      "accessory": "Headwear",
+      "eyewear": "Eyewear",
+      "neckwear": "Neck",
       "equipment": "Desk setup",
       "gender": "Body"
     },
@@ -152,6 +154,7 @@
       "cheerful": "Cheerful"
     },
     "top": {
+      "none": "None (bare)",
       "hoodie": "Hoodie",
       "tee": "T-shirt",
       "shirt": "Shirt",
@@ -166,6 +169,7 @@
       "dress": "Dress"
     },
     "bottom": {
+      "none": "None (underwear)",
       "jeans": "Jeans",
       "chinos": "Chinos",
       "skirt": "Skirt",
@@ -175,6 +179,7 @@
       "pleated": "Pleated skirt"
     },
     "shoes": {
+      "none": "Barefoot",
       "sneakers": "Sneakers",
       "boots": "Boots",
       "loafers": "Loafers",
@@ -203,6 +208,16 @@
       "top_hat": "Top hat",
       "viking": "Viking helmet",
       "halo": "Halo"
+    },
+    "eyewear": {
+      "none": "None",
+      "glasses": "Glasses",
+      "sunglasses": "Sunglasses"
+    },
+    "neckwear": {
+      "none": "None",
+      "scarf": "Scarf",
+      "lanyard": "Lanyard"
     },
     "equipment": {
       "laptop": "Laptop",

@@ -9,7 +9,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@agentville/claude-integration": "*",
+    "@agentville/integrations": "*",
     "@agentville/domain": "*",
     "@agentville/team-protocol": "*",
     "@fontsource/pixelify-sans": "^5.3.0",

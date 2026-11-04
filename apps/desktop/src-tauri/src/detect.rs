@@ -1,4 +1,4 @@
-//! Finds the Claude Code CLI on macOS and Windows. Apps started from Finder or
+//! Finds the Claude Code CLI (and Codex) on macOS and Windows. Apps started from Finder or
 //! the Start menu get a minimal PATH, so we check the official install
 //! locations and the user's shell before falling back, verifying each
 //! candidate by running `--version`.
@@ -80,22 +80,23 @@ pub fn claude_candidates() -> Vec<String> {
             "/usr/bin/claude".into(),
         ]
     };
-    if let Some(p) = which_claude() {
+    if let Some(p) = which("claude") {
         list.insert(0, p);
     }
     list
 }
 
-fn which_claude() -> Option<String> {
+/// `name` must be a fixed literal (it is interpolated into a shell command).
+fn which(name: &'static str) -> Option<String> {
     let out = if cfg!(windows) {
         let mut c = quiet("where.exe");
-        c.arg("claude");
+        c.arg(name);
         output_with_timeout(c, Duration::from_secs(3))
     } else {
-        // A login shell sees the PATH the user's terminal sees. The name is a fixed literal.
+        // A login shell sees the PATH the user's terminal sees.
         let shell = if Path::new("/bin/zsh").exists() { "/bin/zsh" } else { "/bin/bash" };
         let mut c = quiet(shell);
-        c.args(["-lc", "command -v claude"]);
+        c.args(["-lc", &format!("command -v {name}")]);
         output_with_timeout(c, Duration::from_secs(5))
     }?;
     out.lines().map(str::trim).find(|l| !l.is_empty() && Path::new(l).is_absolute()).map(String::from)
@@ -132,6 +133,68 @@ pub fn detect_claude(configured: Option<&str>) -> ToolInfo {
     ToolInfo { path: None, version: None, ok: false, source: "none" }
 }
 
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexInfo {
+    /// The `codex` CLI, when found. The desktop app and IDE extension don't install one.
+    pub path: Option<String>,
+    pub version: Option<String>,
+    /// Codex's home directory (`$CODEX_HOME` or `~/.codex`), when it exists.
+    pub home: Option<String>,
+    /// Any sign of Codex: the CLI, its home directory or the desktop app.
+    pub installed: bool,
+}
+
+pub fn codex_home() -> std::path::PathBuf {
+    std::env::var_os("CODEX_HOME").map(Into::into).unwrap_or_else(|| Path::new(&home()).join(".codex"))
+}
+
+fn codex_candidates() -> Vec<String> {
+    let h = home();
+    let mut list: Vec<String> = if cfg!(windows) {
+        let appdata = std::env::var("APPDATA").unwrap_or_default();
+        vec![format!(r"{appdata}\npm\codex.cmd"), format!(r"{h}\.local\bin\codex.exe")]
+    } else {
+        vec![
+            "/opt/homebrew/bin/codex".into(),
+            "/usr/local/bin/codex".into(),
+            format!("{h}/.local/bin/codex"),
+            // Bundled with the desktop apps (Codex inside ChatGPT, or the standalone Codex app).
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex".into(),
+            "/Applications/Codex.app/Contents/Resources/codex-cli/bin/codex".into(),
+        ]
+    };
+    if let Some(p) = which("codex") {
+        list.insert(0, p);
+    }
+    list
+}
+
+/// `codex --version` prints e.g. "codex-cli 0.130.0".
+pub fn parse_codex_version(out: &str) -> Option<String> {
+    let v = out.split_whitespace().last()?.trim_start_matches('v');
+    parse_major_minor(v).map(|_| v.to_string())
+}
+
+pub fn detect_codex() -> CodexInfo {
+    let home = codex_home();
+    let home = home.is_dir().then(|| home.to_string_lossy().into_owned());
+    let app = cfg!(target_os = "macos") && ["/Applications/Codex.app", "/Applications/ChatGPT.app/Contents/Resources/codex-cli"].iter().any(|p| Path::new(p).exists());
+    let mut seen = std::collections::HashSet::new();
+    for c in codex_candidates() {
+        if !seen.insert(c.clone()) || !Path::new(&c).is_file() {
+            continue;
+        }
+        let mut cmd = quiet(&c);
+        cmd.arg("--version");
+        if let Some(v) = output_with_timeout(cmd, Duration::from_secs(8)).as_deref().and_then(parse_codex_version) {
+            return CodexInfo { path: Some(c), version: Some(v), home, installed: true };
+        }
+    }
+    let installed = home.is_some() || app;
+    CodexInfo { path: None, version: None, home, installed }
+}
+
 /// `claude auth status` prints JSON with `loggedIn`; `None` when unknown (older CLI, error).
 pub fn claude_logged_in(path: &str) -> Option<bool> {
     let mut c = quiet(path);
@@ -164,6 +227,14 @@ mod tests {
         assert_eq!(parse_logged_in(r#"{ "loggedIn": true, "authMethod": "claude.ai" }"#), Some(true));
         assert_eq!(parse_logged_in("note\n{\"loggedIn\": false}"), Some(false));
         assert_eq!(parse_logged_in("not json"), None);
+    }
+
+    #[test]
+    fn parses_codex_versions() {
+        assert_eq!(parse_codex_version("codex-cli 0.130.0\n").as_deref(), Some("0.130.0"));
+        assert_eq!(parse_codex_version("v1.2.3").as_deref(), Some("1.2.3"));
+        assert_eq!(parse_codex_version("codex-cli"), None);
+        assert_eq!(parse_codex_version(""), None);
     }
 
     #[test]

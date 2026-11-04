@@ -1,5 +1,8 @@
 import {
   ACCESSORIES,
+  EYEWEAR,
+  NECKWEAR,
+  splitLegacyAccessory,
   BOTTOMS,
   EQUIPMENT,
   FACES,
@@ -31,10 +34,13 @@ export interface AgentProfile {
   updatedAt: number;
 }
 
-export function profileKeyFor(agent: Pick<AgentRecord, 'id' | 'origin' | 'kind' | 'projectPath' | 'agentType'>): string {
-  if (agent.kind === 'subagent') return `subagent:${agent.agentType ?? 'general-purpose'}`;
+export function profileKeyFor(agent: Pick<AgentRecord, 'id' | 'origin' | 'kind' | 'projectPath' | 'agentType' | 'provider' | 'separateLook'>): string {
+  // Each coding agent keeps its own looks, even in the same folder. Claude Code
+  // keys stay unprefixed so profiles saved before other agents existed still apply.
+  const scope = agent.provider && agent.provider !== 'claude' ? `${agent.provider}:` : '';
+  if (agent.kind === 'subagent') return `${scope}subagent:${agent.agentType ?? 'general-purpose'}`;
   if (agent.origin === 'demo') return `demo:${agent.id}`;
-  if (agent.projectPath) return `project:${agent.projectPath}`;
+  if (agent.projectPath && !agent.separateLook) return `${scope}project:${agent.projectPath}`;
   return `agent:${agent.id}`;
 }
 
@@ -51,6 +57,8 @@ const OPTIONS: { [K in keyof CharacterAppearance]: readonly CharacterAppearance[
   shoes: SHOES,
   shoesColor: OUTFIT_COLORS,
   accessory: ACCESSORIES,
+  eyewear: EYEWEAR,
+  neckwear: NECKWEAR,
   equipment: EQUIPMENT,
 };
 
@@ -60,7 +68,12 @@ export const APPEARANCE_OPTIONS = OPTIONS;
 export function sanitizeAppearance(raw: unknown, fallback: CharacterAppearance): CharacterAppearance {
   const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const out = { ...fallback };
+  // Saved before head/face/neck were separate slots: glasses or a scarf was the one accessory.
+  const legacy = typeof r.accessory === 'string' && r.eyewear === undefined && r.neckwear === undefined ? splitLegacyAccessory(r.accessory) : undefined;
+  if (legacy) Object.assign(out, legacy);
+  else if (r.eyewear === undefined && r.neckwear === undefined && r.accessory !== undefined) Object.assign(out, { eyewear: 'none', neckwear: 'none' });
   for (const key of Object.keys(OPTIONS) as (keyof CharacterAppearance)[]) {
+    if (legacy && key in legacy) continue;
     const value = r[key];
     if (typeof value === 'string' && (OPTIONS[key] as readonly string[]).includes(value)) (out as Record<string, string>)[key] = value;
   }

@@ -1,5 +1,5 @@
 //! Monitor Mode settings, stored as JSON (0600) in the app config directory.
-//! No API keys are involved: Agentville only observes Claude Code via hooks.
+//! No API keys are involved: Agentville only observes coding agents via hooks.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -17,7 +17,7 @@ pub struct IntegrationConfig {
     #[serde(default)]
     pub claude_path: Option<String>,
     pub hook_port: u16,
-    /// Shared secret Claude Code hooks send to the local receiver. Generated once.
+    /// Shared secret hooks send to the local receiver. Generated once.
     pub hook_token: String,
     pub auto_start: bool,
 }
@@ -62,14 +62,31 @@ pub fn config_path(dir: &Path) -> PathBuf {
     dir.join("integration.json")
 }
 
+/// The app config directory as Tauri resolves it (`app_config_dir`), for code
+/// that runs without an `AppHandle` — the hook forwarder.
+pub fn default_dir() -> PathBuf {
+    let home = crate::providers::home_dir();
+    let base = if cfg!(target_os = "macos") {
+        home.join("Library").join("Application Support")
+    } else if cfg!(windows) {
+        std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_else(|| home.join("AppData").join("Roaming"))
+    } else {
+        std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home.join(".config"))
+    };
+    base.join(IDENTIFIER)
+}
+
+/// Must match `identifier` in tauri.conf.json.
+pub const IDENTIFIER: &str = "com.agentville.desktop";
+
+/// Reads the saved config without creating one (`None` when missing or invalid).
+pub fn read(dir: &Path) -> Option<IntegrationConfig> {
+    let raw = fs::read_to_string(config_path(dir)).ok()?;
+    serde_json::from_str::<IntegrationConfig>(&raw).ok().map(IntegrationConfig::normalized).filter(|c| c.validate().is_ok())
+}
+
 pub fn load(dir: &Path) -> IntegrationConfig {
-    let path = config_path(dir);
-    let loaded = fs::read_to_string(&path)
-        .ok()
-        .and_then(|raw| serde_json::from_str::<IntegrationConfig>(&raw).ok())
-        .map(IntegrationConfig::normalized)
-        .filter(|c| c.validate().is_ok());
-    match loaded {
+    match read(dir) {
         Some(c) => c,
         None => {
             let fresh = IntegrationConfig::with_defaults(random_token());
@@ -146,6 +163,22 @@ mod tests {
         let n = c.normalized();
         assert_eq!(n.node_path, None);
         assert_eq!(n.claude_path, None);
+    }
+
+    #[test]
+    fn identifier_matches_tauri_conf() {
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert_eq!(conf["identifier"], IDENTIFIER);
+        assert!(default_dir().ends_with(IDENTIFIER));
+    }
+
+    #[test]
+    fn read_never_creates_a_config() {
+        let dir = tmpdir();
+        assert_eq!(read(&dir), None);
+        assert!(!config_path(&dir).exists());
+        let saved = load(&dir);
+        assert_eq!(read(&dir), Some(saved));
     }
 
     #[test]

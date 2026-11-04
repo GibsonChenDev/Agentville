@@ -73,6 +73,8 @@ export interface AgentRecord {
   name: string;
   role: AgentRole;
   origin: AgentOrigin;
+  /** For observed agents: which coding agent runs it ("claude", "codex"; see @agentville/integrations). */
+  provider?: string;
   kind: AgentKind;
   /** For subagents: the agent whose session spawned it. */
   parentId?: string;
@@ -82,6 +84,12 @@ export interface AgentRecord {
   workstationId?: string;
   /** First working directory seen; the stable identity for customization. */
   projectPath?: string;
+  /**
+   * Another session of the same project was already in the office when this one
+   * arrived: it keeps its own random look and is customized on its own, so two
+   * windows on one project are two different-looking people.
+   */
+  separateLook?: boolean;
   /** Current working directory and git location, when known. */
   location?: AgentLocation;
   /** Agent-team membership, when observed. */

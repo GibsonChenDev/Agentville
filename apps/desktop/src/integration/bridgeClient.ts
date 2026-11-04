@@ -1,4 +1,5 @@
 import { appearanceFromSeed, type AgentRecord } from '@agentville/domain';
+import { HOOK_PROVIDERS, hookProvider } from '@agentville/integrations';
 import { useApp } from '../state/store';
 import { desktop, isTauri } from './platform';
 import { createHookPipeline } from './hookPipeline';
@@ -58,7 +59,7 @@ class BridgeClient {
     clearTimeout(this.timer);
     this.conn = null;
     useApp.getState().setLink('offline');
-    useApp.getState().setHooks(undefined);
+    useApp.getState().clearHooks();
   }
 
   private async connect() {
@@ -115,12 +116,18 @@ class BridgeClient {
     }
   }
 
-  async refreshHooks() {
-    try {
-      useApp.getState().setHooks(await this.rpc({ method: 'hooks.status' }));
-    } catch {
-      useApp.getState().setHooks(undefined);
-    }
+  /** Refreshes the hook installation status of every provider (or just one). */
+  async refreshHooks(provider?: string) {
+    const ids = provider ? [provider] : HOOK_PROVIDERS.map((p) => p.id);
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          useApp.getState().setHooks(id, await this.rpc({ method: 'hooks.status', params: { provider: id } }));
+        } catch {
+          useApp.getState().setHooks(id, undefined);
+        }
+      }),
+    );
   }
 
   async rpc<R extends RpcRequest>(request: R): Promise<RpcResult<R['method']>> {
@@ -141,17 +148,19 @@ class BridgeClient {
   }
 }
 
-/** Creates (once) the office character for an externally observed Claude Code session. */
+/** Creates (once) the office character for an externally observed session (Claude Code, Codex, …). */
 function registerExternal(session: ExternalSession) {
   const store = useApp.getState();
   if (store.agents[session.agentId]) return;
-  const folder = session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? 'Claude Code';
-  const sameFolder = Object.values(store.agents).filter((a) => a.origin === 'external' && a.projectPath === session.cwd).length;
+  const folder = session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? hookProvider(session.provider)?.label ?? 'Agent';
+  // Characters carry a provider badge, so only the same agent in the same folder needs telling apart.
+  const sameFolder = Object.values(store.agents).filter((a) => a.origin === 'external' && a.kind === 'agent' && (a.provider ?? 'claude') === session.provider && a.projectPath === session.cwd).length;
   const record: AgentRecord = {
     id: session.agentId,
     name: sameFolder ? `${folder} · ${session.sessionId.slice(0, 4)}` : folder,
     role: 'generalist',
     origin: 'external',
+    provider: session.provider,
     kind: 'agent',
     projectPath: session.cwd,
     appearance: appearanceFromSeed(session.sessionId),
