@@ -261,7 +261,7 @@ export function CharacterEditor() {
             </button>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-[230px_1fr] grid-rows-[minmax(0,1fr)]">
+          <div className="grid min-h-0 flex-auto grid-cols-[230px_1fr] grid-rows-[minmax(0,1fr)]">
             <div className="scroll-thin flex flex-col items-center gap-3 overflow-y-auto border-r border-line bg-[repeating-linear-gradient(0deg,#2a2433_0_12px,#2e2738_12px_24px)] p-4">
               <div className="grid h-[230px] w-full place-items-center rounded-lg bg-ink/30 ring-1 ring-line">
                 <Preview appearance={appearance} anim={anim} />
