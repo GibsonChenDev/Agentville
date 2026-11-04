@@ -1,3 +1,4 @@
+import { HOOK_PROVIDERS, type HookProvider } from '@agentville/integrations';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { bridge, BridgeRpcError } from '../../integration/bridgeClient';
@@ -6,6 +7,7 @@ import type { HooksPreview, ToolInfo } from '../../integration/types';
 import { useApp } from '../../state/store';
 import { SetupChecklist } from '../setup/SetupChecklist';
 import { useSetup } from '../setup/setupStore';
+import { AgentConnections } from './AgentConnections';
 
 /** Localized message for a stable error code from Rust or the receiver ("code" or "code: detail"). */
 export function useErrorText() {
@@ -37,9 +39,7 @@ export function MonitoringSetup() {
   const { t } = useTranslation('integration');
   const errorText = useErrorText();
   const bridgeState = useApp((s) => s.bridge);
-  const link = useApp((s) => s.link);
   const status = useApp((s) => s.bridgeStatus);
-  const hooks = useApp((s) => s.hooks);
   const view = useSetup((s) => s.view);
   const git = view?.git;
   const platform = useSetup((s) => s.platform);
@@ -48,7 +48,6 @@ export function MonitoringSetup() {
   const [claude, setClaude] = useState<ToolInfo>();
   const [busy, setBusy] = useState<string>();
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string }>();
-  const [preview, setPreview] = useState<HooksPreview>();
   const [logs, setLogs] = useState<string[] | null>(null);
   const [advanced, setAdvanced] = useState(false);
 
@@ -81,6 +80,7 @@ export function MonitoringSetup() {
     <div className="space-y-3.5">
       <p className="text-[12.5px] leading-relaxed text-muted">{t('intro')}</p>
       <SetupChecklist />
+      {isTauri && <AgentConnections />}
       {!isTauri && <p className="rounded-md bg-amber/10 px-3 py-2 text-[11.5px] text-amber ring-1 ring-amber/30">{t('desktopOnly')}</p>}
       {isTauri && platform === 'windows' && git === false && (
         <p className="rounded-md bg-panel-2 px-3 py-2 text-[11.5px] leading-relaxed text-muted ring-1 ring-line">
@@ -190,62 +190,9 @@ export function MonitoringSetup() {
             </Section>
           )}
 
-          <Section title={t('hooks.title')} hint={t('hooks.hint')}>
-            {link !== 'online' ? (
-              <p className="text-[12px] text-muted">{t('hooks.needsReceiver')}</p>
-            ) : (
-              <>
-                {hooks && (
-                  <p className="text-[11.5px] text-faint">
-                    {t('hooks.file')}: <span className="selectable font-mono text-muted">{hooks.settingsPath}</span>
-                  </p>
-                )}
-                {hooks?.stale && <p className="text-[12px] text-amber">{t('hooks.stale')}</p>}
-                <div className="flex flex-wrap gap-2">
-                  {hooks?.installed && (
-                    <button
-                      disabled={!!busy}
-                      onClick={() =>
-                        void run('uninstall', async () => {
-                          useApp.getState().setHooks(await bridge.rpc({ method: 'hooks.uninstall' }));
-                          setPreview(undefined);
-                          return t('hooks.removed');
-                        })
-                      }
-                      className="rounded-md px-3 py-1.5 text-[12px] ring-1 ring-line-strong hover:bg-panel-3 disabled:opacity-50"
-                    >
-                      {t('hooks.uninstall')}
-                    </button>
-                  )}
-                  <button
-                    disabled={!!busy}
-                    onClick={() =>
-                      void run('preview', async () => {
-                        if (preview) return setPreview(undefined);
-                        setPreview(await bridge.rpc({ method: 'hooks.preview', params: { action: hooks?.installed && !hooks.stale ? 'uninstall' : 'install' } }));
-                      })
-                    }
-                    className="rounded-md px-3 py-1.5 text-[12px] text-muted ring-1 ring-line hover:bg-panel-3 hover:text-fg disabled:opacity-50"
-                  >
-                    {preview ? t('hooks.hidePreview') : t('hooks.preview')}
-                  </button>
-                </div>
-                {preview && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['before', 'after'] as const).map((k) => (
-                      <div key={k} className="min-w-0">
-                        <div className="mb-1 text-[11px] font-medium text-faint">{t(`hooks.${k}`)}</div>
-                        <pre className="scroll-thin selectable max-h-56 overflow-auto rounded-md bg-ink/70 p-2 font-mono text-[10.5px] leading-relaxed text-muted ring-1 ring-line">
-                          {preview[k] || t('hooks.empty')}
-                        </pre>
-                      </div>
-                    ))}
-                    {!preview.changed && <p className="col-span-2 text-[11.5px] text-faint">{t('hooks.noChanges')}</p>}
-                  </div>
-                )}
-              </>
-            )}
-          </Section>
+          {HOOK_PROVIDERS.map((p) => (
+            <HookFileSection key={p.id} provider={p} />
+          ))}
         </>
       )}
 
@@ -256,5 +203,89 @@ export function MonitoringSetup() {
         </p>
       )}
     </div>
+  );
+}
+
+/** One agent's hooks file: where it is, whether it is current, a preview of the change and removal. */
+function HookFileSection({ provider }: { provider: HookProvider }) {
+  const { t } = useTranslation('integration');
+  const errorText = useErrorText();
+  const link = useApp((s) => s.link);
+  const hooks = useApp((s) => s.hooks[provider.id]);
+  const [preview, setPreview] = useState<HooksPreview>();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string }>();
+
+  const run = async (fn: () => Promise<string | void>) => {
+    setBusy(true);
+    setMessage(undefined);
+    try {
+      const text = await fn();
+      if (text) setMessage({ tone: 'ok', text });
+    } catch (e) {
+      setMessage({ tone: 'error', text: errorText(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section title={t('hooks.title', { name: provider.label })} hint={t('hooks.hint')}>
+      {link !== 'online' ? (
+        <p className="text-[12px] text-muted">{t('hooks.needsReceiver')}</p>
+      ) : (
+        <>
+          {hooks && (
+            <p className="text-[11.5px] text-faint">
+              {t('hooks.file')}: <span className="selectable font-mono text-muted">{hooks.settingsPath}</span>
+            </p>
+          )}
+          {hooks?.stale && <p className="text-[12px] text-amber">{t('hooks.stale')}</p>}
+          <div className="flex flex-wrap gap-2">
+            {hooks?.installed && (
+              <button
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    useApp.getState().setHooks(provider.id, await bridge.rpc({ method: 'hooks.uninstall', params: { provider: provider.id } }));
+                    setPreview(undefined);
+                    return t('hooks.removed');
+                  })
+                }
+                className="rounded-md px-3 py-1.5 text-[12px] ring-1 ring-line-strong hover:bg-panel-3 disabled:opacity-50"
+              >
+                {t('hooks.uninstall')}
+              </button>
+            )}
+            <button
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  if (preview) return setPreview(undefined);
+                  setPreview(await bridge.rpc({ method: 'hooks.preview', params: { provider: provider.id, action: hooks?.installed && !hooks.stale ? 'uninstall' : 'install' } }));
+                })
+              }
+              className="rounded-md px-3 py-1.5 text-[12px] text-muted ring-1 ring-line hover:bg-panel-3 hover:text-fg disabled:opacity-50"
+            >
+              {preview ? t('hooks.hidePreview') : t('hooks.preview')}
+            </button>
+          </div>
+          {preview && (
+            <div className="grid grid-cols-2 gap-2">
+              {(['before', 'after'] as const).map((k) => (
+                <div key={k} className="min-w-0">
+                  <div className="mb-1 text-[11px] font-medium text-faint">{t(`hooks.${k}`)}</div>
+                  <pre className="scroll-thin selectable max-h-56 overflow-auto rounded-md bg-ink/70 p-2 font-mono text-[10.5px] leading-relaxed text-muted ring-1 ring-line">
+                    {preview[k] || t('hooks.empty')}
+                  </pre>
+                </div>
+              ))}
+              {!preview.changed && <p className="col-span-2 text-[11.5px] text-faint">{t('hooks.noChanges')}</p>}
+            </div>
+          )}
+          {message && <p className={`text-[12px] ${message.tone === 'ok' ? 'text-leaf' : 'text-coral'}`}>{message.text}</p>}
+        </>
+      )}
+    </Section>
   );
 }

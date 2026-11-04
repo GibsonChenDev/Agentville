@@ -68,7 +68,8 @@ export interface AppState {
   /** UI ↔ bridge stream connectivity. */
   link: Link;
   bridgeStatus?: BridgeStatus;
-  hooks?: HooksStatus;
+  /** Hook installation status per provider id (undefined while unknown). */
+  hooks: Partial<Record<string, HooksStatus>>;
 
   setMode: (mode: AppMode) => void;
   upsertAgent: (agent: AgentRecord) => void;
@@ -95,7 +96,8 @@ export interface AppState {
   setBridgeState: (s: BridgeState) => void;
   setLink: (l: Link) => void;
   setBridgeStatus: (s: BridgeStatus) => void;
-  setHooks: (h?: HooksStatus) => void;
+  setHooks: (provider: string, h?: HooksStatus) => void;
+  clearHooks: () => void;
   /** Removes agents (and their runtime) of one origin, e.g. leaving Demo mode. */
   clearOrigin: (origin: AgentRecord['origin']) => void;
   resetWorld: () => void;
@@ -120,6 +122,7 @@ export const useApp = create<AppState>((set, get) => ({
   settingsTab: 'general',
   bridge: { state: 'stopped' },
   link: 'offline',
+  hooks: {},
 
   setMode: (mode) => {
     get().clearOrigin('demo');
@@ -128,11 +131,14 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   upsertAgent: (agent) =>
-    set((s) => ({
-      baseAgents: { ...s.baseAgents, [agent.id]: agent },
-      agents: { ...s.agents, [agent.id]: applyProfile(agent, s.profiles[profileKeyFor(agent)]) },
-      runtime: s.runtime[agent.id] ? s.runtime : { ...s.runtime, [agent.id]: initialRuntime() },
-    })),
+    set((s) => {
+      const base = s.baseAgents[agent.id] ? agent : withSeparateLook(agent, s);
+      return {
+        baseAgents: { ...s.baseAgents, [agent.id]: base },
+        agents: { ...s.agents, [agent.id]: applyProfile(base, s.profiles[profileKeyFor(base)]) },
+        runtime: s.runtime[agent.id] ? s.runtime : { ...s.runtime, [agent.id]: initialRuntime() },
+      };
+    }),
 
   setLocation: (agentId, location) =>
     set((s) => {
@@ -294,7 +300,8 @@ export const useApp = create<AppState>((set, get) => ({
   setBridgeState: (bridge) => set({ bridge }),
   setLink: (link) => set({ link }),
   setBridgeStatus: (bridgeStatus) => set({ bridgeStatus }),
-  setHooks: (hooks) => set({ hooks }),
+  setHooks: (provider, h) => set((s) => ({ hooks: { ...s.hooks, [provider]: h } })),
+  clearHooks: () => set({ hooks: {} }),
   clearOrigin: (origin) =>
     set((s) => {
       const keep = Object.values(s.agents).filter((a) => a.origin !== origin);
@@ -334,10 +341,11 @@ function ingestStep(s: AppState, event: DomainEvent): Partial<AppState> | null {
           name: p.agentType ?? 'Subagent',
           role: 'researcher',
           origin: parent?.origin ?? 'external',
+          provider: parent?.provider,
           kind: 'subagent',
           parentId: event.agentId,
           agentType: p.agentType,
-          appearance: { ...appearanceFromSeed(id), accessory: 'lanyard' },
+          appearance: { ...appearanceFromSeed(id), neckwear: 'lanyard' },
           projectPath: parent?.projectPath,
           createdAt: event.receivedAt,
         };
@@ -361,9 +369,10 @@ function ingestStep(s: AppState, event: DomainEvent): Partial<AppState> | null {
         name: 'Subagent',
         role: 'researcher',
         origin: parent.origin,
+        provider: parent.provider,
         kind: 'subagent',
         parentId,
-        appearance: { ...appearanceFromSeed(event.agentId), accessory: 'lanyard' },
+        appearance: { ...appearanceFromSeed(event.agentId), neckwear: 'lanyard' },
         projectPath: parent.projectPath,
         createdAt: event.receivedAt,
       };
@@ -409,6 +418,17 @@ function ingestStep(s: AppState, event: DomainEvent): Partial<AppState> | null {
 
     const events = s.events.length >= MAX_EVENTS ? [...s.events.slice(-MAX_EVENTS + 1), event] : [...s.events, event];
     return { agents, baseAgents, runtime, events, seenIds, collab };
+}
+
+/**
+ * A new session joining a project that already has a session in the office
+ * keeps its own look: the project's customization belongs to the first one.
+ */
+export function withSeparateLook(agent: AgentRecord, s: Pick<AppState, 'baseAgents' | 'runtime'>): AgentRecord {
+  if (agent.origin !== 'external' || agent.kind !== 'agent' || !agent.projectPath || agent.separateLook) return agent;
+  const key = profileKeyFor(agent);
+  const busy = Object.values(s.baseAgents).some((o) => o.id !== agent.id && profileKeyFor(o) === key && (s.runtime[o.id]?.status ?? 'disconnected') !== 'disconnected');
+  return busy ? { ...agent, separateLook: true } : agent;
 }
 
 function effective(base: Record<string, AgentRecord>, profiles: Record<string, AgentProfile>): Record<string, AgentRecord> {

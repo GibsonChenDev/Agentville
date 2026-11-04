@@ -4,7 +4,7 @@
     "account": "帳號",
     "monitoring": "監控設定"
   },
-  "intro": "監控模式會把你在終端機或 IDE 中啟動的 Claude Code 工作階段，變成辦公室裡的角色。它使用 Claude Code Hooks：不需要 API 金鑰、不會產生額外費用，除了 Claude Code 之外不必再安裝任何東西。",
+  "intro": "監控模式會把你在終端機或 IDE 中啟動的 Claude Code 與 Codex 工作階段，變成辦公室裡的角色。它使用各 Agent 的 Hooks：不需要 API 金鑰、不會產生額外費用，除了 Agent 本身之外不必再安裝任何東西。",
   "observeOnly": "監控中的工作階段只能檢視。Agentville 無法傳送提示、核准工具或停止它們，請在終端機中操作。",
   "tool": {
     "auto": "自動偵測",
@@ -38,11 +38,11 @@
     "rejected": "已拒絕 {{count}}"
   },
   "hooks": {
-    "title": "Claude Code Hooks",
+    "title": "{{name}} Hooks",
     "hint": "在你的使用者設定中加入 Agentville 項目。其他設定與 Hooks 都會保留不變，寫入前會先建立備份。",
     "installed": "已安裝",
     "notInstalled": "尚未安裝",
-    "stale": "已安裝，但連接埠或權杖不同，請重新安裝以更新。",
+    "stale": "已安裝，但連接埠、權杖或 Agentville 位置不同，請重新安裝以更新。",
     "file": "設定檔",
     "preview": "預覽變更",
     "hidePreview": "隱藏預覽",
@@ -57,6 +57,33 @@
     "needsReceiver": "請先啟動本機接收器。",
     "noChanges": "沒有需要變更的內容。",
     "removed": "已移除 Hooks。"
+  },
+  "agents": {
+    "title": "其他 Agent",
+    "hint": "其他 coding agent 的工作階段也能走進辦公室。每個角色都會標示是哪一個 Agent（CC = Claude Code、CX = Codex），彼此互不影響。",
+    "detected": "已偵測到 {{name}}",
+    "detectedVersion": "已偵測到 {{name}} {{version}}",
+    "notDetected": "這台電腦上找不到 {{name}}。仍可以先連接，之後開始使用就會生效。",
+    "connect": "連接 {{name}}",
+    "update": "更新連接",
+    "disconnect": "中斷連接",
+    "connected": "已寫入 {{name}} 的 Hooks。",
+    "disconnected": "已中斷 {{name}}，只移除了 Agentville 的項目。",
+    "stale": "連接設定已過期（例如 Agentville 換了位置），請按「更新連接」。更新後需要在 Agent 中重新信任一次。",
+    "state": {
+      "off": "未連接",
+      "stale": "需要更新",
+      "trust": "等待在 {{name}} 中信任",
+      "live": "已連接"
+    },
+    "trustTitle": "最後一步：在 {{name}} 中信任 Agentville 的 Hook",
+    "trustAfter": "{{name}} 會先略過還沒信任的 Hook。信任後，下一個動作就會出現在辦公室，這裡也會自動變成「已連接」。已開啟的工作階段可能要重新開始才會載入。",
+    "lastEvent": "最後事件：{{time}}",
+    "liveIdle": "已連接。在 {{name}} 開始工作，角色就會走進辦公室。",
+    "codex": {
+      "trustCli": "終端機版：啟動 codex 時會提示有 Hook 需要審核，輸入 /hooks，選擇 Agentville 的項目並信任。",
+      "trustApp": "桌面版：點對話框中的「Review hooks」，或開啟 Settings → Hooks，信任 Agentville 的項目。"
+    }
   },
   "save": "儲存並重新啟動接收器",
   "saving": "儲存中…",
@@ -79,7 +106,8 @@
   "notify": {
     "permission": "{{name}} 正在等待核准：{{tool}}",
     "failed": "{{name}} 發生錯誤",
-    "done": "{{name}} 已完成"
+    "done": "{{name}} 已完成",
+    "connected": "{{name}} 已連接，它的 Agent 會出現在辦公室。"
   },
   "welcome": {
     "title": "歡迎來到你的 AI 辦公室",

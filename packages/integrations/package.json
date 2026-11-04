@@ -1,5 +1,5 @@
 {
-  "name": "@agentville/claude-integration",
+  "name": "@agentville/integrations",
   "version": "0.1.0",
   "private": true,
   "type": "module",

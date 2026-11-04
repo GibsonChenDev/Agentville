@@ -1,11 +1,15 @@
-import { classifyTool, toolTarget, type DomainEvent, type DomainEventPayload } from '@agentville/domain';
+import type { DomainEvent, DomainEventPayload, ToolCategory } from '@agentville/domain';
 
 /**
- * Normalizes documented Claude Code hook payloads (https://code.claude.com/docs/en/hooks)
- * into domain events. All input is untrusted: unknown events are dropped, string
- * fields are length-limited and nothing here executes or renders payload content.
+ * Normalizes hook payloads into domain events. Claude Code and Codex share one
+ * payload vocabulary (`hook_event_name`, `session_id`, `tool_name`, …); what
+ * differs per agent — which events exist, extra event names, tool names — is a
+ * `HookDialect` (see `providers/`). All input is untrusted: unknown events are
+ * dropped, string fields are length-limited and nothing here executes or
+ * renders payload content.
  */
 
+/** Every hook event the normalizer understands. */
 export const SUPPORTED_HOOK_EVENTS = [
   'SessionStart',
   'SessionEnd',
@@ -25,6 +29,16 @@ export const SUPPORTED_HOOK_EVENTS = [
 ] as const;
 export type SupportedHookEvent = (typeof SUPPORTED_HOOK_EVENTS)[number];
 
+/** What one agent's hooks look like. */
+export interface HookDialect {
+  /** Events this agent emits (a subset of SUPPORTED_HOOK_EVENTS, after aliases). */
+  events: readonly SupportedHookEvent[];
+  /** Agent-specific event names mapped onto a supported one, e.g. Codex `Interrupt` → `Stop`. */
+  aliases?: Readonly<Record<string, SupportedHookEvent>>;
+  classifyTool: (toolName: string, input: unknown) => ToolCategory;
+  toolTarget: (toolName: string, input: unknown) => string | undefined;
+}
+
 export type NormalizeResult =
   | { ok: true; event: DomainEvent; sessionId: string; subagentId?: string }
   | { ok: false; reason: 'not_object' | 'missing_session' | 'unsupported_event' | 'invalid_field' };
@@ -33,7 +47,7 @@ export interface NormalizeContext {
   receivedAt: number;
   /** Generates unique ids; injectable for tests. */
   newId: () => string;
-  /** Maps a Claude session (and optional subagent id) to an Agentville agent id. */
+  /** Maps a session (and optional subagent id) to an Agentville agent id. */
   agentIdFor: (sessionId: string, subagentId?: string) => string;
 }
 
@@ -46,11 +60,12 @@ function str(record: Record<string, unknown>, key: string, max = MAX_STRING): st
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
-export function normalizeHookPayload(raw: unknown, ctx: NormalizeContext): NormalizeResult {
+export function normalizeHook(raw: unknown, ctx: NormalizeContext, dialect: HookDialect): NormalizeResult {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'not_object' };
   const r = raw as Record<string, unknown>;
-  const eventName = r.hook_event_name;
-  if (typeof eventName !== 'string' || !(SUPPORTED_HOOK_EVENTS as readonly string[]).includes(eventName)) {
+  const rawName = r.hook_event_name;
+  const eventName = typeof rawName === 'string' ? (Object.hasOwn(dialect.aliases ?? {}, rawName) ? dialect.aliases![rawName] : rawName) : undefined;
+  if (eventName === undefined || !(dialect.events as readonly string[]).includes(eventName)) {
     return { ok: false, reason: 'unsupported_event' };
   }
   const sessionId = r.session_id;
@@ -81,8 +96,8 @@ export function normalizeHookPayload(raw: unknown, ctx: NormalizeContext): Norma
         kind: 'tool.started',
         toolName,
         toolUseId,
-        category: classifyTool(toolName, r.tool_input),
-        target: toolTarget(toolName, r.tool_input),
+        category: dialect.classifyTool(toolName, r.tool_input),
+        target: dialect.toolTarget(toolName, r.tool_input),
       };
       break;
     case 'PostToolUse':
@@ -96,7 +111,7 @@ export function normalizeHookPayload(raw: unknown, ctx: NormalizeContext): Norma
     case 'PermissionRequest':
       if (!toolName) return { ok: false, reason: 'invalid_field' };
       // PermissionRequest has no tool_use_id; a fresh request id is minted for correlation in Agentville only.
-      payload = { kind: 'permission.requested', requestId: ctx.newId(), toolName, target: toolTarget(toolName, r.tool_input) };
+      payload = { kind: 'permission.requested', requestId: ctx.newId(), toolName, target: dialect.toolTarget(toolName, r.tool_input) };
       break;
     case 'Notification':
       payload = { kind: 'notification', notificationType: str(r, 'notification_type', 64), message: str(r, 'message', 500) };

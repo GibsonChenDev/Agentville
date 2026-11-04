@@ -1,4 +1,5 @@
 import { appearanceFromSeed, sanitizeAppearance, workedMs } from '@agentville/domain';
+import { providerOf } from '@agentville/integrations';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OfficeWorld, PLAYER_ID, type CameraState, type HumanInfo, type PeerInfo, type SceneKey, type WorldAgent, type WorldDoor } from '../../game/engine/OfficeWorld';
@@ -50,6 +51,7 @@ function worldAgents(s: AppState): WorldAgent[] {
     .map((record) => {
       const r = s.runtime[record.id];
       const status = r?.status ?? 'disconnected';
+      const provider = providerOf(record);
       return {
         record,
         status,
@@ -59,6 +61,7 @@ function worldAgents(s: AppState): WorldAgent[] {
           status: t(`agents:status.${status}`),
           tone: STATUS_TONE[status],
           subtitle: record.kind === 'subagent' ? t('agents:kind.subagent') : undefined,
+          tag: provider && { text: provider.badge, color: provider.color },
         },
       };
     });

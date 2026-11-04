@@ -47,6 +47,36 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Outfits, editor scrolling, distinct sessions, clearer setup (2026-11-04)
+
+- **Every piece of clothing comes off**: top, bottoms and shoes have "none" (plain briefs; a bandeau on women's characters when the top is off; bare feet). Head, eyewear and neck are now separate slots, so glasses go with a hat and a scarf. Looks saved with the old single accessory move their glasses/sunglasses/scarf/lanyard to the right slot; seeded looks are unchanged and never undressed. Skin now gets a warm brown outline instead of the red one the generic outline produced on bare arms and legs.
+- **Character editors scroll**: the agent and player editors keep header and footer in view and scroll their body at any window height (the body used to be clipped by `overflow-hidden` with nothing scrollable).
+- **Two windows on one project look different**: the project's customization belongs to the first session in the office; a session that joins while another one of the same project is there keeps its own random look and is customized on its own (`AgentRecord.separateLook`, profile key `agent:<id>`).
+- **Setup shows when you're done**: the checklist treats sessions that reached Agentville (this run or in history) as proof that Claude Code is installed and signed in, "events" is a neutral "waiting" instead of a red "!" after each launch, and a green "All set — monitoring" banner replaces the orange auto-setup box once everything needed is in place.
+
+| Check | Result |
+|---|---|
+| Vitest | ✅ 277 passed (clothing slots/migration, auto looks always dressed, concurrent sessions) |
+| Typecheck / i18n parity | ✅ |
+| Browser pane | ✅ editor at 1000×620 scrolls with footer visible; cap + glasses + scarf together; undressed male/female front, side, back and seated |
+| Setup banner | ⚠️ desktop-only (not visible in the browser pane); covered by code review only |
+
+## Codex support, pluggable agents (2026-11-04)
+
+- **Codex sessions join the office** as their own characters next to Claude Code's. Every observed character carries a tag — **CC** (Claude Code, orange) or **CX** (Codex, green) — on its canvas name tag, in the sidebar and in the inspector. The two never share a character, a customization (profile keys are per agent) or a hooks file; a Claude and a Codex session in the same folder are two people.
+- **Connect Codex** in Settings → Monitoring → Other agents: one click writes Agentville's entries to `~/.codex/hooks.json` (backup first, reversible, `config.toml` untouched). Codex then asks the user to trust the hook once (`/hooks`, or Review hooks / Settings → Hooks in the desktop app); the card explains this, shows "Waiting for trust", and turns "Connected" — with a native notification — when the first Codex hook arrives.
+- Codex has only command hooks, so Agentville's own executable is the forwarder (`--agentville-hook codex`): no window, no output, always exit 0, token read from Agentville's config (not in hooks.json). Codex is detected from its CLI, `~/.codex`, or the CLI bundled in ChatGPT.app / Codex.app.
+- **Pluggable providers**: `src-tauri/src/providers.rs` and `packages/integrations` (renamed from `claude-integration`) each hold one registry; installer, receiver (`/hooks/<id>`, per-provider stats), pipeline and UI are shared. A parity test keeps the two registries in sync. See docs/ARCHITECTURE.md and docs/CODEX_INTEGRATION.md.
+
+| Check | Result |
+|---|---|
+| Rust tests (`cargo test`) | ✅ 42 unit + 2 integration (real executable as Codex forwarder) |
+| Clippy | ✅ 0 warnings |
+| Vitest | ✅ 270 passed (Codex dialect, provider registry + Rust parity, pipeline separation) |
+| Typecheck / i18n parity | ✅ |
+| Browser pane | ✅ a Claude and a Codex session in the same folder → two characters, CC/CX tags on canvas, sidebar and inspector |
+| Real Codex CLI → hooks.json → forwarder → receiver | ⏸ written as an opt-in test (`--ignored`); not run here because it needs Codex's `--dangerously-bypass-hook-trust` |
+
 ## Male/female characters, no flash entering offices, privacy tests (2026-11-03)
 
 - **Gender**: every character (you, teammates, agents) is male or female. Women's characters get lashes, lip colour and a slightly narrower waist; men's heavier brows. New styles: men's Polo shirt, suit with tie, cargo pants, undercut; women's blouse, cardigan, camisole, dress, pleated skirt, twin tails. Editors group hair, tops and bottoms as ♂ / unisex / ♀ (your own gender first); anyone can wear anything. Switching gender swaps only the other gender's items for defaults. Auto-generated agents are random male or female. Older saved looks get a gender from their hair and clothes.

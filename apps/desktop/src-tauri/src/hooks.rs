@@ -1,55 +1,68 @@
-//! Opt-in, reversible installation of Agentville's observation hooks into
-//! Claude Code user settings (`~/.claude/settings.json`, or
-//! `%USERPROFILE%\.claude\settings.json` on Windows).
+//! Opt-in, reversible installation of Agentville's observation hooks into an
+//! agent's hooks file (see `providers`): Claude Code's `~/.claude/settings.json`
+//! or Codex's `~/.codex/hooks.json`. Both use the same layout — event →
+//! matcher groups → handlers — so one implementation serves every provider.
 //!
-//! Only entries whose URL carries the Agentville marker are ever added,
-//! replaced or removed; every other key and hook is preserved (key order too),
-//! and a timestamped backup is written before any change.
+//! Only entries carrying the Agentville marker are ever added, replaced or
+//! removed; every other key and hook is preserved (key order too), and a
+//! timestamped backup is written before any change.
 
+use crate::providers::{Provider, Transport};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 pub const MARKER: &str = "src=agentville";
-pub const OBSERVED_EVENTS: [&str; 15] = [
-    "SessionStart",
-    "SessionEnd",
-    "UserPromptSubmit",
-    "PreToolUse",
-    "PostToolUse",
-    "PostToolUseFailure",
-    "PermissionRequest",
-    "Notification",
-    "Stop",
-    "SubagentStart",
-    "SubagentStop",
-    "TaskCreated",
-    "TaskCompleted",
-    "TeammateIdle",
-    "CwdChanged",
-];
-// Deliberately NOT observed: WorktreeCreate replaces Claude Code's own worktree
-// creation (the hook must return the path), so hooking it would break worktrees.
-const TOOL_EVENTS: [&str; 4] = ["PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionRequest"];
-/// Hooks are synchronous; a stalled receiver must never stall Claude for long.
+/// Argument that turns Agentville's executable into a hook forwarder (see `forwarder`).
+pub const FORWARD_ARG: &str = "--agentville-hook";
+/// Hooks are synchronous; a stalled receiver must never stall the agent for long.
 const HOOK_TIMEOUT_S: u64 = 2;
 
-pub fn hook_url(port: u16) -> String {
-    format!("http://127.0.0.1:{port}/hooks/claude?{MARKER}")
+/// Where hooks should point: the running receiver and, for command hooks, the forwarder.
+#[derive(Clone, Debug)]
+pub struct Target {
+    pub port: u16,
+    pub token: String,
+    /// Agentville's executable, run by command hooks.
+    pub exe: String,
+}
+
+pub fn hook_url(provider: &Provider, port: u16) -> String {
+    format!("http://127.0.0.1:{port}/hooks/{}?{MARKER}", provider.id)
+}
+
+/// Command line for a command hook. Quoted only when needed, so it reads the
+/// same in sh, cmd and PowerShell for the usual install locations.
+pub fn hook_command(provider: &Provider, exe: &str) -> String {
+    let exe = if exe.contains([' ', '\'', '"', '$', '`', '&', '(', ')', ';']) {
+        if cfg!(windows) {
+            format!("\"{exe}\"")
+        } else {
+            format!("'{}'", exe.replace('\'', r"'\''"))
+        }
+    } else {
+        exe.to_string()
+    };
+    format!("{exe} {FORWARD_ARG} {}", provider.id)
 }
 
 fn is_ours(hook: &Value) -> bool {
     hook.get("url").and_then(Value::as_str).is_some_and(|u| u.contains(MARKER))
+        || hook.get("command").and_then(Value::as_str).is_some_and(|c| c.contains(FORWARD_ARG))
 }
 
-pub fn home_dir() -> PathBuf {
-    std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from).unwrap_or_default()
-}
-
-/// `AGENTVILLE_SETTINGS_PATH` overrides the location (development and tests only).
-pub fn settings_path() -> PathBuf {
-    std::env::var_os("AGENTVILLE_SETTINGS_PATH").map(PathBuf::from).unwrap_or_else(|| home_dir().join(".claude").join("settings.json"))
+fn entry(provider: &Provider, target: &Target) -> Value {
+    match provider.transport {
+        Transport::Http => json!({
+            "type": "http",
+            "url": hook_url(provider, target.port),
+            "timeout": HOOK_TIMEOUT_S,
+            "headers": { "Authorization": format!("Bearer {}", target.token) }
+        }),
+        // The token stays out of the hooks file: the forwarder reads it from Agentville's config.
+        Transport::Command => json!({ "type": "command", "command": hook_command(provider, &target.exe), "timeout": HOOK_TIMEOUT_S }),
+    }
 }
 
 /// Removes every Agentville hook, dropping matcher groups and events that become empty.
@@ -87,7 +100,7 @@ pub fn without_agentville(settings: &Value) -> Value {
     next
 }
 
-pub fn with_agentville(settings: &Value, port: u16, token: &str) -> Value {
+pub fn with_agentville(provider: &Provider, settings: &Value, target: &Target) -> Value {
     let mut next = without_agentville(settings);
     if !next.is_object() {
         next = json!({});
@@ -98,14 +111,9 @@ pub fn with_agentville(settings: &Value, port: u16, token: &str) -> Value {
         *hooks = json!({});
     }
     let hooks = hooks.as_object_mut().unwrap();
-    for event in OBSERVED_EVENTS {
-        let entry = json!({
-            "type": "http",
-            "url": hook_url(port),
-            "timeout": HOOK_TIMEOUT_S,
-            "headers": { "Authorization": format!("Bearer {token}") }
-        });
-        let group = if TOOL_EVENTS.contains(&event) { json!({ "matcher": "*", "hooks": [entry] }) } else { json!({ "hooks": [entry] }) };
+    for &event in provider.events {
+        let entry = entry(provider, target);
+        let group = if provider.tool_events.contains(&event) { json!({ "matcher": "*", "hooks": [entry] }) } else { json!({ "hooks": [entry] }) };
         match hooks.get_mut(event) {
             Some(Value::Array(list)) => list.push(group),
             _ => {
@@ -120,12 +128,13 @@ pub fn with_agentville(settings: &Value, port: u16, token: &str) -> Value {
 #[serde(rename_all = "camelCase")]
 pub struct Inspection {
     pub installed: bool,
-    /// Installed for another port/token, or missing events added in a newer Agentville.
+    /// Installed for another port/token/executable, or missing events added in a newer Agentville.
     pub stale: bool,
     pub events: Vec<String>,
 }
 
-pub fn inspect(settings: &Value, port: u16, token: &str) -> Inspection {
+pub fn inspect(provider: &Provider, settings: &Value, target: &Target) -> Inspection {
+    let expected = entry(provider, target);
     let mut events: Vec<String> = Vec::new();
     let mut stale = false;
     if let Some(Value::Object(hooks)) = settings.get("hooks") {
@@ -138,8 +147,8 @@ pub fn inspect(settings: &Value, port: u16, token: &str) -> Inspection {
                     if !events.contains(event) {
                         events.push(event.clone());
                     }
-                    let auth = h.pointer("/headers/Authorization").and_then(Value::as_str);
-                    if h.get("url").and_then(Value::as_str) != Some(&hook_url(port)) || auth != Some(&format!("Bearer {token}")) {
+                    // Another port/token/executable, or a hook left behind by another provider's format.
+                    if *h != expected {
                         stale = true;
                     }
                 }
@@ -147,7 +156,7 @@ pub fn inspect(settings: &Value, port: u16, token: &str) -> Inspection {
         }
     }
     let installed = !events.is_empty();
-    if installed && OBSERVED_EVENTS.iter().any(|e| !events.iter().any(|x| x == e)) {
+    if installed && provider.events.iter().any(|e| !events.iter().any(|x| x == e)) {
         stale = true;
     }
     Inspection { installed, stale, events }
@@ -200,6 +209,7 @@ pub fn write_settings(path: &Path, value: &Value, now_ms: i64) -> Result<Option<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::providers::{CLAUDE, CODEX};
 
     fn user() -> Value {
         json!({
@@ -212,49 +222,94 @@ mod tests {
         })
     }
 
+    fn target(port: u16, token: &str) -> Target {
+        Target { port, token: token.into(), exe: "/Applications/Agentville.app/Contents/MacOS/agentville".into() }
+    }
+
     #[test]
     fn adds_every_event_and_keeps_user_entries_and_key_order() {
-        let next = with_agentville(&user(), 47821, "tok");
-        for e in OBSERVED_EVENTS {
-            assert!(next["hooks"].get(e).is_some(), "{e}");
+        for p in [&CLAUDE, &CODEX] {
+            let next = with_agentville(p, &user(), &target(47821, "tok"));
+            for e in p.events {
+                assert!(next["hooks"].get(e).is_some(), "{} {e}", p.id);
+            }
+            assert_eq!(next["hooks"]["PreToolUse"].as_array().unwrap().len(), 2);
+            assert_eq!(next["hooks"]["PreToolUse"][0], user()["hooks"]["PreToolUse"][0]);
+            let keys: Vec<_> = next.as_object().unwrap().keys().cloned().collect();
+            assert_eq!(keys, ["model", "permissions", "hooks"]);
+            assert!(!serialize(&next).contains("WorktreeCreate"));
         }
-        assert_eq!(next["hooks"]["PreToolUse"].as_array().unwrap().len(), 2);
-        assert_eq!(next["hooks"]["PreToolUse"][0], user()["hooks"]["PreToolUse"][0]);
-        let keys: Vec<_> = next.as_object().unwrap().keys().cloned().collect();
-        assert_eq!(keys, ["model", "permissions", "hooks"]);
-        assert!(!serialize(&next).contains("WorktreeCreate"));
     }
 
     #[test]
     fn is_idempotent_and_uninstall_restores_exactly() {
-        let once = with_agentville(&user(), 47821, "tok");
-        assert_eq!(with_agentville(&once, 47821, "tok"), once);
-        assert_eq!(without_agentville(&once), user());
-        assert_eq!(without_agentville(&with_agentville(&json!({}), 1, "t")), json!({}));
+        for p in [&CLAUDE, &CODEX] {
+            let once = with_agentville(p, &user(), &target(47821, "tok"));
+            assert_eq!(with_agentville(p, &once, &target(47821, "tok")), once);
+            assert_eq!(without_agentville(&once), user());
+            assert_eq!(without_agentville(&with_agentville(p, &json!({}), &target(1, "t"))), json!({}));
+        }
     }
 
     #[test]
     fn detects_installed_and_stale() {
-        let installed = with_agentville(&user(), 47821, "tok");
-        let ok = inspect(&installed, 47821, "tok");
-        assert!(ok.installed && !ok.stale);
-        assert_eq!(ok.events.len(), OBSERVED_EVENTS.len());
-        assert!(inspect(&installed, 50000, "tok").stale);
-        assert!(inspect(&installed, 47821, "other").stale);
-        assert!(!inspect(&user(), 47821, "tok").installed);
-        let mut old = with_agentville(&json!({}), 47821, "tok");
-        old["hooks"].as_object_mut().unwrap().shift_remove("TeammateIdle");
-        let i = inspect(&old, 47821, "tok");
-        assert!(i.installed && i.stale);
+        for p in [&CLAUDE, &CODEX] {
+            let installed = with_agentville(p, &user(), &target(47821, "tok"));
+            let ok = inspect(p, &installed, &target(47821, "tok"));
+            assert!(ok.installed && !ok.stale, "{}", p.id);
+            assert_eq!(ok.events.len(), p.events.len());
+            assert!(!inspect(p, &user(), &target(47821, "tok")).installed);
+            let mut old = with_agentville(p, &json!({}), &target(47821, "tok"));
+            old["hooks"].as_object_mut().unwrap().shift_remove("SubagentStop");
+            let i = inspect(p, &old, &target(47821, "tok"));
+            assert!(i.installed && i.stale);
+            let mut moved = target(47821, "tok");
+            moved.exe = "/elsewhere/agentville".into();
+            // Command hooks don't carry port or token; only the executable matters.
+            assert_eq!(inspect(p, &installed, &moved).stale, p.id == "codex");
+        }
+        let claude = with_agentville(&CLAUDE, &user(), &target(47821, "tok"));
+        assert!(inspect(&CLAUDE, &claude, &target(50000, "tok")).stale);
+        assert!(inspect(&CLAUDE, &claude, &target(47821, "other")).stale);
+        let codex = with_agentville(&CODEX, &json!({}), &target(47821, "tok"));
+        assert!(!inspect(&CODEX, &codex, &target(50000, "other")).stale);
     }
 
     #[test]
-    fn uses_short_http_hooks_on_loopback() {
-        let next = with_agentville(&json!({}), 47821, "tok");
+    fn uses_short_http_hooks_on_loopback_for_claude() {
+        let next = with_agentville(&CLAUDE, &json!({}), &target(47821, "tok"));
         let group = &next["hooks"]["PreToolUse"][0];
         assert_eq!(group["matcher"], "*");
-        assert_eq!(group["hooks"][0], json!({ "type": "http", "url": hook_url(47821), "timeout": 2, "headers": { "Authorization": "Bearer tok" } }));
-        assert!(hook_url(1).starts_with("http://127.0.0.1:"));
+        assert_eq!(group["hooks"][0], json!({ "type": "http", "url": "http://127.0.0.1:47821/hooks/claude?src=agentville", "timeout": 2, "headers": { "Authorization": "Bearer tok" } }));
+    }
+
+    #[test]
+    fn uses_forwarder_command_without_token_for_codex() {
+        let next = with_agentville(&CODEX, &json!({}), &target(47821, "secret-token"));
+        assert_eq!(next["hooks"]["PreToolUse"][0]["matcher"], "*");
+        assert!(next["hooks"]["Stop"][0].get("matcher").is_none());
+        assert_eq!(
+            next["hooks"]["Stop"][0]["hooks"][0],
+            json!({ "type": "command", "command": "/Applications/Agentville.app/Contents/MacOS/agentville --agentville-hook codex", "timeout": 2 })
+        );
+        assert!(!serialize(&next).contains("secret-token"));
+    }
+
+    #[test]
+    fn quotes_executables_only_when_needed() {
+        assert_eq!(hook_command(&CODEX, "/opt/av/agentville"), "/opt/av/agentville --agentville-hook codex");
+        if cfg!(windows) {
+            assert_eq!(hook_command(&CODEX, r"C:\Users\A B\agentville.exe"), r#""C:\Users\A B\agentville.exe" --agentville-hook codex"#);
+        } else {
+            assert_eq!(hook_command(&CODEX, "/Users/a b/agentville"), "'/Users/a b/agentville' --agentville-hook codex");
+            assert_eq!(hook_command(&CODEX, "/x/it's/av"), r"'/x/it'\''s/av' --agentville-hook codex");
+        }
+    }
+
+    #[test]
+    fn uninstall_removes_both_formats() {
+        let both = with_agentville(&CODEX, &with_agentville(&CLAUDE, &user(), &target(1, "t")), &target(1, "t"));
+        assert_eq!(without_agentville(&both), user());
     }
 
     #[test]
@@ -268,7 +323,7 @@ mod tests {
         assert_eq!(read_settings(&path).unwrap_err(), "settings_not_object");
         fs::write(&path, serde_json::to_string(&user()).unwrap()).unwrap();
         let (v, _) = read_settings(&path).unwrap();
-        let backup = write_settings(&path, &with_agentville(&v, 1, "t"), 123).unwrap().unwrap();
+        let backup = write_settings(&path, &with_agentville(&CLAUDE, &v, &target(1, "t")), 123).unwrap().unwrap();
         assert!(backup.to_string_lossy().ends_with("agentville-backup-123"));
         assert_eq!(serde_json::from_str::<Value>(&fs::read_to_string(&backup).unwrap()).unwrap(), user());
         assert!(!fs::read_dir(&dir).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().contains("agentville-tmp")));

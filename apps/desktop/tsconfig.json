@@ -15,7 +15,7 @@
       "path": "../../packages/domain"
     },
     {
-      "path": "../../packages/claude-integration"
+      "path": "../../packages/integrations"
     },
     {
       "path": "../../packages/team-protocol"

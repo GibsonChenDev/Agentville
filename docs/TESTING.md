@@ -19,14 +19,16 @@ npm run tauri build -- --bundles app
 | Agent state machine | `packages/domain/src/agents/reducer.test.ts` | typical turn, no success-as-completion, recoverable tool failure, permission wait/restore with id matching, reordering by `seq`, uncorrelated tool removal, late events after completion, disconnect stickiness, stale detection |
 | Tool classification | `packages/domain/src/events/toolCategory.test.ts` | categories incl. test/build Bash commands, target extraction & truncation |
 | Task lifecycle | `packages/domain/src/tasks/types.test.ts` | timestamps, invalid transitions, dependencies |
-| Hook normalization (security) | `packages/claude-integration/src/hooks/normalize.test.ts` | mapping, subagent attribution, malformed payloads (null, arrays, unknown events, path-like session ids, missing fields), oversized/markup strings |
+| Hook normalization (security) | `packages/integrations/src/hooks/normalize.test.ts` | mapping, subagent attribution, malformed payloads (null, arrays, unknown events, path-like session ids, missing fields), oversized/markup strings |
 | Localization | `apps/desktop/src/i18n/i18n.test.ts` + `scripts/check-i18n.mjs` | system locale mapping, key parity, interpolation parity, no empty strings |
 | Navigation | `apps/desktop/src/game/navigation/grid.test.ts` | A*, no corner cutting, unreachable targets, explicit endpoints |
 | Visual sync | `apps/desktop/src/game/animations/intent.test.ts` | status→intent, min dwell + coalescing, urgent permission override, transient celebration |
 | Preferences | `apps/desktop/src/state/persistence.test.ts` | sanitizing persisted prefs |
 | Receiver (Rust) | `src-tauri/src/receiver.rs` | real HTTP: token auth, stream hello/replay + live hooks with ids/seq, malformed/oversized payloads, install/uninstall round trip with backup, invalid JSON settings untouched, CORS allow-list, port in use |
 | Hook installer (Rust) | `src-tauri/src/hooks.rs` | merge keeps user hooks and key order, idempotent, exact uninstall, stale detection (port/token/missing events), atomic write + backup, no WorktreeCreate |
-| Hook pipeline | `apps/desktop/src/integration/hookPipeline.test.ts` | mid-flight discovery, deterministic ids for replay, subagent attribution, location changes |
+| Hook pipeline | `apps/desktop/src/integration/hookPipeline.test.ts` | mid-flight discovery, deterministic ids for replay, subagent attribution, location changes, Claude Code vs Codex separation |
+| Codex | `packages/integrations/src/providers/codex.test.ts`, `src-tauri/tests/codex_forwarding.rs` | Codex dialect (events, Interrupt, tool names, apply_patch targets); real executable as silent forwarder; opt-in real Codex CLI run (see docs/CODEX_INTEGRATION.md) |
+| Provider registries | `apps/desktop/src/integration/providerParity.test.ts`, `packages/integrations/src/providers/registry.test.ts` | Rust and TS list the same agents and events; distinct ids/badges/agent ids |
 | Detection / installer | `src-tauri/src/{detect,installer}.rs` | version + login-status parsing, platform candidates, official install command per OS, unknown tools/links rejected |
 | Collaboration | `packages/domain/src/collaboration/collab.test.ts` | team keys, task lifecycle, teammate attribution without fabrication, conflict window and worktree paths |
 | Git location | `src-tauri/src/gitinfo.rs` | main checkout vs linked worktree (real repo), detached head, repo without commits |

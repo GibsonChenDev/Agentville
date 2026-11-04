@@ -1,9 +1,10 @@
-import { normalizeHookPayload } from '@agentville/claude-integration';
+import { hookProvider, normalizeHook } from '@agentville/integrations';
 import type { AgentLocation, DomainEvent } from '@agentville/domain';
 import type { ExternalSession, RawHook } from './protocol';
 
 /**
- * Turns raw hooks from the receiver into domain events. Ids derive from the
+ * Turns raw hooks from the receiver into domain events, using the normalizer
+ * of the agent that sent each one (Claude Code, Codex, …). Ids derive from the
  * receiver's per-run hook id and sequence, so replaying `hello.recent` after a
  * reconnect produces identical events that the store de-duplicates.
  */
@@ -35,19 +36,25 @@ export function createHookPipeline(deps: PipelineDeps) {
       top = Math.max(top, v);
       return v;
     };
+    const provider = hookProvider(hook.provider);
+    if (!provider) return null;
     let n = 0;
-    const result = normalizeHookPayload(hook.body, {
-      receivedAt: hook.receivedAt,
-      newId: () => (n++ === 0 ? hook.id : `${hook.id}:${n - 1}`),
-      agentIdFor: (sid, sub) => (sub ? `ext-${sid}/${sub}` : `ext-${sid}`),
-    });
+    const result = normalizeHook(
+      hook.body,
+      {
+        receivedAt: hook.receivedAt,
+        newId: () => (n++ === 0 ? hook.id : `${hook.id}:${n - 1}`),
+        agentIdFor: provider.agentIdFor,
+      },
+      provider.dialect,
+    );
     if (!result.ok) return null;
-    const agentId = `ext-${result.sessionId}`;
+    const agentId = provider.agentIdFor(result.sessionId);
     const cwd = typeof hook.body.cwd === 'string' ? hook.body.cwd.slice(0, 1024) : undefined;
 
     if (!seen.has(agentId)) {
       seen.add(agentId);
-      deps.discover({ agentId, sessionId: result.sessionId, cwd, firstSeenAt: hook.receivedAt });
+      deps.discover({ agentId, sessionId: result.sessionId, provider: provider.id, cwd, firstSeenAt: hook.receivedAt });
       // Observed mid-flight (hooks installed later, or app restarted): synthesize the arrival.
       if (result.event.payload.kind !== 'session.started') {
         deps.ingest({

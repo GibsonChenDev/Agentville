@@ -29,6 +29,8 @@ export interface BadgeInfo {
   status: string;
   tone: 'neutral' | 'busy' | 'attention' | 'success' | 'danger' | 'muted';
   subtitle?: string;
+  /** Coloured tag before the name, e.g. which coding agent runs this character. */
+  tag?: { text: string; color: string };
 }
 
 const WALK_SPEED = 46; // art px per second
@@ -58,6 +60,8 @@ export class CharacterActor {
   private readonly nameText: Text;
   private readonly statusText: Text;
   private readonly statusDot = new Graphics();
+  private readonly tagBg = new Graphics();
+  private readonly tagText: Text;
   private readonly bubbleBg = new Graphics();
   private readonly bubbleText: Text;
   private bubbleUntil = 0;
@@ -120,7 +124,8 @@ export class CharacterActor {
 
     this.nameText = new Text({ text: record.name, style: { fontFamily: FONT, fontSize: 11, fontWeight: '600', fill: 0xffffff } });
     this.statusText = new Text({ text: '', style: { fontFamily: FONT, fontSize: 10, fontWeight: '500', fill: 0xd9dce6 } });
-    this.badge.addChild(this.badgeBg, this.statusDot, this.nameText, this.statusText);
+    this.tagText = new Text({ text: '', style: { fontFamily: 'Menlo, Consolas, monospace', fontSize: 9, fontWeight: '700', fill: 0xffffff } });
+    this.badge.addChild(this.badgeBg, this.statusDot, this.tagBg, this.tagText, this.nameText, this.statusText);
     this.badge.visible = false;
     this.bubbleText = new Text({ text: '', style: { fontFamily: FONT, fontSize: 12, fontWeight: '500', fill: 0x231d2b, wordWrap: true, wordWrapWidth: 210, breakWords: true, lineHeight: 16 } });
     this.bubble.addChild(this.bubbleBg, this.bubbleText);
@@ -365,14 +370,18 @@ export class CharacterActor {
       return;
     }
     const showStatus = this.selected || this.hovered || this.showStatus || info.tone === 'attention' || info.tone === 'danger';
-    const key = `${info.name}|${info.status}|${info.tone}|${showStatus}|${info.subtitle ?? ''}`;
+    const key = `${info.name}|${info.status}|${info.tone}|${showStatus}|${info.subtitle ?? ''}|${info.tag?.text ?? ''}`;
     if (key !== this.badgeKey) {
       this.badgeKey = key;
       this.nameText.text = info.subtitle ? `${info.name} · ${info.subtitle}` : info.name;
       this.statusText.text = info.status;
       this.statusText.visible = showStatus;
+      this.tagText.text = info.tag?.text ?? '';
+      this.tagText.visible = this.tagBg.visible = !!info.tag;
+      const tagW = info.tag ? Math.ceil(this.tagText.width) + 6 : 0;
+      const tagGap = info.tag ? 4 : 0;
       const padX = 7;
-      const nameW = this.nameText.width;
+      const nameW = tagW + tagGap + this.nameText.width;
       const statusW = showStatus ? this.statusText.width + 12 : 0;
       const w = Math.ceil(Math.max(nameW, statusW) + padX * 2);
       const h = showStatus ? 32 : 18;
@@ -380,7 +389,12 @@ export class CharacterActor {
       this.badgeBg.clear();
       this.badgeBg.roundRect(-w / 2, -h, w, h, 6).fill({ color: 0x17141f, alpha: 0.86 });
       this.badgeBg.roundRect(-w / 2, -h, w, h, 6).stroke({ color: this.selected ? 0xf2b33d : 0xffffff, alpha: this.selected ? 0.9 : 0.12, width: 1 });
-      this.nameText.position.set(-w / 2 + padX, -h + 2);
+      this.tagBg.clear();
+      if (info.tag) {
+        this.tagBg.roundRect(-w / 2 + padX, -h + 3.5, tagW, 11, 3).fill({ color: info.tag.color });
+        this.tagText.position.set(-w / 2 + padX + 3, -h + 4);
+      }
+      this.nameText.position.set(-w / 2 + padX + tagW + tagGap, -h + 2);
       this.statusDot.clear();
       if (showStatus) {
         this.statusDot.circle(-w / 2 + padX + 3, -10, 3).fill(TONE_COLORS[info.tone]);

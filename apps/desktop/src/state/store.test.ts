@@ -51,3 +51,28 @@ describe('history restore', () => {
     expect(useApp.getState().events).toHaveLength(1);
   });
 });
+
+describe('two sessions on one project', () => {
+  const session = (sid: string, createdAt: number): AgentRecord => ({ ...agent, id: `ext-${sid}`, appearance: appearanceFromSeed(sid), createdAt });
+  const custom = { ...appearanceFromSeed('custom'), top: 'suit' as const };
+  // The project was customized earlier (set directly: tests have no storage).
+  beforeEach(() => useApp.setState({ profiles: { 'project:/code/storefront': { key: 'project:/code/storefront', updatedAt: 0, appearance: custom, name: 'Shop' } } }));
+
+  it('look different even after the project was customized', () => {
+    useApp.getState().upsertAgent(session('a1', 1));
+    useApp.getState().ingest(ev('ext-a1', { kind: 'session.started' }));
+    useApp.getState().upsertAgent(session('b2', 2));
+    const s = useApp.getState();
+    expect(s.agents['ext-a1']).toMatchObject({ name: 'Shop', appearance: custom });
+    expect(s.agents['ext-b2']).toMatchObject({ name: 'storefront', separateLook: true, appearance: appearanceFromSeed('b2') });
+  });
+
+  it('a later session after the first one ended wears the project look again', () => {
+    useApp.getState().upsertAgent(session('a1', 1));
+    useApp.getState().ingest(ev('ext-a1', { kind: 'session.started' }));
+    useApp.getState().ingest(ev('ext-a1', { kind: 'session.ended' }));
+    useApp.getState().upsertAgent(session('c3', 3));
+    expect(useApp.getState().agents['ext-c3']).toMatchObject({ appearance: custom });
+    expect(useApp.getState().agents['ext-c3']?.separateLook).toBeUndefined();
+  });
+});

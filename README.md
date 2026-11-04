@@ -90,7 +90,7 @@ Signing, notarization and uninstall steps: [docs/RELEASE.md](docs/RELEASE.md).
 ```
 apps/desktop/            React UI, PixiJS world, Tauri shell (src-tauri/: receiver, storage, installers)
 packages/domain/         Language-neutral domain: events, agent state machine, tasks, office types
-packages/claude-integration/  Hook payload normalization
+packages/integrations/   Hook normalization and the observed-agent registry (Claude Code, Codex)
 docs/                    Architecture, art direction, localization, integration, roadmap, testing
 ```
 

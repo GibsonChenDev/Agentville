@@ -204,7 +204,7 @@ export const ownerTag = (accountId: string | undefined) => (accountId ? accountI
 
 /** Appearance fields whose options are sold in the shop. */
 export function lockedOption(inventory: readonly string[] | undefined, field: keyof CharacterAppearance, value: string): boolean {
-  if (field === 'accessory') return !owns(inventory, 'accessory', value);
+  if (field === 'accessory' || field === 'eyewear' || field === 'neckwear') return !owns(inventory, 'accessory', value);
   if (field === 'topColor' || field === 'bottomColor' || field === 'shoesColor') return !owns(inventory, 'color', value);
   return false;
 }

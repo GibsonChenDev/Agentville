@@ -4,7 +4,7 @@
     "account": "Account",
     "monitoring": "Monitoring setup"
   },
-  "intro": "Monitor Mode shows the Claude Code sessions you start in a terminal or IDE as characters in the office. It uses Claude Code hooks: no API key, no extra cost, and nothing else to install besides Claude Code.",
+  "intro": "Monitor Mode turns the Claude Code and Codex sessions you start in a terminal or IDE into characters in the office. It uses each agent's hooks: no API key, no extra cost, and nothing to install besides the agents themselves.",
   "observeOnly": "Monitored sessions are view-only. Agentville can't send prompts, approve tools or stop them — do that in the terminal.",
   "tool": {
     "auto": "Auto-detect",
@@ -38,11 +38,11 @@
     "rejected": "Rejected {{count}}"
   },
   "hooks": {
-    "title": "Claude Code hooks",
+    "title": "{{name}} hooks",
     "hint": "Adds Agentville entries to your user settings. Your other settings and hooks are kept untouched, and a backup is written first.",
     "installed": "Installed",
     "notInstalled": "Not installed",
-    "stale": "Installed for a different port or token — reinstall to update.",
+    "stale": "Installed, but for a different port, token or Agentville location. Reinstall to update.",
     "file": "Settings file",
     "preview": "Preview changes",
     "hidePreview": "Hide preview",
@@ -57,6 +57,33 @@
     "needsReceiver": "Start the local receiver first.",
     "noChanges": "Nothing to change.",
     "removed": "Hooks removed."
+  },
+  "agents": {
+    "title": "Other agents",
+    "hint": "Sessions from other coding agents can join the office too. Every character shows which agent runs it (CC = Claude Code, CX = Codex); they never affect each other.",
+    "detected": "{{name}} found",
+    "detectedVersion": "{{name}} {{version}} found",
+    "notDetected": "{{name}} wasn't found on this computer. You can connect anyway; it takes effect once you start using it.",
+    "connect": "Connect {{name}}",
+    "update": "Update connection",
+    "disconnect": "Disconnect",
+    "connected": "{{name}} hooks written.",
+    "disconnected": "{{name}} disconnected; only Agentville's entries were removed.",
+    "stale": "The connection is out of date (for example, Agentville moved). Click “Update connection”, then trust the hook again in the agent.",
+    "state": {
+      "off": "Not connected",
+      "stale": "Needs update",
+      "trust": "Waiting for trust in {{name}}",
+      "live": "Connected"
+    },
+    "trustTitle": "Last step: trust Agentville's hook in {{name}}",
+    "trustAfter": "{{name}} skips hooks until you trust them. Once you do, its next action shows up in the office and this card turns “Connected” by itself. Sessions that are already open may need a restart.",
+    "lastEvent": "Last event: {{time}}",
+    "liveIdle": "Connected. Start working in {{name}} and its characters walk into the office.",
+    "codex": {
+      "trustCli": "Terminal: when codex starts it warns that hooks need review. Type /hooks, pick Agentville's entries and trust them.",
+      "trustApp": "Desktop app: click “Review hooks” in the composer, or open Settings → Hooks, and trust Agentville's entries."
+    }
   },
   "save": "Save & restart receiver",
   "saving": "Saving…",
@@ -79,7 +106,8 @@
   "notify": {
     "permission": "{{name}} is waiting for approval: {{tool}}",
     "failed": "{{name}} ran into an error",
-    "done": "{{name}} finished"
+    "done": "{{name}} finished",
+    "connected": "{{name}} is connected; its agents will appear in the office."
   },
   "welcome": {
     "title": "Welcome to your AI office",

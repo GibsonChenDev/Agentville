@@ -12,7 +12,7 @@ The four layers required by the brief are kept in separate modules:
 
 | Layer | Module | Notes |
 |---|---|---|
-| 1. Raw event | `packages/claude-integration/src/hooks/normalize.ts` (hooks), `apps/desktop/src/features/demo` (fixtures) | Untrusted input. Validated, length-limited, never rendered as HTML. |
+| 1. Raw event | `packages/integrations/src/hooks/normalize.ts` + one dialect per agent in `providers/` (hooks), `apps/desktop/src/features/demo` (fixtures) | Untrusted input. Validated, length-limited, never rendered as HTML. |
 | 2. Domain event | `packages/domain/src/events/types.ts` | Language-neutral union, tagged with `source` (`demo`/`hook`/`sdk`/`app`). |
 | 3. Logical status | `packages/domain/src/agents/reducer.ts` | Pure state machine. Handles duplicates (store-level id set), reordering (`seq`), late tool events, recoverable tool failures, stale sessions. |
 | 4. Visual intent | `apps/desktop/src/game/animations/intent.ts` | Maps status → place/activity/screen. `IntentScheduler` enforces minimum dwell, coalescing and urgent overrides so rapid events don't thrash. |
@@ -22,10 +22,23 @@ Cosmetic idle motion (breathing, blinking, dust motes) lives purely in the rende
 ## Packages
 
 - **`@agentville/domain`** — no runtime dependencies. Agents, appearance options, capabilities matrix (`can(origin, capability)`), tasks and their transition table, office layout types.
-- **`@agentville/claude-integration`** — adapters from Claude Code into domain events. Hook normalizer (tested against malformed payloads).
+- **`@agentville/integrations`** — adapters from observed coding agents (Claude Code, Codex) into domain events: one hook normalizer (tested against malformed payloads) plus a provider registry (label, badge, dialect, agent ids).
 - **`@agentville/team-protocol`** — wire format between the app and the team relay, with the validators both sides use (privacy contract: only avatar, nickname/look, agent count and office edits).
 - **`@agentville/desktop`** — React UI + PixiJS world + Tauri shell.
 - **`server/relay`** (not a workspace package) — Cloudflare Worker + Durable Objects relaying team offices; see docs/TEAM.md.
+
+## Observed agents (providers)
+
+Every coding agent Agentville can watch is a *provider*, declared once on each side:
+
+| Side | File | Declares |
+|---|---|---|
+| Rust | `apps/desktop/src-tauri/src/providers.rs` | id, hooks file, events to install, transport (`Http`: the agent POSTs; `Command`: Agentville's executable forwards stdin, see `forwarder.rs`) |
+| TypeScript | `packages/integrations/src/providers/<id>.ts` + `registry.ts` | label, badge/colour, dialect (events, aliases, tool classification), agent id scheme, whether hooks need trusting |
+
+Everything else is shared: `hooks.rs` installs/inspects/removes for any provider, the receiver routes `/hooks/<id>` and tags each hook with its provider, the pipeline picks the dialect, and characters carry `AgentRecord.provider` (badge on canvas, sidebar and inspector; separate customization keys). `providerParity.test.ts` fails if the two registries disagree.
+
+To add an agent: add its `Provider` to `providers.rs` (`ALL`), add its file under `providers/` and to `HOOK_PROVIDERS`, add an `agent.detect` branch in `receiver.rs`, and add `agents.<id>.trustCli/trustApp` strings if it needs trust. To remove one, delete both entries.
 
 ## Desktop app
 

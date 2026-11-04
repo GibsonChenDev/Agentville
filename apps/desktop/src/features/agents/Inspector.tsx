@@ -1,9 +1,11 @@
 import { can, type AgentRecord, type DomainEvent } from '@agentville/domain';
+import { providerOf } from '@agentville/integrations';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eventDetail, formatRelative, formatTime } from '../../presentation/format';
 import { useApp } from '../../state/store';
 import { Portrait } from './Portrait';
+import { ProviderBadge } from './ProviderBadge';
 import { StatusDot } from './StatusDot';
 import { ConflictWarnings } from './TeamPanels';
 import { PeerCard } from '../team/PeerCard';
@@ -32,6 +34,7 @@ export function Inspector() {
   const events = useApp((s) => s.events);
   const width = useApp((s) => s.prefs.inspectorWidth);
   const followId = useApp((s) => s.followAgentId);
+  const provider = agent ? providerOf(agent) : undefined;
 
   const recent = useMemo(() => (id ? events.filter((e) => e.agentId === id).slice(-8).reverse() : []), [events, id]);
   const lastPrompt = useMemo(() => {
@@ -75,8 +78,16 @@ export function Inspector() {
               {agent.kind === 'subagent' && parent ? t('kind.subagentOf', { name: parent.name }) : t(`role.${agent.role}`)}
               {agent.agentType && <span className="ml-1 font-mono text-[11px] text-faint">({agent.agentType})</span>}
             </p>
-            <span className={`mt-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-[10.5px] font-medium ring-1 ${ORIGIN_STYLE[agent.origin]}`} title={t(`originHint.${agent.origin}`)}>
-              {t(`origin.${agent.origin}`)}
+            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10.5px] font-medium ring-1 ${ORIGIN_STYLE[agent.origin]}`} title={t(`originHint.${agent.origin}`)}>
+                {t(`origin.${agent.origin}`)}
+              </span>
+              {provider && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+                  <ProviderBadge agent={agent} />
+                  {provider.label}
+                </span>
+              )}
             </span>
           </div>
           <button

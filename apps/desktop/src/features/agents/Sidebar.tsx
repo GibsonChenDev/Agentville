@@ -9,6 +9,7 @@ import { useEditor } from '../office/editorStore';
 import { useGuide } from '../guide/guideStore';
 import { isMac } from '../../integration/platform';
 import { Portrait } from './Portrait';
+import { ProviderBadge } from './ProviderBadge';
 import { TeamPanel } from '../team/TeamPanel';
 import { chooseOfficeTheme, useOfficeStyle } from '../../world/officeTheme';
 import { useTeam } from '../../team/teamStore';
@@ -172,6 +173,7 @@ function RosterItem({ agent, selected, onClick }: { agent: AgentRecord; selected
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">
+            {!sub && <ProviderBadge agent={agent} />}
             <span className="truncate text-[12.5px] font-medium">{agent.name}</span>
           </span>
           <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted">

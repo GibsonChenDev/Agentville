@@ -111,7 +111,9 @@
       "bottomColor": "下著顏色",
       "shoes": "鞋子",
       "shoesColor": "鞋子顏色",
-      "accessory": "配件",
+      "accessory": "頭部配件",
+      "eyewear": "眼鏡",
+      "neckwear": "頸部",
       "equipment": "桌面設備",
       "gender": "性別"
     },
@@ -152,6 +154,7 @@
       "cheerful": "開朗"
     },
     "top": {
+      "none": "不穿（裸上身）",
       "hoodie": "連帽衫",
       "tee": "T 恤",
       "shirt": "襯衫",
@@ -166,6 +169,7 @@
       "dress": "連身裙"
     },
     "bottom": {
+      "none": "不穿（只剩內褲）",
       "jeans": "牛仔褲",
       "chinos": "卡其褲",
       "skirt": "裙子",
@@ -175,6 +179,7 @@
       "pleated": "百褶裙"
     },
     "shoes": {
+      "none": "赤腳",
       "sneakers": "球鞋",
       "boots": "靴子",
       "loafers": "樂福鞋",
@@ -203,6 +208,16 @@
       "top_hat": "紳士禮帽",
       "viking": "維京頭盔",
       "halo": "天使光環"
+    },
+    "eyewear": {
+      "none": "無",
+      "glasses": "眼鏡",
+      "sunglasses": "墨鏡"
+    },
+    "neckwear": {
+      "none": "無",
+      "scarf": "圍巾",
+      "lanyard": "識別證"
     },
     "equipment": {
       "laptop": "筆電",

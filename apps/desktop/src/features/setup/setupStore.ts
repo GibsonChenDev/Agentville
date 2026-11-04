@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { bridge, BridgeRpcError } from '../../integration/bridgeClient';
 import { desktop, errorCode, isTauri, isWindows } from '../../integration/platform';
+import { lastHookAt } from '../../integration/protocol';
 import type { InstallPlans, IntegrationView, Platform, ToolInfo } from '../../integration/types';
 import { useApp } from '../../state/store';
 
@@ -10,7 +11,8 @@ import { useApp } from '../../state/store';
  * missing ones in order and stops where a human is needed (signing in).
  */
 export type StepId = 'claude' | 'login' | 'receiver' | 'hooks' | 'events';
-export type StepState = 'done' | 'todo' | 'running' | 'blocked' | 'unknown';
+/** `waiting`: nothing to fix, just not happened yet (e.g. no session started since setup). */
+export type StepState = 'done' | 'todo' | 'running' | 'waiting' | 'blocked' | 'unknown';
 
 interface SetupState {
   view?: IntegrationView;
@@ -107,8 +109,8 @@ export const useSetup = create<SetupState>((set, get) => ({
 
   installHooks: async () => {
     try {
-      const r = await bridge.rpc({ method: 'hooks.install' });
-      useApp.getState().setHooks(r);
+      const r = await bridge.rpc({ method: 'hooks.install', params: { provider: 'claude' } });
+      useApp.getState().setHooks('claude', r);
       return r.backup ?? undefined;
     } catch (e) {
       set({ error: errorKey(e) });
@@ -135,7 +137,7 @@ export const useSetup = create<SetupState>((set, get) => ({
       if (useApp.getState().bridge.state !== 'running') await get().startReceiver();
       await waitFor(() => useApp.getState().link === 'online', 8000);
       if (useApp.getState().link !== 'online') return set({ auto: 'failed', error: get().error ?? 'bridge_offline' });
-      const hooks = useApp.getState().hooks;
+      const hooks = useApp.getState().hooks.claude;
       if (!hooks?.installed || hooks.stale) await get().installHooks();
       await get().recheck();
       set({ auto: get().loggedIn === false ? 'needs-login' : 'done' });
@@ -153,18 +155,30 @@ function waitFor(cond: () => boolean, ms: number) {
   });
 }
 
-/** Status of each setup step, derived from live state. */
+/**
+ * Status of each setup step, derived from live state. Sessions that already
+ * reached Agentville (now, or kept in history) are the strongest evidence: they
+ * prove Claude Code is installed and signed in even when the CLI isn't at a
+ * standard path or `claude auth status` can't tell.
+ */
 export function useSteps(): Record<StepId, StepState> {
   const s = useSetup();
   const link = useApp((a) => a.link);
   const bridgeState = useApp((a) => a.bridge);
-  const hooks = useApp((a) => a.hooks);
-  const lastAt = useApp((a) => a.bridgeStatus?.hooks.lastAt);
+  const hooks = useApp((a) => a.hooks.claude);
+  const lastAt = useApp((a) => lastHookAt(a.bridgeStatus, 'claude'));
+  const seenBefore = useApp((a) => Object.values(a.baseAgents).some((x) => x.origin === 'external' && (x.provider ?? 'claude') === 'claude'));
+  const working = !!lastAt || seenBefore;
   return {
-    claude: s.install?.phase === 'running' ? 'running' : !isTauri ? 'unknown' : s.claude ? (s.claude.ok ? 'done' : 'todo') : 'unknown',
-    login: s.loggedIn === true ? 'done' : s.loggedIn === false ? 'todo' : 'unknown',
+    claude: s.install?.phase === 'running' ? 'running' : working ? 'done' : !isTauri ? 'unknown' : s.claude ? (s.claude.ok ? 'done' : 'todo') : 'unknown',
+    login: s.loggedIn === true || working ? 'done' : s.loggedIn === false ? 'todo' : 'unknown',
     receiver: bridgeState.state === 'running' && link === 'online' ? 'done' : bridgeState.state === 'starting' ? 'running' : 'todo',
     hooks: !hooks ? (link === 'online' ? 'unknown' : 'blocked') : hooks.installed && !hooks.stale ? 'done' : 'todo',
-    events: lastAt ? 'done' : 'todo',
+    events: working ? 'done' : 'waiting',
   };
+}
+
+/** Everything needed is in place: nothing for the user to do. */
+export function setupReady(steps: Record<StepId, StepState>) {
+  return steps.receiver === 'done' && steps.hooks === 'done' && steps.claude === 'done' && steps.login !== 'todo';
 }

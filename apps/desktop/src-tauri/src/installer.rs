@@ -140,7 +140,7 @@ pub fn open_terminal_with_claude(cache_dir: &Path) -> Result<(), String> {
     #[cfg(windows)]
     {
         let _ = cache_dir;
-        let home = crate::hooks::home_dir();
+        let home = crate::providers::home_dir();
         let has_wt = {
             let mut c = quiet("where.exe");
             c.arg("wt.exe");

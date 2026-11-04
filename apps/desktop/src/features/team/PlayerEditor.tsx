@@ -42,19 +42,20 @@ export function PlayerEditor() {
       ref={dialog}
       onClose={close}
       onClick={(e) => e.target === dialog.current && close()}
-      className="m-auto w-[760px] max-w-[95vw] rounded-xl bg-panel p-0 text-fg shadow-2xl ring-1 ring-line-strong backdrop:bg-black/55"
+      // Same layout as the agent editor: fixed header/footer, scrolling body.
+      className="m-auto max-h-[94vh] w-[760px] max-w-[95vw] overflow-hidden rounded-xl bg-panel p-0 text-fg shadow-2xl ring-1 ring-line-strong backdrop:bg-black/55 open:flex open:flex-col"
       aria-labelledby="player-editor-title"
     >
       {open && (
         <>
-          <div className="border-b border-line px-5 py-3">
+          <div className="shrink-0 border-b border-line px-5 py-3">
             <h2 id="player-editor-title" className="text-[15px] font-semibold">
               {t('editor.title')}
             </h2>
             <p className="text-[11.5px] text-muted">{t('editor.body')}</p>
           </div>
-          <div className="grid max-h-[70vh] grid-cols-[210px_1fr] overflow-hidden">
-            <div className="flex flex-col items-center gap-3 border-r border-line bg-[repeating-linear-gradient(0deg,#2a2433_0_12px,#2e2738_12px_24px)] p-4">
+          <div className="grid min-h-0 flex-1 grid-cols-[210px_1fr] grid-rows-[minmax(0,1fr)]">
+            <div className="scroll-thin flex flex-col items-center gap-3 overflow-y-auto border-r border-line bg-[repeating-linear-gradient(0deg,#2a2433_0_12px,#2e2738_12px_24px)] p-4">
               <div className="grid h-[230px] w-full place-items-center rounded-lg bg-ink/30 ring-1 ring-line">
                 <Preview appearance={appearance} anim={anim} />
               </div>
@@ -87,7 +88,7 @@ export function PlayerEditor() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2 border-t border-line px-5 py-3">
+          <div className="flex shrink-0 items-center gap-2 border-t border-line px-5 py-3">
             <button onClick={() => setAppearance(appearanceFromSeed(`${Math.random()}`))} className="rounded-md px-3 py-1.5 text-[12px] ring-1 ring-line-strong hover:bg-panel-3">
               🎲 {t('agents:editor.randomize')}
             </button>

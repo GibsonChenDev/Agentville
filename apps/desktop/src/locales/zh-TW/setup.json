@@ -23,6 +23,11 @@
       "how": "在終端機開啟新的 claude 工作階段，並送出任意提示。"
     }
   },
+  "ready": {
+    "title": "設定完成，監控中",
+    "body": "Claude Code 已連上 Agentville。在任何專案執行 claude，角色就會走進辦公室。",
+    "waiting": "一切就緒。在任何專案執行 claude 並送出提示，第一個角色就會出現。"
+  },
   "auto": {
     "title": "自動完成所有設定",
     "installClaude": "使用 Anthropic 官方安裝程式安裝 Claude Code：",

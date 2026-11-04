@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeHookPayload, type NormalizeContext } from './normalize';
+import type { NormalizeContext } from './normalize';
+import { normalizeHookPayload } from '../providers/claude';
 
 let n = 0;
 const ctx: NormalizeContext = {

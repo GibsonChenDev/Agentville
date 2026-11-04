@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOTTOMS, HAIR_STYLES, TOPS, appearanceFromSeed, inferGender, styleGender, stylesFor, withGender, type CharacterAppearance } from './appearance';
+import { ACCESSORIES, BOTTOMS, EYEWEAR, HAIR_STYLES, NECKWEAR, SHOES, TOPS, accessorySlot, appearanceFromSeed, inferGender, styleGender, stylesFor, withGender, type CharacterAppearance } from './appearance';
 import { sanitizeAppearance } from './profile';
 
 describe('male and female characters', () => {
@@ -50,5 +50,45 @@ describe('male and female characters', () => {
     expect(inferGender({ hairStyle: 'curly', top: 'shirt', bottom: 'skirt' })).toBe('female');
     expect(inferGender({ hairStyle: 'buzz', top: 'blouse', bottom: 'jeans' })).toBe('male');
     expect(sanitizeAppearance({ ...old, gender: 'robot' }, fallback).gender).toBe('female');
+  });
+});
+
+describe('clothing slots', () => {
+  const base = appearanceFromSeed('slots');
+
+  it('every piece of clothing and every slot can be taken off', () => {
+    for (const list of [TOPS, BOTTOMS, SHOES, ACCESSORIES, EYEWEAR, NECKWEAR] as readonly (readonly string[])[]) expect(list).toContain('none');
+    const undressed = { ...base, top: 'none', bottom: 'none', shoes: 'none', accessory: 'none', eyewear: 'none', neckwear: 'none' } as const;
+    expect(sanitizeAppearance(undressed, base)).toEqual(undressed);
+  });
+
+  it('auto-generated characters are always dressed', () => {
+    for (let i = 0; i < 300; i++) {
+      const a = appearanceFromSeed(`seed-${i}`);
+      expect([a.top, a.bottom, a.shoes]).not.toContain('none');
+    }
+  });
+
+  it('glasses, a hat and a scarf can be worn together', () => {
+    const look = { ...base, accessory: 'cap', eyewear: 'glasses', neckwear: 'scarf' } as const;
+    expect(sanitizeAppearance(look, base)).toMatchObject({ accessory: 'cap', eyewear: 'glasses', neckwear: 'scarf' });
+  });
+
+  it('looks saved with a single accessory move it to its slot', () => {
+    const old = (accessory: string) => {
+      const { eyewear: _e, neckwear: _n, ...rest } = { ...base, accessory };
+      return sanitizeAppearance(rest, { ...base, eyewear: 'glasses', neckwear: 'scarf' });
+    };
+    expect(old('glasses')).toMatchObject({ accessory: 'none', eyewear: 'glasses', neckwear: 'none' });
+    expect(old('sunglasses')).toMatchObject({ accessory: 'none', eyewear: 'sunglasses', neckwear: 'none' });
+    expect(old('lanyard')).toMatchObject({ accessory: 'none', eyewear: 'none', neckwear: 'lanyard' });
+    // A hat alone meant no glasses and no scarf, whatever the fallback says.
+    expect(old('cap')).toMatchObject({ accessory: 'cap', eyewear: 'none', neckwear: 'none' });
+  });
+
+  it('shop accessories go to their slot', () => {
+    expect(accessorySlot('sunglasses')).toBe('eyewear');
+    expect(accessorySlot('lanyard')).toBe('neckwear');
+    expect(accessorySlot('crown')).toBe('accessory');
   });
 });
