@@ -37,11 +37,13 @@ export interface HookDialect {
   aliases?: Readonly<Record<string, SupportedHookEvent>>;
   classifyTool: (toolName: string, input: unknown) => ToolCategory;
   toolTarget: (toolName: string, input: unknown) => string | undefined;
+  /** Sessions the agent runs for itself rather than for the user (e.g. Codex's background suggestions). Their hooks are dropped. */
+  isBackground?: (raw: Readonly<Record<string, unknown>>) => boolean;
 }
 
 export type NormalizeResult =
   | { ok: true; event: DomainEvent; sessionId: string; subagentId?: string }
-  | { ok: false; reason: 'not_object' | 'missing_session' | 'unsupported_event' | 'invalid_field' };
+  | { ok: false; reason: 'not_object' | 'missing_session' | 'unsupported_event' | 'invalid_field' | 'background' };
 
 export interface NormalizeContext {
   receivedAt: number;
@@ -70,6 +72,7 @@ export function normalizeHook(raw: unknown, ctx: NormalizeContext, dialect: Hook
   }
   const sessionId = r.session_id;
   if (typeof sessionId !== 'string' || !SESSION_ID.test(sessionId)) return { ok: false, reason: 'missing_session' };
+  if (dialect.isBackground?.(r)) return { ok: false, reason: 'background' };
 
   // Events fired from inside a subagent carry agent_id; attribute them to the subagent character.
   const rawAgentId = str(r, 'agent_id', 128);

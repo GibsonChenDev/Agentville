@@ -7,7 +7,11 @@ import type { HookProvider } from './types';
  * vocabulary as Claude Code; differences handled here:
  * - no PostToolUseFailure / Notification / agent-team / CwdChanged events;
  * - `Interrupt` (the user stopped the turn) ends the turn like `Stop`;
- * - its own tool names: shell as `Bash`/`exec_command`, edits as `apply_patch`.
+ * - its own tool names: shell as `Bash`/`exec_command`, edits as `apply_patch`;
+ * - the Codex app runs background threads of its own (suggestions for what to do
+ *   next, checking those suggestions) that fire the same hooks. They're ephemeral:
+ *   no transcript, so `transcript_path` is null, while every thread the user starts
+ *   has one. Those hooks are dropped so no extra characters appear.
  */
 
 const SHELL_TOOLS = new Set(['Bash', 'exec_command', 'shell', 'local_shell', 'unified_exec']);
@@ -68,6 +72,8 @@ export const codexDialect: HookDialect = {
     if (toolName === 'apply_patch') return patchTarget(input);
     return toolTarget(toolName, input);
   },
+  // Only an explicit null counts: payloads from Codex versions without the field are kept.
+  isBackground: (raw) => !raw.agent_id && Object.hasOwn(raw, 'transcript_path') && (raw.transcript_path === null || raw.transcript_path === ''),
 };
 
 export const codex: HookProvider = {

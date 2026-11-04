@@ -43,6 +43,15 @@ Not sent by Codex: `PostToolUseFailure`, `Notification`, agent-team task events,
 
 Tool names: `Bash`/`exec_command` (argv or string; test commands → test), `apply_patch` (write; target = patched files from the patch text), `update_plan` (plan), `spawn_agent` (delegate), `view_image` (read), MCP tools as for Claude Code.
 
+### The Codex app's own background threads
+
+The Codex desktop app runs threads of its own that fire the same hooks as yours. One "hi" in a project produced:
+- your thread;
+- a thread generating "hyperpersonalized suggestions" with GitHub and web tools;
+- a thread checking those suggestions.
+
+The background ones run in `/` (or a project folder), on a small model, read-only, never asking for approval. They're ephemeral: Codex keeps no rollout file for them, so their hooks carry `"transcript_path": null`. Every thread the user starts has a transcript under `~/.codex/sessions/`. The Codex dialect drops events with an explicit null `transcript_path` (`isBackground`, reason `background`), so these never become characters. Subagent events (with `agent_id`) and payloads from Codex versions without the field are kept. Side effect: `codex exec --ephemeral` runs are hidden too.
+
 ## Verification
 
 - `cargo test` — hooks file merge/uninstall for both providers, receiver routes per provider, forwarder flag.

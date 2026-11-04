@@ -48,6 +48,24 @@ describe('Codex hooks', () => {
     expect(perm.ok && perm.event.payload).toMatchObject({ kind: 'permission.requested', toolName: 'Bash', target: 'rm -rf build' });
   });
 
+  it("drops the Codex app's own background threads (no transcript), not the user's", () => {
+    // What the Codex app sent for one "hi": the user's thread plus two suggestion threads with no transcript.
+    const mine = { transcript_path: '/Users/u/.codex/sessions/2026/11/04/rollout-x.jsonl' };
+    const background = { session_id: 'bg-1', cwd: '/', transcript_path: null };
+    expect(run({ hook_event_name: 'SessionStart', source: 'startup', ...mine }).ok).toBe(true);
+    for (const raw of [
+      { hook_event_name: 'SessionStart', source: 'startup' },
+      { hook_event_name: 'UserPromptSubmit', turn_id: 't', prompt: 'Generate 0 to 3 hyperpersonalized suggestions…' },
+      { hook_event_name: 'PreToolUse', turn_id: 't', tool_name: 'mcp__codex_apps__github__search_prs', tool_use_id: 'u', tool_input: {} },
+      { hook_event_name: 'Stop', turn_id: 't' },
+      { hook_event_name: 'SessionEnd', reason: 'other' },
+    ])
+      expect(run({ ...raw, ...background }), raw.hook_event_name).toEqual({ ok: false, reason: 'background' });
+    // Older Codex without the field, and a subagent's events (its own transcript is agent_transcript_path), are kept.
+    expect(run({ hook_event_name: 'SessionStart', source: 'startup' }).ok).toBe(true);
+    expect(run({ hook_event_name: 'PreToolUse', turn_id: 't', tool_name: 'Bash', tool_input: { command: 'ls' }, agent_id: 'w1', transcript_path: null }).ok).toBe(true);
+  });
+
   it.each(['PostToolUseFailure', 'Notification', 'TaskCreated', 'TeammateIdle', 'CwdChanged', 'PreCompact', 'PreModelRequest', 'hasOwnProperty'])('ignores %s, which Codex does not send', (hook_event_name) => {
     expect(run({ hook_event_name })).toEqual({ ok: false, reason: 'unsupported_event' });
   });
