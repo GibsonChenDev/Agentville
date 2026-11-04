@@ -4,14 +4,18 @@
     "studio": "Silicon Valley Creative Studio",
     "midnight": "Midnight Developer Lab",
     "garden": "Sunny Greenhouse Garden",
-    "seaside": "Seaside Beach House"
+    "seaside": "Seaside Beach House",
+    "sakura": "Sakura Tea Room",
+    "space": "Orbital Space Station"
   },
   "themeShort": {
     "loft": "Loft",
     "studio": "Studio",
     "midnight": "Midnight Lab",
     "garden": "Greenhouse",
-    "seaside": "Beach House"
+    "seaside": "Beach House",
+    "sakura": "Sakura Room",
+    "space": "Space Station"
   },
   "camera": {
     "zoom": "Zoom {{level}}×",
@@ -80,7 +84,17 @@
     "fireplace": "Fireplace",
     "ping_pong": "Ping-pong table",
     "piano": "Upright piano",
-    "dice_table": "Dice table"
+    "dice_table": "Dice table",
+    "printer": "Printer",
+    "filing_cabinet": "Filing cabinet",
+    "coat_rack": "Coat rack",
+    "bike": "Bicycle",
+    "guitar": "Acoustic guitar",
+    "popcorn": "Popcorn cart",
+    "claw_machine": "Claw machine",
+    "hammock": "Hammock"
   },
-  "styleOnlyYou": "In a team office this only changes how it looks to you. Desks and furniture are the same for everyone."
+  "styleOnlyYou": "In a team office this only changes how it looks to you. Desks and furniture are the same for everyone.",
+  "premiumMap": "Hidden map · from the shop",
+  "mapLocked": "A hidden map: unlock it in the shop for {{price}} coins"
 }

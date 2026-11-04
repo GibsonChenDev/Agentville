@@ -1,5 +1,6 @@
 import { OFFICE_THEMES, type OfficeTheme } from '@agentville/domain';
 import { create } from 'zustand';
+import { mapLocked, useAccount } from '../account/accountStore';
 import { useApp } from '../state/store';
 import { useTeam, type TeamState } from '../team/teamStore';
 
@@ -83,6 +84,8 @@ export function currentOfficeStyle(): OfficeTheme {
  * you; in your own office they pick its map (layout and look together).
  */
 export function chooseOfficeTheme(theme: OfficeTheme) {
+  // A map from the shop you haven't bought yet: show it in the shop instead.
+  if (mapLocked(useAccount.getState().account?.inventory, theme)) return useAccount.getState().openShop(true, 'map');
   const roomId = useTeam.getState().membership?.roomId;
   if (roomId) useOfficeStyles.getState().setStyle(roomId, theme);
   else useApp.getState().setTheme(theme);

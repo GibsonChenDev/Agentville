@@ -166,7 +166,11 @@
       "blouse": "女襯衫",
       "cardigan": "針織開衫",
       "camisole": "細肩帶上衣",
-      "dress": "連身裙"
+      "dress": "連身裙",
+      "tank": "無袖上衣",
+      "turtleneck": "高領毛衣",
+      "jersey": "球衣",
+      "lab_coat": "實驗袍"
     },
     "bottom": {
       "none": "不穿（只剩內褲）",
@@ -176,14 +180,19 @@
       "shorts": "短褲",
       "joggers": "慢跑褲",
       "cargo": "工作褲",
-      "pleated": "百褶裙"
+      "pleated": "百褶裙",
+      "ripped": "破洞牛仔褲",
+      "leggings": "內搭褲",
+      "maxi": "長裙"
     },
     "shoes": {
       "none": "赤腳",
       "sneakers": "球鞋",
       "boots": "靴子",
       "loafers": "樂福鞋",
-      "hightops": "高筒鞋"
+      "hightops": "高筒鞋",
+      "sandals": "涼鞋",
+      "heels": "高跟鞋"
     },
     "accessory": {
       "none": "無",
@@ -207,17 +216,30 @@
       "devil_horns": "小惡魔角",
       "top_hat": "紳士禮帽",
       "viking": "維京頭盔",
-      "halo": "天使光環"
+      "halo": "天使光環",
+      "beret": "貝雷帽",
+      "bucket_hat": "漁夫帽",
+      "headband": "髮帶",
+      "cowboy_hat": "牛仔帽",
+      "pirate_hat": "海盜帽",
+      "round_glasses": "圓框眼鏡",
+      "heart_glasses": "愛心眼鏡",
+      "bowtie": "領結",
+      "necklace": "項鍊"
     },
     "eyewear": {
       "none": "無",
       "glasses": "眼鏡",
-      "sunglasses": "墨鏡"
+      "sunglasses": "墨鏡",
+      "round_glasses": "圓框眼鏡",
+      "heart_glasses": "愛心眼鏡"
     },
     "neckwear": {
       "none": "無",
       "scarf": "圍巾",
-      "lanyard": "識別證"
+      "lanyard": "識別證",
+      "bowtie": "領結",
+      "necklace": "項鍊"
     },
     "equipment": {
       "laptop": "筆電",
