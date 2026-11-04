@@ -9,6 +9,12 @@ name: Release
 # docs/RELEASE.md and pass them as `env:` to the tauri-action step of the macos
 # job. Don't add the env entries before the secrets exist: empty values make the
 # bundler try to import an empty certificate and the build fails.
+#
+# In-app updates: every build is signed with the updater key
+# (TAURI_SIGNING_PRIVATE_KEY / _PASSWORD secrets, unrelated to Apple/Windows code
+# signing) and the release gets a latest.json that installed apps read on launch.
+# Its notes come from docs/release-notes/<tag>.md (English + 繁體中文); the build
+# fails if that file is missing. Apps only see a release once it's published.
 on:
   push:
     tags: ['v*']
@@ -52,14 +58,25 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
       - run: npm ci
+      - name: Release notes
+        id: notes
+        shell: bash
+        run: |
+          f="docs/release-notes/${RELEASE_TAG}.md"
+          [ -f "$f" ] || { echo "::error::Missing $f — write the bilingual release notes first (see docs/RELEASE.md)"; exit 1; }
+          { echo 'body<<EOF_NOTES'; cat "$f"; echo; echo 'EOF_NOTES'; } >> "$GITHUB_OUTPUT"
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tagName: ${{ env.RELEASE_TAG }}
           releaseName: Agentville ${{ env.RELEASE_TAG }}
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
+          includeUpdaterJson: true
           assetNamePattern: ${{ env.ASSET_NAMES }}
           args: --target universal-apple-darwin --bundles app,dmg
 
@@ -81,13 +98,24 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
       - run: npm ci
+      - name: Release notes
+        id: notes
+        shell: bash
+        run: |
+          f="docs/release-notes/${RELEASE_TAG}.md"
+          [ -f "$f" ] || { echo "::error::Missing $f — write the bilingual release notes first (see docs/RELEASE.md)"; exit 1; }
+          { echo 'body<<EOF_NOTES'; cat "$f"; echo; echo 'EOF_NOTES'; } >> "$GITHUB_OUTPUT"
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tagName: ${{ env.RELEASE_TAG }}
           releaseName: Agentville ${{ env.RELEASE_TAG }}
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
+          includeUpdaterJson: true
           assetNamePattern: ${{ env.ASSET_NAMES }}
           args: --bundles nsis

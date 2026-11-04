@@ -98,5 +98,20 @@
     "cycle": "Select next agent",
     "settings": "Open settings"
   },
-  "loading": "Loading the office…"
+  "loading": "Loading the office…",
+  "update": {
+    "title": "Update available",
+    "versions": "Version {{from}} → {{to}}",
+    "whatsNew": "What's new",
+    "noNotes": "Fixes and improvements.",
+    "hint": "Your character, coins and offices stay as they are. Agentville restarts when the update is installed.",
+    "later": "Later",
+    "install": "Update now",
+    "retry": "Try again",
+    "downloading": "Downloading {{received}} / {{total}} ({{pct}}%)",
+    "downloadingUnknown": "Downloading {{received}}…",
+    "installing": "Installing…",
+    "restarting": "Done! Restarting Agentville…",
+    "failed": "The update didn't finish: {{error}}"
+  }
 }

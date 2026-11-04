@@ -16,6 +16,7 @@ import { ShopDialog } from '../features/shop/ShopDialog';
 import { ArcadeDialog } from '../features/arcade/ArcadeDialog';
 import { DiceDialog } from '../features/dice/DiceDialog';
 import { Tour, startTourWhenReady } from '../features/tour/Tour';
+import { UpdateDialog } from '../features/updater/UpdateDialog';
 import { team } from '../team/teamClient';
 import { startPlace } from '../world/placeStore';
 import { useAccount } from '../account/accountStore';
@@ -60,6 +61,7 @@ export function App() {
       <ArcadeDialog />
       <DiceDialog />
       <Tour />
+      <UpdateDialog />
     </div>
   );
 }
