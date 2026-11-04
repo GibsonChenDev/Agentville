@@ -141,6 +141,81 @@ fn forwarder_is_harmless_when_agentville_is_not_running() {
     assert_eq!(forward(&empty, b"{}"), (Some(0), String::new(), String::new()));
 }
 
+/// Runs the hook the way Codex does on Windows (codex-rs hooks/src/engine/command_runner.rs):
+/// `cmd.exe /C "<command>"` as a raw argument, a cleared environment with only the
+/// session's core variables, no window, the payload on stdin.
+#[cfg(windows)]
+fn run_like_codex(home: &Home, command: &str, payload: &[u8]) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let comspec = std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".into());
+    let mut cmd = Command::new(&comspec);
+    cmd.arg("/C").raw_arg(format!("\"{command}\"")).env_clear();
+    for key in ["SystemRoot", "windir", "COMSPEC", "PATH", "PATHEXT", "TEMP", "TMP", "SystemDrive", "ProgramData", "ProgramFiles"] {
+        if let Some(v) = std::env::var_os(key) {
+            cmd.env(key, v);
+        }
+    }
+    home.apply(&mut cmd);
+    cmd.env("LOCALAPPDATA", home.root.join("AppData").join("Local"))
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().unwrap();
+    child.stdin.take().unwrap().write_all(payload).unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!((out.status.code(), out.stdout.len(), out.stderr.len()), (Some(0), 0, 0), "{}", String::from_utf8_lossy(&out.stderr));
+}
+
+/// Waits (cmd.exe doesn't wait for a GUI-subsystem program) until the receiver has `n` hooks.
+#[cfg(windows)]
+fn recent_eventually(port: u16, n: usize) -> Vec<Value> {
+    let deadline = Instant::now() + Duration::from_secs(8);
+    loop {
+        let hooks = recent(port);
+        if hooks.len() >= n || Instant::now() > deadline {
+            return hooks;
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
+/// The PE subsystem of an executable: 2 = GUI (no console, like the installed app), 3 = console.
+#[cfg(windows)]
+fn pe_subsystem(path: &str) -> u16 {
+    let b = std::fs::read(path).unwrap();
+    let pe = u32::from_le_bytes(b[0x3c..0x40].try_into().unwrap()) as usize;
+    // PE signature (4) + file header (20), then the optional header's Subsystem at offset 68.
+    u16::from_le_bytes(b[pe + 24 + 68..pe + 24 + 70].try_into().unwrap())
+}
+
+#[cfg(windows)]
+#[test]
+fn forwarder_delivers_when_codex_runs_it_through_cmd() {
+    use agentville_lib::{hooks, providers};
+    // CI builds this without debug assertions so the executable is GUI-subsystem, as installed.
+    if std::env::var_os("AGENTVILLE_EXPECT_GUI_EXE").is_some() {
+        assert_eq!(pe_subsystem(EXE), 2, "the test should run the GUI-subsystem build");
+    }
+    let token = config::random_token();
+    let r = start(&token, tempdir("codex").join("hooks.json"));
+    let home = Home::new(r.port(), &token);
+    // The installed path, and one with a space (quoted by hook_command).
+    let spaced = tempdir("exe").join("Agent ville");
+    std::fs::create_dir_all(&spaced).unwrap();
+    let copy = spaced.join("agentville.exe");
+    std::fs::copy(EXE, &copy).unwrap();
+    for (i, exe) in [EXE.to_string(), copy.to_string_lossy().into_owned()].iter().enumerate() {
+        let command = hooks::hook_command(&providers::CODEX, exe);
+        let payload = format!(r#"{{"hook_event_name":"UserPromptSubmit","session_id":"win-{i}","turn_id":"t","cwd":"C:\\w","model":"gpt-5.5","permission_mode":"default","transcript_path":"C:\\t.jsonl","prompt":"hi"}}"#);
+        run_like_codex(&home, &command, payload.as_bytes());
+        let got = recent_eventually(r.port(), i + 1);
+        assert_eq!(got.len(), i + 1, "nothing arrived for `{command}`");
+        assert_eq!(got[i]["body"]["session_id"], format!("win-{i}"));
+    }
+}
+
 fn codex_bin() -> Option<String> {
     std::env::var("AGENTVILLE_CODEX_BIN").ok().or_else(|| agentville_lib::detect::detect_codex().path)
 }

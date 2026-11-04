@@ -28,6 +28,13 @@ jobs:
       - run: npm run i18n:check
       - name: Rust tests (receiver, hooks installer, storage, detection)
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+      # Codex runs command hooks as `cmd.exe /C "<command>"`; the installed app is a GUI-subsystem
+      # executable (no console), which only release-like builds are. Same test, built that way.
+      - name: Codex hooks through cmd.exe with the GUI-subsystem executable
+        if: runner.os == 'Windows'
+        env:
+          AGENTVILLE_EXPECT_GUI_EXE: '1'
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --test codex_forwarding --config profile.dev.debug-assertions=false --config profile.test.debug-assertions=false
       - name: Production web build
         run: npm run build
 
