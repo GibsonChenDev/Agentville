@@ -1,7 +1,7 @@
 import type { FurniturePlacement, TilePoint, Workstation } from '@agentville/domain';
 import { FURNITURE } from '../furniture/furniture';
 import { NavGrid } from '../navigation/grid';
-import type { SceneDefinition } from './layouts';
+import { DEFAULT_DESK_IDS, type SceneDefinition } from './layouts';
 
 /**
  * Pure office-layout editing rules. Every edit returns a new scene or a stable
@@ -159,8 +159,44 @@ export function fromLayoutDoc(raw: unknown, base: SceneDefinition): SceneDefinit
     if (!desk) return base;
     workstations.push({ id: w.id, deskId: w.deskId, facing: w.facing, seat: seatFor(desk, w.facing) });
   }
+  if (furniture.some((f) => f.kind === 'desk' && !PLACED.test(f.id) && !DEFAULT_DESK_IDS.has(f.id))) return rearranged(base, furniture, workstations);
   const scene = { ...base, furniture, workstations };
   return validateScene(scene) ? base : scene;
+}
+
+/** Pieces someone added in the editor or bought, as opposed to the default layout's own. */
+const PLACED = /-u\d+$/;
+
+/**
+ * An office saved with the desks of an earlier default layout gets the theme's
+ * current one, so everyone sees the same new arrangement. What people placed
+ * themselves comes along: on its own tile when that's still free, else on the
+ * nearest free one, and left out only when nothing nearby fits.
+ */
+function rearranged(base: SceneDefinition, furniture: FurniturePlacement[], workstations: Workstation[]): SceneDefinition {
+  let scene = base;
+  for (const item of furniture) {
+    if (!PLACED.test(item.id)) continue;
+    const seats = workstations.filter((w) => w.deskId === item.id);
+    scene = nearestFit(scene, item, seats) ?? scene;
+  }
+  return scene;
+}
+
+function nearestFit(scene: SceneDefinition, item: FurniturePlacement, seats: Workstation[]): SceneDefinition | null {
+  for (let r = 0; r <= 6; r++)
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const at = { x: item.x + dx, y: item.y + dy };
+        const next: SceneDefinition = {
+          ...scene,
+          furniture: [...scene.furniture, { ...item, ...at }],
+          workstations: [...scene.workstations, ...seats.map((w) => ({ ...w, seat: seatFor(at, w.facing) }))],
+        };
+        if (!validateScene(next)) return next;
+      }
+  return null;
 }
 
 /**

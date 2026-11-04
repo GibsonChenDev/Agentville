@@ -47,6 +47,17 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Desks rearranged the same way in every office (2026-11-04)
+
+- **4 / 8 / 4 in every built-in office**: four desks by the window, a pod of eight on a rug and a row of four on a runner, all in the same four columns on the left; the meeting and lounge corner on the right is unchanged. The desk ids are shared by every map (`desk-win1…4`, `desk-pod1…8`, `desk-row1…4`). A few plants, a lamp and the dice tables moved out of the way.
+- **Saved offices move onto the new desks**: an office saved with the desks of an earlier default layout (an id that is neither a current default desk nor one somebody added) gets the current layout when it loads, so a team office looks the same to everyone on this version. What people placed themselves (`…-u<n>`, shop decorations and added desks) comes along, on its own tile if it's free, else the nearest free one. Moved or removed built-in pieces go back to their default spots; agents pinned to an old desk get a free one instead.
+
+| Check | Result |
+|---|---|
+| Vitest / typecheck | ✅ 289 passed (new: an old saved office moves onto the new desks and keeps placed pieces) / ✅ |
+| Browser pane | ✅ Loft, Studio, Midnight, Garden and Seaside in your own office and in a team office saved with the old desks |
+| Not verified | Sakura and Space in the app (locked here; covered by the layout tests); teammates on an older app version still see the old desks until they update |
+
 ## Hidden maps from the shop; saving layouts for every map (2026-11-04)
 
 - **Two hidden maps**: Sakura Tea Room (`sakura`, 2,000 coins; tatami floor, shoji walls, Mount Fuji and cherry trees outside) and Orbital Space Station (`space`, 2,500; riveted deck plates, hull panels with a lit conduit, stars and a ringed planet outside). Each has 16 desks and comes with some shop decorations already in place (koi tank, bonsai, piano, cat / telescope, vending machine, robot, claw machine, lava lamp, globe); those don't count against what you bought. They're the dearest items in the shop (one each, `PREMIUM_THEMES`, catalog kind `map`).
@@ -62,7 +73,7 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 
 ## 16 desks, more furniture and clothes, editor fix in WebKit, 30-minute idle (2026-11-04)
 
-- **16 desks in every built-in office** (was 10): a new six-desk pod in the Loft and Midnight Lab, a wider bottom pod and two desks under the wall whiteboard in the Studio, wider pods in the Garden, a third column and a new pod in the Seaside house. A few plants, a lamp and the Garden dice table moved. Offices someone already edited (and team offices with a saved layout) keep their layout; "reset to default" in the editor brings the new one.
+- **16 desks in every built-in office** (was 10): a new six-desk pod in the Loft and Midnight Lab, a wider bottom pod and two desks under the wall whiteboard in the Studio, wider pods in the Garden, a third column and a new pod in the Seaside house. A few plants, a lamp and the Garden dice table moved. (Rearranged again the same day, see above.)
 - **Furniture**: free printer, filing cabinet, coat rack and bike; in the shop a guitar (220), popcorn cart (260), claw machine (600, glows) and hammock (750).
 - **Clothes**: tank top, turtleneck, jersey (with a number), lab coat; ripped jeans, leggings, maxi skirt; sandals, heels; beret, bucket hat, headband; round glasses; bow tie, necklace. In the shop: heart glasses (280), cowboy hat (420), pirate hat (480). Auto-generated looks still pick from the original styles only (`SEED_*` lists), so existing agents keep their clothes (pinned by a test).
 - **Character editors in the desktop app**: the body used `flex-1` in a dialog with only a max height; WebKit (the macOS app) sized it to 0, so the dialog collapsed to its header and buttons. It's `flex-auto` now, checked in a real WKWebView at 1280×800 and 1100×560 and in Chromium.
