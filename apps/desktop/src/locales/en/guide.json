@@ -115,7 +115,7 @@
     "walkTitle": "Walk",
     "walk": "Hold W A S D, or click a spot on the floor. Click a teammate to see who they are.",
     "sitTitle": "Sit down",
-    "sit": "Click a free desk chair, a sofa place or a beanbag and your character walks there and sits. Press E (or click it again) to get up. A desk an agent is using stays theirs.",
+    "sit": "Click a free desk chair, a sofa place or a beanbag and your character walks there and sits; walking into one with WASD sits you down too. You can also drag your character with the mouse and drop it on a seat. Press E (or click it again) to get up. A desk an agent is using stays theirs.",
     "arcadeTitle": "Play the arcade",
     "arcade": "Click the arcade cabinet. A game window opens: Snake, Breakout, Flappy and 2048. Keyboard or mouse; Esc returns to the game list. Your best scores are saved to your account.",
     "lookTitle": "Change your look",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NavGrid } from '../navigation/grid';
 import { FURNITURE } from '../furniture/furniture';
-import { interactableAt, interactablesFor, withinReach } from './interactables';
+import { interactableAt, interactablesFor, seatAhead, withinReach } from './interactables';
 import { DEFAULT_SCENES } from './layouts';
 
 describe('interactables', () => {
@@ -98,6 +98,23 @@ describe('interactables', () => {
     const desk = scene.furniture.find((f) => f.id === ws.deskId)!;
     const beside = withinReach(list, { x: desk.x + 2, y: desk.y }).map((i) => i.id);
     expect(beside).toContain(ws.id);
+  });
+
+  it('walking into a sofa or a desk finds the seat to sit on; arcades and dice tables are left alone', () => {
+    const scene = DEFAULT_SCENES.loft;
+    const list = interactablesFor(scene, floorOf(scene));
+    const sofa = scene.furniture.find((f) => f.kind === 'sofa')!;
+    // From the floor in front of each cushion, and from the middle (the nearer cushion wins).
+    expect(seatAhead(list, { x: sofa.x, y: sofa.y + 1 }, { x: sofa.x, y: sofa.y })?.id).toBe(`sofa:${sofa.id}:0`);
+    expect(seatAhead(list, { x: sofa.x + 2, y: sofa.y + 1 }, { x: sofa.x + 2, y: sofa.y })?.id).toBe(`sofa:${sofa.id}:1`);
+    expect(seatAhead(list, { x: sofa.x + 1, y: sofa.y + 1 }, { x: sofa.x + 1, y: sofa.y })?.id).toBe(`sofa:${sofa.id}:0`);
+    // A taken cushion isn't offered.
+    expect(seatAhead(list, { x: sofa.x, y: sofa.y + 1 }, { x: sofa.x, y: sofa.y }, (it) => it.id !== `sofa:${sofa.id}:0`)).toBeUndefined();
+    const ws = scene.workstations.find((w) => w.facing === 'up')!;
+    const desk = scene.furniture.find((f) => f.id === ws.deskId)!;
+    expect(seatAhead(list, ws.seat, { x: desk.x, y: desk.y })?.id).toBe(ws.id);
+    const dice = scene.furniture.find((f) => f.kind === 'dice_table')!;
+    expect(seatAhead(list, { x: dice.x, y: dice.y + 1 }, { x: dice.x, y: dice.y })).toBeUndefined();
   });
 
   it('several people can use the arcade and the dice table at once, each at their own spot', () => {

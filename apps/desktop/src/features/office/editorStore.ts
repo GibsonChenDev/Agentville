@@ -20,6 +20,8 @@ interface EditorState {
   error?: LayoutError | 'over_limit';
   dirty: boolean;
   saving: boolean;
+  /** Height of the editor panel over the bottom of the office, so the map can be framed above it. */
+  panelHeight: number;
   start: () => void;
   cancel: () => void;
   select: (id?: string) => void;
@@ -30,6 +32,7 @@ interface EditorState {
   flipDesk: () => void;
   resetToDefault: () => void;
   save: () => Promise<void>;
+  setPanelHeight: (px: number) => void;
 }
 
 export const useEditor = create<EditorState>((set, get) => {
@@ -41,6 +44,7 @@ export const useEditor = create<EditorState>((set, get) => {
     active: false,
     dirty: false,
     saving: false,
+    panelHeight: 0,
     start: () => {
       const app = useApp.getState();
       const theme = currentOfficeTheme();
@@ -88,6 +92,7 @@ export const useEditor = create<EditorState>((set, get) => {
         set({ saving: false });
       }
     },
+    setPanelHeight: (panelHeight) => set({ panelHeight }),
   };
 });
 

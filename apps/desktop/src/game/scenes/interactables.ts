@@ -116,6 +116,26 @@ export function interactableAt(list: Interactable[], tile: TilePoint): Interacta
 }
 
 /**
+ * The seat (desk chair, sofa place, beanbag) you walk into when the tile
+ * `ahead` of you is part of it and you stand on (or right beside) the spot it's
+ * used from, so brushing past the side of a desk doesn't sit you down. The
+ * place whose spot is nearest wins when a sofa has two. Arcades and dice
+ * tables open a game, so bumping into them does nothing.
+ */
+export function seatAhead(list: Interactable[], here: TilePoint, ahead: TilePoint, usable: (it: Interactable) => boolean = () => true): Interactable | undefined {
+  return list
+    .filter(
+      (it) =>
+        (it.kind === 'desk' || it.kind === 'sofa') &&
+        it.approach.y === here.y &&
+        Math.abs(it.approach.x - here.x) <= 1 &&
+        it.hit.some((t) => t.x === ahead.x && t.y === ahead.y) &&
+        usable(it),
+    )
+    .sort((a, b) => Math.hypot(a.approach.x - here.x, a.approach.y - here.y) - Math.hypot(b.approach.x - here.x, b.approach.y - here.y))[0];
+}
+
+/**
  * Things you can use from where you stand: you're on or next to (diagonals
  * count) any tile of them or the spot in front of them, from any side.
  * Nearest first; ties go to the one whose spot is closest.

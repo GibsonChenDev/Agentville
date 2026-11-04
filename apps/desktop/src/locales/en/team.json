@@ -65,7 +65,7 @@
   "hints": {
     "title": "Walk around",
     "move": "WASD or click the floor to walk",
-    "use": "Click a chair, sofa or arcade to use it · E to use / get up",
+    "use": "Click a chair, sofa or arcade, walk into a seat, or drag yourself onto it · E to use / get up",
     "dismiss": "Hide"
   },
   "error": {

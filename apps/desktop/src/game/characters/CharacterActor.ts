@@ -211,6 +211,14 @@ export class CharacterActor {
     return null;
   }
 
+  /** Lets the mouse pick this character up (your own avatar). `onGrab` says whether it took the press. */
+  grabbable(onGrab: (global: { x: number; y: number }) => boolean) {
+    this.body.cursor = 'grab';
+    this.body.on('pointerdown', (e) => {
+      if (e.button === 0 && onGrab(e.global)) e.stopPropagation(); // a grab, not a camera drag
+    });
+  }
+
   /** Direct control (keyboard): moves to (x, y) this frame, animating a walk. */
   stepTo(x: number, y: number, facing: Facing) {
     this.path = [];

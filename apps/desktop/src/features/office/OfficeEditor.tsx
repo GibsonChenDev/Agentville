@@ -1,5 +1,5 @@
 import type { OfficeTheme } from '@agentville/domain';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { THEMES } from '../../game/assets/themes';
 import { FURNITURE, drawDesk } from '../../game/furniture/furniture';
@@ -49,12 +49,27 @@ export function OfficeEditor() {
     return () => window.removeEventListener('keydown', onKey, { capture: true });
   }, []);
 
+  // The panel floats over the bottom of the office; the world frames the map above it.
+  const measure = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const set = useEditor.getState().setPanelHeight;
+    const ro = new ResizeObserver(() => {
+      const host = el.offsetParent as HTMLElement | null;
+      set(host ? host.clientHeight - el.offsetTop : 0);
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      set(0);
+    };
+  }, []);
+
   if (!ed.active || !theme || !ed.draft) return null;
   const selected = ed.draft.furniture.find((f) => f.id === ed.selectedId);
   const selectedWs = selected ? ed.draft.workstations.find((w) => w.deskId === selected.id) : undefined;
 
   return (
-    <div className="pointer-events-auto absolute inset-x-3 bottom-3 rounded-xl bg-panel/95 shadow-2xl ring-1 ring-line-strong backdrop-blur" role="region" aria-label={t('editOffice')}>
+    <div ref={measure} className="pointer-events-auto absolute inset-x-3 bottom-3 rounded-xl bg-panel/95 shadow-2xl ring-1 ring-line-strong backdrop-blur" role="region" aria-label={t('editOffice')}>
       <div className="flex items-center gap-2 border-b border-line px-3 py-2">
         <span className="rounded bg-amber px-1.5 text-[10.5px] font-bold tracking-wider text-ink uppercase">{t('editor.badge')}</span>
         <span className="text-[12.5px] font-semibold">{t(`theme.${theme}`)}</span>

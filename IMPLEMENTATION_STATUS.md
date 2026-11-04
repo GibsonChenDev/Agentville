@@ -47,6 +47,17 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Office editor framing, drag yourself, walk-in seats (2026-11-04)
+
+- **Office editor no longer hides the bottom of the map**: the camera is framed above the editor panel (`OfficeWorld.setBottomInset`, fed by the panel's measured height), so the last rows can be scrolled into view and decorated. Before, the camera stayed centred on the whole canvas and couldn't pan far enough when the panel covered it.
+- **Drag your own character**: press and drag your avatar; drop it on a chair, sofa place or beanbag to sit (on an arcade or dice table to use it), anywhere else to stand on the nearest open floor. A plain click still opens your character.
+- **WASD sits you down**: walking into a seat from the floor in front of it sits you down (`seatAhead`); keys still held don't stand you straight back up. Arcades and dice tables still need E or a click.
+
+| Check | Result |
+|---|---|
+| Vitest / typecheck / i18n parity | ✅ 278 passed (new: walking into seats) / ✅ / ✅ |
+| Browser pane | ✅ decoration placed on the bottom row with the panel open; drag onto sofa → seated, onto floor → standing, onto a table → nearest floor; W into the sofa sits, held W stays seated, S gets up; click still opens the character editor |
+
 ## Outfits, editor scrolling, distinct sessions, clearer setup (2026-11-04)
 
 - **Every piece of clothing comes off**: top, bottoms and shoes have "none" (plain briefs; a bandeau on women's characters when the top is off; bare feet). Head, eyewear and neck are now separate slots, so glasses go with a hat and a scarf. Looks saved with the old single accessory move their glasses/sunglasses/scarf/lanyard to the right slot; seeded looks are unchanged and never undressed. Skin now gets a warm brown outline instead of the red one the generic outline produced on bare arms and legs.
