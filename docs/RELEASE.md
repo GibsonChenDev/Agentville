@@ -32,15 +32,16 @@ export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(cat ~/.tauri/agentville-updater.pas
 
 ## Releasing a new version
 
-1. **Bump the app version first** — in one PR, set the same `X.Y.Z` in `apps/desktop/src-tauri/tauri.conf.json`, `apps/desktop/src-tauri/Cargo.toml` (and the `agentville` entry of `Cargo.lock`), `apps/desktop/package.json`, the root `package.json` and the two matching entries of `package-lock.json`. The installers, the version in Settings and Windows' upgrade check all use this number, not the tag.
-2. **Write the release notes** in `docs/release-notes/vX.Y.Z.md`, English and 繁體中文 (format in [release-notes/README.md](release-notes/README.md)). The release workflow fails without this file. The notes become the GitHub release text and what the in-app update dialog shows, in the user's language.
-3. Merge it, then tag that commit on `main`: `git tag vX.Y.Z && git push origin vX.Y.Z`.
-4. When both jobs are done, check the draft release (it should have the installers, `Agentville_universal.app.tar.gz`, the `.sig` files and `latest.json`) and **Publish** it. Installed apps see the update from their next launch; nothing reaches users while it's a draft.
-5. The release gets `Agentville_universal.dmg` and `Agentville_x64-setup.exe`. File names carry no version, so `https://github.com/GibsonChenDev/Agentville/releases/latest/download/Agentville_universal.dmg` (and `…_x64-setup.exe`) always downloads the newest build.
+The tag is the only thing a release needs. The release workflow (`scripts/release-prep.mjs`) sets the app version from the tag in `tauri.conf.json`, `Cargo.toml`/`Cargo.lock` and the `package.json` files before building, so they never need a bump PR. The installers, the version in Settings, Windows' upgrade check and the in-app updater all get the tag's number. The versions in the repository only name local and CI dev builds.
 
-To rebuild an existing release with the current workflow (e.g. after a workflow fix), use Actions → Release → Run workflow on `main` with the tag: the workflow file comes from `main`, the code from the tag. Delete the release's old assets afterwards if their names changed.
+1. **Tag `main`**: `git tag vX.Y.Z && git push origin vX.Y.Z`, or create the release on GitHub with a new tag. Both start the build.
+2. **Notes** (recommended): `docs/release-notes/vX.Y.Z.md` in English and 繁體中文 ([format](release-notes/README.md)). They become the GitHub release text and what the in-app update dialog shows, in the user's language. The workflow looks for the file on `main` first, then in the tagged commit. Without it, the notes list the commit subjects since the previous release (English only) and the run shows a warning. To add or fix notes after tagging, merge the file into `main` and run Actions → Release → Run workflow with the tag. No need to move the tag.
+3. When both jobs are done, check the release (installers, `Agentville_universal.app.tar.gz`, the `.sig` files and `latest.json`). A release the workflow created is a draft: **Publish** it. Installed apps see the update from their next launch, and nothing reaches users while it's a draft. A release you created yourself on GitHub is already published, so its files go live as soon as they're uploaded. Until then, the "latest" download links below return 404.
+4. The release gets `Agentville_universal.dmg` and `Agentville_x64-setup.exe`. File names carry no version, so `https://github.com/GibsonChenDev/Agentville/releases/latest/download/Agentville_universal.dmg` (and `…_x64-setup.exe`) always downloads the newest build.
 
-A tag pushed before the bump builds installers that call themselves the previous version. To redo it: delete that release's assets, move the tag to the bumped commit (`git tag -f vX.Y.Z <commit> && git push -f origin vX.Y.Z`), and the workflow rebuilds and uploads to the same release.
+Use a new version for every release people may already have installed. Updates only reach apps whose version is lower, so rebuilding a published version with new code never reaches anyone who already has it.
+
+To rebuild an existing release (e.g. after a workflow fix), use Actions → Release → Run workflow on `main` with the tag. The workflow and notes come from `main`, the code from the tag. Files with the same names are replaced.
 
 ## Updating an installed app
 
