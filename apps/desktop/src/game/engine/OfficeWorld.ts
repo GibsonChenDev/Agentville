@@ -13,7 +13,7 @@ import { FURNITURE, SERVER_LEDS, drawChair, drawDesk, drawEquipment } from '../f
 import { drawScreen } from '../furniture/screens';
 import { NavGrid } from '../navigation/grid';
 import { DEFAULT_SCENES, TILE, type SceneDefinition } from '../scenes/layouts';
-import { interactableAt, interactablesFor, withinReach, type Interactable } from '../scenes/interactables';
+import { interactableAt, interactablesFor, seatAhead, withinReach, type Interactable } from '../scenes/interactables';
 import { waitingSpots } from '../scenes/crowd';
 import { clockHands } from '../scenes/clock';
 import { CAP, drawGlowLayer, drawLightmap, drawRoom, type LightSource } from '../scenes/room';
@@ -181,6 +181,7 @@ export class OfficeWorld {
   private particles: { s: Sprite; vx: number; vy: number; life: number; x0: number; y0: number; w: number; h: number; kind: 'dust' | 'rain' }[] = [];
   private leds: { g: Graphics; phase: number }[] = [];
   private zoom = 3;
+  private bottomInset = 0;
   private cx = 0;
   private cy = 0;
   private followId?: string;
@@ -205,6 +206,10 @@ export class OfficeWorld {
   private peers = new Map<string, Human>();
   private keys = new Set<string>();
   private keyMoving = false;
+  /** Your avatar while the mouse holds it. */
+  private grab?: { x: number; y: number; moved: boolean };
+  /** The click that ends a drag isn't a click on your avatar. */
+  private suppressPlayerTap = false;
   private lastPresence?: { p: Presence; at: number };
   private removeKeyListeners?: () => void;
   private sceneKey: SceneKey = 'loft';
@@ -1111,8 +1116,22 @@ export class OfficeWorld {
 
   // ───────────────────────────────── camera & input
 
-  private applyCamera() {
+  /** Screen pixels along the bottom covered by UI (the office editor's panel): the map is framed above them. */
+  setBottomInset(px: number) {
+    const inset = Math.max(0, Math.round(px));
+    if (inset === this.bottomInset) return;
+    this.bottomInset = inset;
+    this.clampCamera();
+  }
+
+  /** Width and height of the part of the screen the map shows in. */
+  private view() {
     const { width, height } = this.app.screen;
+    return { width, height: Math.max(1, height - this.bottomInset) };
+  }
+
+  private applyCamera() {
+    const { width, height } = this.view();
     const dpr = this.app.renderer.resolution;
     this.camera.scale.set(this.zoom);
     // Snap to whole device pixels so pixel art never shimmers while panning.
@@ -1123,7 +1142,7 @@ export class OfficeWorld {
     if (!this.scene) return;
     const W = this.scene.cols * TILE;
     const H = this.scene.rows * TILE;
-    const { width, height } = this.app.screen;
+    const { width, height } = this.view();
     const halfW = width / 2 / this.zoom;
     const halfH = height / 2 / this.zoom;
     this.cx = W <= halfW * 2 ? W / 2 : Math.max(halfW - CAP * 4, Math.min(W - halfW + CAP * 4, this.cx));
@@ -1133,8 +1152,8 @@ export class OfficeWorld {
   fitZoom() {
     const W = this.scene.cols * TILE;
     const H = this.scene.rows * TILE;
-    const { width, height } = this.app.screen;
-    const fit = Math.max(1, Math.floor(Math.min(width / W, height / H) * 2) / 2);
+    const { width, height } = this.view();
+    const fit =Math.max(1, Math.floor(Math.min(width / W, height / H) * 2) / 2);
     this.zoom = Math.max(2, Math.min(6, fit));
     this.cx = W / 2;
     this.cy = H / 2;
@@ -1151,8 +1170,8 @@ export class OfficeWorld {
       const wx = (anchor.x - this.camera.x) / this.zoom;
       const wy = (anchor.y - this.camera.y) / this.zoom;
       this.zoom = next;
-      const { width, height } = this.app.screen;
-      this.cx = wx - (anchor.x - width / 2) / next;
+      const { width, height } = this.view();
+      this.cx = wx -(anchor.x - width / 2) / next;
       this.cy = wy - (anchor.y - height / 2) / next;
     } else this.zoom = next;
     this.clampCamera();
@@ -1185,6 +1204,10 @@ export class OfficeWorld {
       this.drag = { x: e.global.x, y: e.global.y, cx: this.cx, cy: this.cy, moved: false };
     });
     stage.on('globalpointermove', (e) => {
+      if (this.grab) {
+        if (e.buttons & 1) this.dragPlayer(e.global, host);
+        return;
+      }
       if (this.edit) this.updateGhost(e.global);
       if (this.edit && this.dragItem?.id) return;
       if (!this.drag || !(e.buttons & 1)) return;
@@ -1204,6 +1227,10 @@ export class OfficeWorld {
       host.style.cursor = '';
     };
     stage.on('pointerup', (e) => {
+      if (this.grab) {
+        this.dropPlayer(e.global);
+        return end();
+      }
       const clicked = this.drag && !this.drag.moved;
       if (this.edit) {
         const handled = this.finishEditPointer(!!clicked);
@@ -1214,7 +1241,8 @@ export class OfficeWorld {
       }
       end();
     });
-    stage.on('pointerupoutside', () => {
+    stage.on('pointerupoutside', (e) => {
+      if (this.grab) this.dropPlayer(e.global);
       if (this.edit && this.dragItem?.id) this.finishEditPointer(false);
       end();
     });
@@ -1236,8 +1264,10 @@ export class OfficeWorld {
     const onDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || document.querySelector('dialog[open]') || this.edit) return;
       if (MOVE_KEYS[e.code]) {
-        this.keys.add(e.code);
         e.preventDefault();
+        // A key let go of when you sat down (see sitOnBump) only counts once it's pressed again.
+        if (e.repeat && !this.keys.has(e.code)) return;
+        this.keys.add(e.code);
       } else if (e.code === 'KeyE' && !e.repeat) {
         this.playerInteract();
         e.preventDefault();
@@ -1273,9 +1303,10 @@ export class OfficeWorld {
   private makeHuman(id: string, info: HumanInfo): Human {
     const record: AgentRecord = { id, name: info.name, role: 'generalist', origin: 'external', kind: 'agent', appearance: info.appearance, createdAt: 0 };
     const actor = new CharacterActor(record, characterTextures(info.appearance), worldTextures(), IDLE_INTENT, performance.now(), () =>
-      id === PLAYER_ID ? this.callbacks.onPlayerClick?.() : this.callbacks.onSelect(id),
+      id === PLAYER_ID ? this.tapPlayer() : this.callbacks.onSelect(id),
     );
     actor.hideIcon = true;
+    if (id === PLAYER_ID) actor.grabbable((global) => this.grabPlayer(global));
     this.entities.addChild(actor.root);
     this.overlay.addChild(actor.badge, actor.bubble);
     return { actor, badge: info.badge, appearanceKey: JSON.stringify(info.appearance) };
@@ -1586,6 +1617,72 @@ export class OfficeWorld {
     else h.actor.walkTo(this.nav, it.approach, 'player', [it.approach]);
   }
 
+  private tapPlayer() {
+    if (this.suppressPlayerTap) this.suppressPlayerTap = false;
+    else this.callbacks.onPlayerClick?.();
+  }
+
+  /** A press on your avatar: it's picked up once the pointer moves (a plain click still opens your character). */
+  private grabPlayer(global: { x: number; y: number }): boolean {
+    this.suppressPlayerTap = false;
+    if (this.edit || this.doorAnim || !this.player?.actor.isVisible) return false;
+    this.grab = { x: global.x, y: global.y, moved: false };
+    return true;
+  }
+
+  private dragPlayer(global: { x: number; y: number }, host: HTMLElement) {
+    const g = this.grab;
+    const h = this.player;
+    if (!g || !h) return;
+    if (!g.moved) {
+      if (Math.hypot(global.x - g.x, global.y - g.y) < 4) return;
+      g.moved = true;
+      this.vacate(h, PLAYER_ID);
+      h.pending = undefined;
+      h.pendingDoor = undefined;
+      h.walkTarget = undefined;
+      if (this.followId === PLAYER_ID) {
+        this.followId = undefined;
+        this.emitCamera();
+      }
+      host.style.cursor = 'grabbing';
+    }
+    // Held by the body: the feet dangle a little below the pointer.
+    const p = this.camera.toLocal(global);
+    h.actor.stepTo(p.x, p.y + 10, h.actor.currentFacing);
+  }
+
+  /** Let go: on a seat (or the arcade, dice table) you use it, anywhere else you stand on the nearest open floor. */
+  private dropPlayer(global: { x: number; y: number }) {
+    const g = this.grab;
+    const h = this.player;
+    this.grab = undefined;
+    if (!g?.moved || !h) return;
+    this.suppressPlayerTap = true;
+    const a = h.actor;
+    const target = [this.tileAt(global), a.tile()].map((t) => interactableAt(this.interactables, t)).find((it) => !!it);
+    const it = target && this.freeSpotOf(target);
+    if (it && this.canUse(it) && this.occupy(h, PLAYER_ID, it)) return;
+    const floor = this.freeAt(a.x, a.y) ? { x: a.x, y: a.y } : this.nearestFloorPoint(a.x, a.y);
+    if (floor) a.stepTo(floor.x, floor.y, 'down');
+    a.halt('down');
+  }
+
+  /** Walking into a sofa, beanbag or desk chair sits you down on it. */
+  private sitOnBump(h: Human, x: number, y: number, dx: number, dy: number): boolean {
+    const ux = Math.sign(dx);
+    const uy = Math.sign(dy);
+    if (this.freeAt(x + ux * 2, y + uy * 2)) return false; // still walking, not pushing against anything
+    const ahead = { x: Math.floor((x + ux * 8) / TILE), y: Math.floor((y + uy * 8 - 4) / TILE) };
+    const seat = seatAhead(this.interactables, h.actor.tile(), ahead, (it) => this.canUse(it));
+    if (!seat) return false;
+    // Keys still held from the walk don't get you straight back up; pressing one again does.
+    this.keys.clear();
+    this.keyMoving = false;
+    this.playerUse(seat);
+    return true;
+  }
+
   /** E: use the nearest thing within reach, or get up. */
   private playerInteract() {
     const h = this.player;
@@ -1626,7 +1723,7 @@ export class OfficeWorld {
 
   private updatePlayer(dt: number) {
     const h = this.player;
-    if (!h) return;
+    if (!h || this.grab?.moved) return;
     const a = h.actor;
     let dx = 0;
     let dy = 0;
@@ -1674,6 +1771,7 @@ export class OfficeWorld {
       }
       const facing: Facing = dx ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
       a.stepTo(x, y, facing);
+      if (this.sitOnBump(h, x, y, dx, dy)) return;
       this.keyMoving = true;
       h.walkTarget = undefined;
       h.pendingDoor = undefined;

@@ -249,6 +249,10 @@ export function GameCanvas({ onCamera }: { onCamera: (c: CameraState) => void })
   }, [editor.active, editor.selectedId, editor.placing, editor.draft]);
 
   useEffect(() => {
+    worldApi.current?.setBottomInset(editor.active ? editor.panelHeight : 0);
+  }, [editor.active, editor.panelHeight]);
+
+  useEffect(() => {
     const s = useApp.subscribe((state, prev) => {
       if (state.followAgentId !== prev.followAgentId) worldApi.current?.follow(state.followAgentId);
       // Real coordination steps become visible handoffs in the office.
