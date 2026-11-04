@@ -952,6 +952,223 @@ export function drawDiceTable(): PixelCanvas {
   return pc.outline(-0.45);
 }
 
+// ───────────────────────────────── more office furniture (free)
+
+export function drawPrinter(): PixelCanvas {
+  const pc = new PixelCanvas(18, 22);
+  const cab = '#5a5f6e';
+  box(pc, 2, 12, 14, 2, 8, shade(cab, 0.1), cab);
+  pc.vline(9, 15, 5, shade(cab, -0.25));
+  pc.px(7, 17, shade(cab, 0.25));
+  pc.px(11, 17, shade(cab, 0.25));
+  const body = '#e4e7ee';
+  pc.rect(4, 1, 10, 4, WHITE);
+  pc.hline(5, 2, 8, '#c9ccd6');
+  box(pc, 1, 4, 16, 4, 5, shade(body, 0.06), body);
+  pc.rect(3, 9, 10, 1, '#2a2a32');
+  pc.rect(4, 10, 8, 2, '#fbfbf7');
+  pc.hline(5, 11, 5, '#9aa3b5');
+  pc.rect(13, 5, 3, 2, '#2a2a32');
+  pc.px(14, 5, '#7dff9a');
+  return pc.outline(-0.5);
+}
+
+export function drawFilingCabinet(): PixelCanvas {
+  const pc = new PixelCanvas(16, 30);
+  const metal = '#8a93a6';
+  box(pc, 1, 1, 14, 3, 25, shade(metal, 0.12), metal);
+  for (let i = 0; i < 3; i++) {
+    const y = 6 + i * 8;
+    pc.rect(3, y, 10, 7, shade(metal, 0.06));
+    pc.hline(3, y + 6, 10, shade(metal, -0.25));
+    pc.rect(6, y + 1, 4, 2, '#f2efe6');
+    pc.hline(6, y + 4, 4, '#3a3f4c');
+  }
+  pc.rect(9, 2, 3, 1, '#ffd166');
+  return pc.outline(-0.5);
+}
+
+export function drawCoatRack(): PixelCanvas {
+  const pc = new PixelCanvas(16, 36);
+  const wood = '#7a4e30';
+  pc.vline(8, 4, 29, wood);
+  pc.vline(7, 4, 29, shade(wood, 0.15));
+  pc.hline(4, 32, 8, wood);
+  pc.hline(3, 33, 10, shade(wood, -0.25));
+  pc.hline(4, 6, 8, wood);
+  pc.px(3, 5, wood);
+  pc.px(12, 5, wood);
+  const coat = '#c27a3a';
+  pc.round(1, 7, 6, 17, coat);
+  pc.vline(4, 9, 14, shade(coat, -0.22));
+  pc.px(3, 13, '#5a3a20');
+  pc.px(3, 17, '#5a3a20');
+  pc.px(2, 8, shade(coat, 0.2));
+  const scarf = '#2f8f8a';
+  pc.rect(10, 7, 3, 13, scarf);
+  pc.vline(12, 7, 13, shade(scarf, -0.2));
+  for (let y = 10; y < 20; y += 3) pc.hline(10, y, 3, '#f2efe6');
+  pc.round(5, 1, 6, 3, '#3a3f4c');
+  pc.hline(4, 3, 8, '#2a2d38');
+  pc.hline(5, 2, 6, '#c0233f');
+  return pc.outline(-0.5);
+}
+
+export function drawBike(): PixelCanvas {
+  const pc = new PixelCanvas(34, 22);
+  const frame = '#d33a3a';
+  const wheel = (cx: number) => {
+    pc.ellipse(cx, 15, 6, 6, '#24242c');
+    pc.ellipse(cx, 15, 4, 4, '#5a5f6e');
+    for (let i = 1; i < 5; i++) {
+      pc.px(cx - i, 15, '#c9ccd6');
+      pc.px(cx + i, 15, '#c9ccd6');
+      pc.px(cx, 15 - i, '#c9ccd6');
+      pc.px(cx, 15 + i, '#c9ccd6');
+    }
+    for (const [dx, dy] of [[-2, -2], [2, -2], [-2, 2], [2, 2]] as const) pc.px(cx + dx, 15 + dy, '#9aa3b5');
+    pc.px(cx, 15, '#c9ccd6');
+  };
+  wheel(8);
+  wheel(26);
+  const seg = (x0: number, y0: number, x1: number, y1: number, c: Color = frame) => {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    for (let i = 0; i <= n; i++) pc.px(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n), c);
+  };
+  seg(8, 15, 13, 8);
+  seg(13, 8, 16, 15);
+  seg(8, 15, 16, 15);
+  seg(13, 8, 23, 8);
+  seg(13, 9, 23, 9, shade(frame, -0.2));
+  seg(23, 8, 16, 15);
+  seg(23, 6, 26, 15, '#9aa3b5');
+  pc.rect(10, 6, 6, 2, '#2a2a32');
+  pc.vline(13, 7, 1, '#3a3a44');
+  pc.hline(20, 4, 6, '#3a3a44');
+  pc.vline(23, 5, 2, '#3a3a44');
+  pc.px(20, 5, '#2a2a32');
+  pc.rect(15, 16, 3, 1, '#3a3a44');
+  pc.px(16, 15, '#c9ccd6');
+  return pc.outline(-0.45);
+}
+
+export function drawGuitar(): PixelCanvas {
+  const pc = new PixelCanvas(16, 32);
+  const stand = '#2a2a32';
+  for (let i = 0; i < 4; i++) {
+    pc.px(4 + i, 30 - i, stand);
+    pc.px(11 - i, 30 - i, stand);
+  }
+  pc.hline(3, 31, 3, stand);
+  pc.hline(10, 31, 3, stand);
+  const neck = '#6e4a30';
+  pc.rect(7, 4, 2, 13, neck);
+  pc.vline(8, 4, 13, shade(neck, -0.2));
+  for (let y = 6; y < 16; y += 3) pc.hline(7, y, 2, '#c9ccd6', 0.7);
+  pc.rect(6, 1, 4, 4, '#4a3020');
+  for (const y of [2, 3]) {
+    pc.px(5, y, '#c9ccd6');
+    pc.px(10, y, '#c9ccd6');
+  }
+  const wood = '#d9963f';
+  pc.ellipse(8, 24, 6, 5, wood);
+  pc.ellipse(8, 17, 4, 4, wood);
+  pc.ellipse(6, 22, 2, 3, shade(wood, 0.18), 0.7);
+  pc.ellipse(8, 19, 2, 2, '#3a2416');
+  pc.vline(13, 21, 6, shade(wood, -0.2));
+  pc.rect(6, 26, 4, 1, '#5a3a20');
+  pc.vline(8, 5, 21, '#f2efe6', 0.55);
+  return pc.outline(-0.5);
+}
+
+export function drawPopcorn(): PixelCanvas {
+  const pc = new PixelCanvas(18, 34);
+  const red = '#d33a3a';
+  box(pc, 1, 20, 16, 2, 9, shade(red, 0.12), red);
+  pc.hline(1, 25, 16, '#ffd166');
+  pc.ellipse(4, 31, 2, 2, '#2a2a32');
+  pc.ellipse(13, 31, 2, 2, '#2a2a32');
+  pc.rect(2, 7, 14, 13, '#e8f6ff');
+  pc.rect(3, 14, 12, 6, '#fff3c4');
+  const rand = rng(19);
+  for (let i = 0; i < 34; i++) pc.px(3 + Math.floor(rand() * 12), 11 + Math.floor(rand() * 9), rand() < 0.5 ? '#ffe08a' : WHITE);
+  pc.rect(7, 8, 4, 3, '#9aa3b5');
+  pc.hline(7, 8, 4, '#c9ccd6');
+  pc.vline(3, 8, 5, WHITE, 0.7);
+  pc.vline(2, 7, 13, red);
+  pc.vline(15, 7, 13, shade(red, -0.2));
+  pc.rect(1, 3, 16, 4, red);
+  pc.hline(1, 3, 16, shade(red, 0.15));
+  pc.hline(1, 6, 16, shade(red, -0.25));
+  pc.rect(6, 4, 6, 2, '#ffd166');
+  pc.rect(8, 1, 2, 2, '#ffd166');
+  return pc.outline(-0.5);
+}
+
+export function drawClawMachine(): PixelCanvas {
+  const pc = new PixelCanvas(20, 42);
+  const body = '#e0559a';
+  pc.rect(2, 2, 16, 39, body);
+  pc.rect(2, 2, 16, 4, '#ffd166');
+  for (let x = 3; x < 17; x += 2) pc.px(x, 3, '#fff3c4');
+  pc.hline(3, 5, 14, shade('#ffd166', -0.2));
+  pc.rect(4, 7, 12, 18, '#cfeaff');
+  pc.vline(5, 8, 15, WHITE, 0.6);
+  pc.hline(5, 8, 10, '#7a8aa6');
+  pc.vline(11, 8, 6, '#7a8aa6');
+  pc.px(10, 14, '#c9ccd6');
+  pc.px(12, 14, '#c9ccd6');
+  pc.px(9, 15, '#c9ccd6');
+  pc.px(13, 15, '#c9ccd6');
+  pc.round(4, 20, 4, 5, '#ffd166');
+  pc.px(5, 21, '#2a2a32');
+  pc.round(8, 21, 4, 4, '#7dd3fc');
+  pc.px(9, 22, '#2a2a32');
+  pc.round(12, 19, 4, 6, '#a3e635');
+  pc.px(13, 20, '#2a2a32');
+  pc.rect(2, 26, 16, 4, shade(body, 0.2));
+  pc.px(6, 27, '#ff5f5f');
+  pc.px(8, 28, '#62e6ff');
+  pc.vline(13, 26, 2, '#2a2a32');
+  pc.px(13, 25, '#ff5f5f');
+  pc.rect(6, 33, 8, 5, '#2a2a32');
+  pc.hline(6, 33, 8, shade(body, -0.35));
+  pc.vline(17, 6, 35, shade(body, -0.3));
+  return pc.outline(-0.4);
+}
+
+export function drawHammock(): PixelCanvas {
+  const pc = new PixelCanvas(34, 26);
+  const wood = '#8a5a34';
+  pc.rect(1, 22, 32, 2, wood);
+  pc.hline(1, 24, 32, shade(wood, -0.3));
+  pc.rect(2, 4, 2, 19, wood);
+  pc.vline(2, 4, 19, shade(wood, 0.15));
+  pc.rect(30, 4, 2, 19, shade(wood, -0.1));
+  pc.hline(1, 3, 4, shade(wood, 0.1));
+  pc.hline(29, 3, 4, shade(wood, 0.1));
+  const sagAt = (x: number) => {
+    const u = (x - 17) / 13;
+    return 7 + Math.round(8 * (1 - u * u));
+  };
+  const rope = '#e8dcc0';
+  for (let i = 0; i < 3; i++) {
+    pc.px(4 + i, 5 + i, rope);
+    pc.px(29 - i, 5 + i, rope);
+  }
+  const bands = ['#2f8f8a', '#f2efe6', '#e8763a'];
+  for (let x = 6; x < 29; x++) {
+    const y = sagAt(x);
+    const c = bands[Math.floor((x - 6) / 3) % 3]!;
+    pc.px(x, y - 1, shade(c, 0.15));
+    pc.rect(x, y, 1, 2, c);
+    pc.px(x, y + 2, shade(c, -0.25));
+  }
+  pc.round(7, sagAt(8) - 3, 5, 3, '#f2efe6');
+  pc.hline(8, sagAt(8) - 1, 3, '#c9ccd6');
+  return pc.outline(-0.45);
+}
+
 /** Decorations sold in the shop (see CATALOG in team-protocol). */
 export const SHOP_FURNITURE = [
   'lava_lamp',
@@ -976,6 +1193,10 @@ export const SHOP_FURNITURE = [
   'ping_pong',
   'piano',
   'dice_table',
+  'guitar',
+  'popcorn',
+  'claw_machine',
+  'hammock',
 ] as const;
 
 export const FURNITURE: Record<string, FurnitureDef> = {
@@ -1002,6 +1223,10 @@ export const FURNITURE: Record<string, FurnitureDef> = {
   water_cooler: { fw: 1, fh: 1, bottomPad: 0, ox: 1, blocks: true, draw: () => drawWaterCooler() },
   arcade: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, light: { x: 10, y: 14, r: 26, color: 'accent', strength: 0.7 }, draw: (t) => drawArcade(t) },
   beanbag: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, draw: (t) => drawBeanbag(t) },
+  printer: { fw: 1, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawPrinter() },
+  filing_cabinet: { fw: 1, fh: 1, bottomPad: 0, ox: 0, blocks: true, draw: () => drawFilingCabinet() },
+  coat_rack: { fw: 1, fh: 1, bottomPad: 1, ox: 0, blocks: true, draw: () => drawCoatRack() },
+  bike: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawBike() },
   lava_lamp: { fw: 1, fh: 1, bottomPad: 0, ox: 3, blocks: true, light: { x: 5, y: 10, r: 22, color: 'accent', strength: 0.6 }, draw: () => drawLavaLamp() },
   trophy: { fw: 1, fh: 1, bottomPad: 0, ox: 1, blocks: true, draw: () => drawTrophy() },
   cat: { fw: 1, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawCat() },
@@ -1024,5 +1249,9 @@ export const FURNITURE: Record<string, FurnitureDef> = {
   ping_pong: { fw: 3, fh: 2, bottomPad: -2, ox: 0, blocks: true, draw: () => drawPingPong() },
   piano: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawPiano() },
   dice_table: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, light: { x: 17, y: 8, r: 24, color: 'warm', strength: 0.5 }, draw: () => drawDiceTable() },
+  guitar: { fw: 1, fh: 1, bottomPad: 0, ox: 0, blocks: true, draw: () => drawGuitar() },
+  popcorn: { fw: 1, fh: 1, bottomPad: 0, ox: -1, blocks: true, light: { x: 9, y: 13, r: 22, color: 'warm', strength: 0.45 }, draw: () => drawPopcorn() },
+  claw_machine: { fw: 1, fh: 1, bottomPad: 0, ox: -2, blocks: true, light: { x: 10, y: 14, r: 26, color: 'accent', strength: 0.7 }, draw: () => drawClawMachine() },
+  hammock: { fw: 2, fh: 1, bottomPad: 0, ox: -1, blocks: true, draw: () => drawHammock() },
 };
 

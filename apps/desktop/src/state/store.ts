@@ -34,7 +34,8 @@ export type Link = 'offline' | 'connecting' | 'online';
 const MAX_EVENTS = 2000;
 const MAX_SEEN_IDS = 5000;
 const STALE_BUSY_MS = 5 * 60_000;
-const STALE_IDLE_MS = 60 * 60_000;
+// Waiting for the user this long with no event: the character walks out (it comes back on the next one).
+const STALE_IDLE_MS = 30 * 60_000;
 
 export interface AppState {
   mode: AppMode;

@@ -1,7 +1,7 @@
-import { ACCESSORIES, EYEWEAR, OFFICE_THEMES, OUTFIT_COLORS, PREMIUM_ACCESSORIES, PREMIUM_EYEWEAR, PREMIUM_OUTFIT_COLORS, appearanceFromSeed, sanitizeAppearance } from '@agentville/domain';
+import { ACCESSORIES, EYEWEAR, OFFICE_THEMES, PREMIUM_THEMES, OUTFIT_COLORS, PREMIUM_ACCESSORIES, PREMIUM_EYEWEAR, PREMIUM_OUTFIT_COLORS, appearanceFromSeed, sanitizeAppearance } from '@agentville/domain';
 import { CATALOG, cleanChat, cleanLayoutDoc, type ChatMessage, type MemberView } from '@agentville/team-protocol';
 import { describe, expect, it } from 'vitest';
-import { placementAllowance, ownerTag } from '../account/accountStore';
+import { mapLocked, placementAllowance, ownerTag } from '../account/accountStore';
 import { FURNITURE, SHOP_FURNITURE } from '../game/furniture/furniture';
 import { addFurniture, fromLayoutDoc, placedCount, toLayoutDoc, validateScene } from '../game/scenes/editing';
 import { DEFAULT_SCENES } from '../game/scenes/layouts';
@@ -29,8 +29,8 @@ describe('more agents than the office can seat', () => {
     expect(shown.map((a) => a.record.id).sort()).toEqual(['peer:a:0', 'peer:a:1', 'peer:b:0']);
   });
 
-  it("every built-in office has 10 desks; the rest wait on open floor (see crowd.test.ts)", () => {
-    for (const theme of OFFICE_THEMES) expect(DEFAULT_SCENES[theme].workstations.length, theme).toBe(10);
+  it("every built-in office has 16 desks; the rest wait on open floor (see crowd.test.ts)", () => {
+    for (const theme of OFFICE_THEMES) expect(DEFAULT_SCENES[theme].workstations.length, theme).toBe(16);
   });
 });
 
@@ -42,7 +42,7 @@ describe('outfits are visible to teammates', () => {
   });
 
   it('the shop sells exactly the premium looks the character renderer knows', () => {
-    const looks = CATALOG.filter((i) => i.kind !== 'furniture');
+    const looks = CATALOG.filter((i) => i.kind === 'accessory' || i.kind === 'color');
     expect(looks.filter((i) => i.kind === 'accessory').map((i) => i.value).sort()).toEqual([...PREMIUM_ACCESSORIES, ...PREMIUM_EYEWEAR].sort());
     expect(looks.filter((i) => i.kind === 'color').map((i) => i.value).sort()).toEqual([...PREMIUM_OUTFIT_COLORS].sort());
     for (const i of looks) expect([...ACCESSORIES, ...EYEWEAR, ...OUTFIT_COLORS] as string[]).toContain(i.value);
@@ -90,7 +90,7 @@ describe('office decorations', () => {
     const inv = ['deco.cat', 'deco.cat'];
     let scene = DEFAULT_SCENES.loft;
     const add = (owner?: string) => {
-      const r = addFurniture(scene, 'cat', 13, 17 - placedCount(scene, 'cat'), owner);
+      const r = addFurniture(scene, 'cat', 22, 17 - placedCount(scene, 'cat'), owner);
       if (!r.ok) throw new Error(r.error);
       scene = r.scene;
     };
@@ -125,9 +125,25 @@ describe('switching the map', () => {
     expect(officeTheme('garden', inTeam)).toBe('garden');
   });
 
-  it('there are five maps, each a valid office', () => {
-    expect(OFFICE_THEMES).toHaveLength(5);
+  it('there are seven maps, each a valid office', () => {
+    expect(OFFICE_THEMES).toHaveLength(7);
     for (const theme of OFFICE_THEMES) expect(validateScene(DEFAULT_SCENES[theme]), theme).toBeNull();
+  });
+
+  it('the hidden maps are sold in the shop, cost more than any decoration, and are locked until bought', () => {
+    const maps = CATALOG.filter((i) => i.kind === 'map');
+    expect(maps.map((i) => i.value).sort()).toEqual([...PREMIUM_THEMES].sort());
+    const priciest = Math.max(...CATALOG.filter((i) => i.kind !== 'map').map((i) => i.price));
+    for (const m of maps) {
+      expect(m.price, m.value).toBeGreaterThan(priciest);
+      expect(m.max).toBe(1);
+      expect((en.theme as Record<string, string>)[m.value], m.value).toBeTruthy();
+      expect((zh.theme as Record<string, string>)[m.value], m.value).toBeTruthy();
+    }
+    expect(mapLocked(undefined, 'space')).toBe(true);
+    expect(mapLocked(['map.space'], 'space')).toBe(false);
+    expect(mapLocked(['map.space'], 'sakura')).toBe(true);
+    for (const free of OFFICE_THEMES.filter((t) => !(PREMIUM_THEMES as readonly string[]).includes(t))) expect(mapLocked(undefined, free), free).toBe(false);
   });
 });
 

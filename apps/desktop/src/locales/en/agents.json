@@ -166,7 +166,11 @@
       "blouse": "Blouse",
       "cardigan": "Cardigan",
       "camisole": "Camisole",
-      "dress": "Dress"
+      "dress": "Dress",
+      "tank": "Tank top",
+      "turtleneck": "Turtleneck",
+      "jersey": "Jersey",
+      "lab_coat": "Lab coat"
     },
     "bottom": {
       "none": "None (underwear)",
@@ -176,14 +180,19 @@
       "shorts": "Shorts",
       "joggers": "Joggers",
       "cargo": "Cargo pants",
-      "pleated": "Pleated skirt"
+      "pleated": "Pleated skirt",
+      "ripped": "Ripped jeans",
+      "leggings": "Leggings",
+      "maxi": "Maxi skirt"
     },
     "shoes": {
       "none": "Barefoot",
       "sneakers": "Sneakers",
       "boots": "Boots",
       "loafers": "Loafers",
-      "hightops": "High-tops"
+      "hightops": "High-tops",
+      "sandals": "Sandals",
+      "heels": "Heels"
     },
     "accessory": {
       "none": "None",
@@ -207,17 +216,30 @@
       "devil_horns": "Devil horns",
       "top_hat": "Top hat",
       "viking": "Viking helmet",
-      "halo": "Halo"
+      "halo": "Halo",
+      "beret": "Beret",
+      "bucket_hat": "Bucket hat",
+      "headband": "Headband",
+      "cowboy_hat": "Cowboy hat",
+      "pirate_hat": "Pirate hat",
+      "round_glasses": "Round glasses",
+      "heart_glasses": "Heart glasses",
+      "bowtie": "Bow tie",
+      "necklace": "Necklace"
     },
     "eyewear": {
       "none": "None",
       "glasses": "Glasses",
-      "sunglasses": "Sunglasses"
+      "sunglasses": "Sunglasses",
+      "round_glasses": "Round glasses",
+      "heart_glasses": "Heart glasses"
     },
     "neckwear": {
       "none": "None",
       "scarf": "Scarf",
-      "lanyard": "Lanyard"
+      "lanyard": "Lanyard",
+      "bowtie": "Bow tie",
+      "necklace": "Necklace"
     },
     "equipment": {
       "laptop": "Laptop",

@@ -105,6 +105,20 @@ describe('the app reconnects while an agent is working', () => {
     expect(status()).toBe('completed');
   });
 
+  it('an agent waiting for you walks out after 30 quiet minutes, and comes back on your next prompt', () => {
+    const r = receiver('b1');
+    const run = app();
+    run(r.hook({ hook_event_name: 'UserPromptSubmit', prompt: 'fix it' }));
+    const stop = r.hook({ hook_event_name: 'Stop' });
+    run(stop);
+    useApp.getState().sweepStale(stop.receivedAt + 29 * 60_000);
+    expect(status()).toBe('completed');
+    useApp.getState().sweepStale(stop.receivedAt + 31 * 60_000);
+    expect(status()).toBe('disconnected');
+    run(r.hook({ hook_event_name: 'UserPromptSubmit', prompt: 'and the tests' }, 40 * 60_000));
+    expect(status()).toBe('thinking');
+  });
+
   it('a session that really ended is not brought back by a late hook', () => {
     const r = receiver('b1');
     const run = app();

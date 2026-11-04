@@ -1,19 +1,31 @@
 import { CATALOG, EARN, ownedCount, type CatalogItem } from '@agentville/team-protocol';
-import { accessorySlot, type CharacterAppearance } from '@agentville/domain';
+import { accessorySlot, type CharacterAppearance, type OfficeTheme } from '@agentville/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAccount } from '../../account/accountStore';
+import { useAccount, type ShopTab } from '../../account/accountStore';
 import { THEMES } from '../../game/assets/themes';
 import { FURNITURE } from '../../game/furniture/furniture';
+import { DEFAULT_SCENES } from '../../game/scenes/layouts';
+import { drawRoom } from '../../game/scenes/room';
 import { TeamApiError } from '../../team/api';
 import { usePlayer } from '../../team/playerStore';
 import { usePlace } from '../../world/placeStore';
+import { chooseOfficeTheme, useOfficeStyle } from '../../world/officeTheme';
 import { Portrait } from '../agents/Portrait';
 import { useEditor } from '../office/editorStore';
 
-type Tab = 'look' | 'decor';
-
 const furnitureThumbs = new Map<string, string>();
+const mapThumbs = new Map<string, string>();
+/** The whole map, empty, as its shop preview. */
+function mapThumb(theme: OfficeTheme) {
+  let url = mapThumbs.get(theme);
+  if (!url) {
+    url = drawRoom(THEMES[theme], DEFAULT_SCENES[theme]).canvas.toDataURL();
+    mapThumbs.set(theme, url);
+  }
+  return url;
+}
+
 function furnitureThumb(kind: string) {
   let url = furnitureThumbs.get(kind);
   if (!url) {
@@ -39,7 +51,8 @@ export function ShopDialog() {
   const player = usePlayer();
   const inLobby = usePlace((s) => s.place.kind === 'lobby');
   const dialog = useRef<HTMLDialogElement>(null);
-  const [tab, setTab] = useState<Tab>('look');
+  const [tab, setTab] = useState<ShopTab>('look');
+  const office = useOfficeStyle();
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const [justBought, setJustBought] = useState<string>();
@@ -50,13 +63,15 @@ export function ShopDialog() {
     if (open && !d.open) {
       setError(undefined);
       setJustBought(undefined);
+      const wanted = useAccount.getState().shopTab;
+      if (wanted) setTab(wanted);
       d.showModal();
     }
     if (!open && d.open) d.close();
   }, [open]);
 
   const close = () => useAccount.getState().openShop(false);
-  const items = useMemo(() => CATALOG.filter((i) => (tab === 'look' ? i.kind !== 'furniture' : i.kind === 'furniture')), [tab]);
+  const items = useMemo(() => CATALOG.filter((i) => (tab === 'look' ? i.kind === 'accessory' || i.kind === 'color' : tab === 'decor' ? i.kind === 'furniture' : i.kind === 'map')), [tab]);
   const today = account?.earn.day === new Date().toISOString().slice(0, 10) ? account.earn.today : 0;
 
   const buy = async (item: CatalogItem) => {
@@ -73,6 +88,11 @@ export function ShopDialog() {
   };
 
   const use = (item: CatalogItem) => {
+    if (item.kind === 'map') {
+      close();
+      chooseOfficeTheme(item.value as OfficeTheme);
+      return;
+    }
     if (item.kind === 'furniture') {
       close();
       useEditor.getState().start();
@@ -83,7 +103,13 @@ export function ShopDialog() {
   };
 
   const label = (item: CatalogItem) =>
-    item.kind === 'furniture' ? t(`office:furniture.${item.value}`) : item.kind === 'accessory' ? t(`agents:appearance.accessory.${item.value}`) : t('colorItem', { color: t(`agents:appearance.color.${item.value}`) });
+    item.kind === 'furniture'
+      ? t(`office:furniture.${item.value}`)
+      : item.kind === 'map'
+        ? t(`office:theme.${item.value}`)
+        : item.kind === 'accessory'
+          ? t(`agents:appearance.accessory.${item.value}`)
+          : t('colorItem', { color: t(`agents:appearance.color.${item.value}`) });
 
   return (
     <dialog
@@ -110,7 +136,7 @@ export function ShopDialog() {
           </div>
 
           <div className="flex gap-1 px-5 pt-3" role="tablist">
-            {(['look', 'decor'] as const).map((id) => (
+            {(['look', 'decor', 'map'] as const).map((id) => (
               <button
                 key={id}
                 role="tab"
@@ -124,17 +150,25 @@ export function ShopDialog() {
           </div>
 
           {status !== 'ready' && <p className="mx-5 mt-3 rounded-md bg-coral/10 p-2.5 text-[12px] text-coral ring-1 ring-coral/30">{t('offline')}</p>}
+          {tab === 'map' && <p className="mx-5 mt-3 text-[12px] leading-relaxed text-muted">{t('mapNote')}</p>}
 
-          <div className="scroll-thin grid max-h-[56vh] grid-cols-4 gap-3 overflow-y-auto p-5">
+          <div className={`scroll-thin grid max-h-[56vh] gap-3 overflow-y-auto p-5 ${tab === 'map' ? 'grid-cols-2' : 'grid-cols-4'}`}>
             {items.map((item) => {
               const count = ownedCount(account?.inventory, item.id);
               const owned = count > 0;
               const canBuyMore = count < item.max;
-              const wearing = item.kind === 'accessory' ? player.appearance[accessorySlot(item.value)] === item.value : item.kind === 'color' ? player.appearance.topColor === item.value : false;
+              const wearing =
+                item.kind === 'accessory'
+                  ? player.appearance[accessorySlot(item.value)] === item.value
+                  : item.kind === 'color'
+                    ? player.appearance.topColor === item.value
+                    : item.kind === 'map' && office === item.value;
               return (
                 <div key={item.id} className={`flex flex-col items-center rounded-lg bg-panel-2 p-3 ring-1 ${justBought === item.id ? 'ring-amber' : 'ring-line'}`}>
-                  <div className="grid h-[84px] w-full place-items-center rounded-md bg-ink/40">
-                    {item.kind === 'furniture' ? (
+                  <div className={`grid w-full place-items-center overflow-hidden rounded-md bg-ink/40 ${item.kind === 'map' ? 'h-[150px]' : 'h-[84px]'}`}>
+                    {item.kind === 'map' ? (
+                      <img src={mapThumb(item.value as OfficeTheme)} alt="" className="pixelated h-full w-full object-cover" />
+                    ) : item.kind === 'furniture' ? (
                       <img src={furnitureThumb(item.value)} alt="" className="pixelated h-[64px] w-auto" />
                     ) : (
                       <Portrait appearance={withItem(player.appearance, item)} size={72} />
@@ -170,7 +204,7 @@ export function ShopDialog() {
                       title={item.kind === 'furniture' && inLobby ? t('placeFromOffice') : undefined}
                       className="mt-2 w-full rounded-md px-2 py-1 text-[12px] ring-1 ring-line-strong hover:bg-panel-3 disabled:opacity-50"
                     >
-                      {item.kind === 'furniture' ? t('place') : wearing ? t('wearing') : t('wear')}
+                      {item.kind === 'furniture' ? t('place') : item.kind === 'map' ? (wearing ? t('mapInUse') : t('useMap')) : wearing ? t('wearing') : t('wear')}
                     </button>
                   ) : (
                     <button

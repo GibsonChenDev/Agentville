@@ -29,12 +29,12 @@ export function normalizeRecoveryCode(input: string): string | null {
 
 // ───────────────────────────────── shop
 
-export type ItemKind = 'accessory' | 'color' | 'furniture';
+export type ItemKind = 'accessory' | 'color' | 'furniture' | 'map';
 
 export interface CatalogItem {
   id: string;
   kind: ItemKind;
-  /** Accessory id, outfit colour id or furniture kind it unlocks. */
+  /** Accessory id, outfit colour id, furniture kind or office theme it unlocks. */
   value: string;
   price: number;
   /**
@@ -46,6 +46,7 @@ export interface CatalogItem {
 
 const look = (kind: 'accessory' | 'color', value: string, price: number): CatalogItem => ({ id: `${kind === 'accessory' ? 'acc' : 'color'}.${value}`, kind, value, price, max: 1 });
 const deco = (value: string, price: number, max: number): CatalogItem => ({ id: `deco.${value}`, kind: 'furniture', value, price, max });
+const map = (value: string, price: number): CatalogItem => ({ id: `map.${value}`, kind: 'map', value, price, max: 1 });
 
 /** Everything that can be bought. Basic looks and furniture stay free. */
 export const CATALOG: readonly CatalogItem[] = [
@@ -53,12 +54,15 @@ export const CATALOG: readonly CatalogItem[] = [
   look('accessory', 'bow', 160),
   look('accessory', 'sunglasses', 220),
   look('accessory', 'party_hat', 240),
+  look('accessory', 'heart_glasses', 280),
   look('accessory', 'cat_ears', 300),
   look('accessory', 'bunny_ears', 320),
   look('accessory', 'chef_hat', 360),
   look('accessory', 'santa_hat', 380),
   look('accessory', 'antenna', 420),
+  look('accessory', 'cowboy_hat', 420),
   look('accessory', 'devil_horns', 450),
+  look('accessory', 'pirate_hat', 480),
   look('accessory', 'wizard_hat', 500),
   look('accessory', 'top_hat', 550),
   look('accessory', 'viking', 650),
@@ -78,7 +82,9 @@ export const CATALOG: readonly CatalogItem[] = [
   deco('lava_lamp', 120, 5),
   deco('gumball', 140, 3),
   deco('globe', 180, 3),
+  deco('guitar', 220, 2),
   deco('trophy', 250, 3),
+  deco('popcorn', 260, 2),
   deco('telescope', 260, 2),
   deco('dino', 280, 3),
   deco('cat', 350, 2),
@@ -88,12 +94,16 @@ export const CATALOG: readonly CatalogItem[] = [
   deco('vending', 480, 2),
   deco('jukebox', 500, 1),
   deco('robot', 600, 2),
+  deco('claw_machine', 600, 1),
   deco('aquarium', 650, 2),
   deco('treadmill', 700, 2),
+  deco('hammock', 750, 1),
   deco('fireplace', 800, 1),
   deco('ping_pong', 900, 1),
   deco('piano', 1200, 1),
   deco('dice_table', 300, 2),
+  map('sakura', 2000),
+  map('space', 2500),
 ];
 
 /** How many of `itemId` this inventory holds (decorations can be owned more than once). */

@@ -49,13 +49,13 @@ describe('office layout editing', () => {
   });
 
   it('adds desks as new workstations and can flip their facing', () => {
-    const r = addFurniture(loft, 'desk', 14, 15);
+    const r = addFurniture(loft, 'desk', 2, 13);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const added = r.scene.workstations.at(-1)!;
-    expect(added).toMatchObject({ facing: 'up', seat: { x: 14, y: 16 } });
+    expect(added).toMatchObject({ facing: 'up', seat: { x: 2, y: 14 } });
     const flipped = setDeskFacing(r.scene, added.deskId, 'down');
-    expect(flipped.ok && flipped.scene.workstations.at(-1)!.seat).toEqual({ x: 14, y: 14 });
+    expect(flipped.ok && flipped.scene.workstations.at(-1)!.seat).toEqual({ x: 2, y: 12 });
   });
 
   it('removes furniture and their workstations, but never the last desk', () => {
@@ -70,7 +70,7 @@ describe('office layout editing', () => {
   });
 
   it('round-trips through the stored document and rejects tampering', () => {
-    const r = addFurniture(loft, 'plant_monstera', 14, 16);
+    const r = addFurniture(loft, 'plant_monstera', 20, 18);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const doc = JSON.parse(JSON.stringify(toLayoutDoc(r.scene)));

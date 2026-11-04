@@ -5,7 +5,8 @@
   "offline": "Can't reach the server right now. Coins and purchases will be back when you're online.",
   "tab": {
     "look": "Looks",
-    "decor": "Office decor"
+    "decor": "Office decor",
+    "map": "Maps"
   },
   "colorItem": "{{color}} outfit colour",
   "wear": "Wear it",
@@ -53,5 +54,8 @@
   },
   "ownedOf": "Owned {{count}} / {{max}}",
   "buyAnother": "Buy another copy",
-  "limitNote": "Limits per person: looks 1 each; decorations 1–5 copies."
+  "limitNote": "Limits per person: looks and maps 1 each; decorations 1–5 copies.",
+  "mapNote": "Hidden maps: each comes with its own floor, walls and window view, 16 desks and a few shop decorations already in place. In a team office it changes only what you see.",
+  "useMap": "Use this map",
+  "mapInUse": "In use"
 }

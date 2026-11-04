@@ -12,23 +12,31 @@ export const FACES = ['smile', 'calm', 'focused', 'cheerful'] as const;
  * underwear (and a bandeau on women's characters when the top is off).
  * Auto-generated looks never pick 'none'.
  */
-const TOP_STYLES = ['hoodie', 'tee', 'shirt', 'blazer', 'sweater', 'vest', 'polo', 'suit', 'blouse', 'cardigan', 'camisole', 'dress'] as const;
-const BOTTOM_STYLES = ['jeans', 'chinos', 'skirt', 'shorts', 'joggers', 'cargo', 'pleated'] as const;
-const SHOE_STYLES = ['sneakers', 'boots', 'loafers', 'hightops'] as const;
+/**
+ * Styles auto-generated looks pick from, in their original order: a look is
+ * picked by position, so adding a style here would change every existing
+ * agent's clothes. New styles go in the lists below, for people to choose.
+ */
+const SEED_TOP_STYLES = ['hoodie', 'tee', 'shirt', 'blazer', 'sweater', 'vest', 'polo', 'suit', 'blouse', 'cardigan', 'camisole', 'dress'] as const;
+const SEED_BOTTOM_STYLES = ['jeans', 'chinos', 'skirt', 'shorts', 'joggers', 'cargo', 'pleated'] as const;
+const SEED_SHOE_STYLES = ['sneakers', 'boots', 'loafers', 'hightops'] as const;
+const TOP_STYLES = [...SEED_TOP_STYLES, 'tank', 'turtleneck', 'jersey', 'lab_coat'] as const;
+const BOTTOM_STYLES = [...SEED_BOTTOM_STYLES, 'ripped', 'leggings', 'maxi'] as const;
+const SHOE_STYLES = [...SEED_SHOE_STYLES, 'sandals', 'heels'] as const;
 export const TOPS = ['none', ...TOP_STYLES] as const;
 export const BOTTOMS = ['none', ...BOTTOM_STYLES] as const;
 export const SHOES = ['none', ...SHOE_STYLES] as const;
 /** Head, face and neck are separate slots, so glasses go with a hat and a scarf. `accessory` is the head slot. */
-const BASE_ACCESSORIES = ['none', 'headphones', 'cap', 'beanie'] as const;
-const BASE_EYEWEAR = ['none', 'glasses'] as const;
-export const NECKWEAR = ['none', 'scarf', 'lanyard'] as const;
+const BASE_ACCESSORIES = ['none', 'headphones', 'cap', 'beanie', 'beret', 'bucket_hat', 'headband'] as const;
+const BASE_EYEWEAR = ['none', 'glasses', 'round_glasses'] as const;
+export const NECKWEAR = ['none', 'scarf', 'lanyard', 'bowtie', 'necklace'] as const;
 /** Looks drawn before head/face/neck were separate slots, in their original order (keeps seeded looks unchanged). */
 const LEGACY_BASE_ACCESSORIES = ['none', 'glasses', 'headphones', 'cap', 'beanie', 'scarf', 'lanyard'] as const;
 const BASE_OUTFIT_COLORS = ['coral', 'mustard', 'sage', 'teal', 'navy', 'plum', 'charcoal', 'cream', 'denim', 'forest'] as const;
 /** Bought in the shop (see CATALOG in team-protocol); never chosen for auto-generated looks. */
-export const PREMIUM_ACCESSORIES = ['flower', 'cat_ears', 'wizard_hat', 'crown', 'bow', 'party_hat', 'bunny_ears', 'chef_hat', 'santa_hat', 'antenna', 'devil_horns', 'top_hat', 'viking', 'halo'] as const;
+export const PREMIUM_ACCESSORIES = ['flower', 'cat_ears', 'wizard_hat', 'crown', 'bow', 'party_hat', 'bunny_ears', 'chef_hat', 'santa_hat', 'antenna', 'devil_horns', 'top_hat', 'viking', 'halo', 'cowboy_hat', 'pirate_hat'] as const;
 export const PREMIUM_OUTFIT_COLORS = ['neon', 'gold', 'sakura', 'mint', 'sky', 'lavender', 'ruby', 'onyx'] as const;
-export const PREMIUM_EYEWEAR = ['sunglasses'] as const;
+export const PREMIUM_EYEWEAR = ['sunglasses', 'heart_glasses'] as const;
 export const ACCESSORIES = [...BASE_ACCESSORIES, ...PREMIUM_ACCESSORIES] as const;
 export const EYEWEAR = [...BASE_EYEWEAR, ...PREMIUM_EYEWEAR] as const;
 export const OUTFIT_COLORS = [...BASE_OUTFIT_COLORS, ...PREMIUM_OUTFIT_COLORS] as const;
@@ -87,7 +95,7 @@ export function splitLegacyAccessory(accessory: string): Pick<CharacterAppearanc
 export const STYLE_GENDER: { hairStyle: Partial<Record<HairStyle, Gender>>; top: Partial<Record<Top, Gender>>; bottom: Partial<Record<Bottom, Gender>> } = {
   hairStyle: { short: 'male', buzz: 'male', mohawk: 'male', undercut: 'male', bob: 'female', long: 'female', bun: 'female', ponytail: 'female', twintails: 'female' },
   top: { shirt: 'male', blazer: 'male', vest: 'male', polo: 'male', suit: 'male', blouse: 'female', cardigan: 'female', camisole: 'female', dress: 'female' },
-  bottom: { chinos: 'male', cargo: 'male', skirt: 'female', pleated: 'female' },
+  bottom: { chinos: 'male', cargo: 'male', skirt: 'female', pleated: 'female', leggings: 'female', maxi: 'female' },
 };
 
 export type GenderedField = keyof typeof STYLE_GENDER;
@@ -98,10 +106,18 @@ export function styleGender(field: GenderedField, value: string): Gender | 'any'
 }
 
 const LISTS = { hairStyle: HAIR_STYLES, top: TOP_STYLES, bottom: BOTTOM_STYLES } as const;
+const SEED_LISTS = { hairStyle: HAIR_STYLES, top: SEED_TOP_STYLES, bottom: SEED_BOTTOM_STYLES } as const;
+
+const suits = (field: GenderedField, gender: Gender) => (v: string) => styleGender(field, v) !== (gender === 'male' ? 'female' : 'male');
 
 /** The styles that suit a gender by default: its own plus the unisex ones (never 'none'). */
 export function stylesFor<F extends GenderedField>(field: F, gender: Gender): CharacterAppearance[F][] {
-  return (LISTS[field] as readonly string[]).filter((v) => styleGender(field, v) !== (gender === 'male' ? 'female' : 'male')) as CharacterAppearance[F][];
+  return (LISTS[field] as readonly string[]).filter(suits(field, gender)) as CharacterAppearance[F][];
+}
+
+/** Like stylesFor, from the styles auto-generated looks use (see SEED_TOP_STYLES). */
+function seedStylesFor<F extends GenderedField>(field: F, gender: Gender): CharacterAppearance[F][] {
+  return (SEED_LISTS[field] as readonly string[]).filter(suits(field, gender)) as CharacterAppearance[F][];
 }
 
 const DEFAULT_STYLE: Record<Gender, Pick<CharacterAppearance, GenderedField>> = {
@@ -153,15 +169,15 @@ export function appearanceFromSeed(seed: string): CharacterAppearance {
   const gender = pick(GENDERS);
   return {
     gender,
-    hairStyle: pick(stylesFor('hairStyle', gender)),
+    hairStyle: pick(seedStylesFor('hairStyle', gender)),
     hairColor: pick(HAIR_COLORS),
     skin: pick(SKIN_TONES),
     face: pick(FACES),
-    top: pick(stylesFor('top', gender)),
+    top: pick(seedStylesFor('top', gender)),
     topColor: pick(BASE_OUTFIT_COLORS),
-    bottom: pick(stylesFor('bottom', gender)),
+    bottom: pick(seedStylesFor('bottom', gender)),
     bottomColor: pick(['denim', 'charcoal', 'navy', 'cream', 'forest'] as const),
-    shoes: pick(SHOE_STYLES),
+    shoes: pick(SEED_SHOE_STYLES),
     shoesColor: pick(['charcoal', 'cream', 'coral', 'navy'] as const),
     ...slotsFor(pick(LEGACY_BASE_ACCESSORIES)),
     equipment: pick(EQUIPMENT),

@@ -92,3 +92,17 @@ describe('clothing slots', () => {
     expect(accessorySlot('crown')).toBe('accessory');
   });
 });
+
+describe('auto-generated looks', () => {
+  it('stay the same when new styles are added (they are picked by position)', () => {
+    // Recorded before the tank top, turtleneck, jersey, lab coat, ripped jeans, leggings, maxi skirt, sandals, heels, beret, bucket hat, headband, round glasses, bow tie and necklace were added.
+    const before: Record<string, CharacterAppearance> = {
+      "ext-abc": {"gender": "male", "hairStyle": "mohawk", "hairColor": "black", "skin": "olive", "face": "calm", "top": "sweater", "topColor": "sage", "bottom": "cargo", "bottomColor": "navy", "shoes": "hightops", "shoesColor": "charcoal", "accessory": "none", "eyewear": "none", "neckwear": "scarf", "equipment": "monitor"},
+      "ext-codex-01a1": {"gender": "male", "hairStyle": "curly", "hairColor": "silver", "skin": "tan", "face": "focused", "top": "polo", "topColor": "coral", "bottom": "jeans", "bottomColor": "forest", "shoes": "boots", "shoesColor": "charcoal", "accessory": "none", "eyewear": "none", "neckwear": "lanyard", "equipment": "desktop_tower"},
+      "agent-7": {"gender": "female", "hairStyle": "long", "hairColor": "teal", "skin": "light", "face": "cheerful", "top": "tee", "topColor": "mustard", "bottom": "skirt", "bottomColor": "navy", "shoes": "boots", "shoesColor": "charcoal", "accessory": "headphones", "eyewear": "none", "neckwear": "none", "equipment": "debug_rig"},
+      "x": {"gender": "female", "hairStyle": "bob", "hairColor": "blonde", "skin": "deep", "face": "calm", "top": "cardigan", "topColor": "forest", "bottom": "shorts", "bottomColor": "navy", "shoes": "boots", "shoesColor": "cream", "accessory": "beanie", "eyewear": "none", "neckwear": "none", "equipment": "desktop_tower"},
+      "sub-1/2": {"gender": "male", "hairStyle": "buzz", "hairColor": "rose", "skin": "porcelain", "face": "focused", "top": "hoodie", "topColor": "teal", "bottom": "shorts", "bottomColor": "charcoal", "shoes": "hightops", "shoesColor": "coral", "accessory": "headphones", "eyewear": "none", "neckwear": "none", "equipment": "dual_monitor"},
+    };
+    for (const [seed, look] of Object.entries(before)) expect(appearanceFromSeed(seed), seed).toEqual(look);
+  });
+});

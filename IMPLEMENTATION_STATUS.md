@@ -47,6 +47,33 @@ A desktop app for **macOS 12+ and Windows 10/11** that shows the Claude Code ses
 - Code signing (needs an Apple Developer ID and a Windows code-signing certificate) — see docs/RELEASE.md.
 - Accessibility audit, measured frame rate, UI/E2E screenshot tests.
 
+## Hidden maps from the shop; saving layouts for every map (2026-11-04)
+
+- **Two hidden maps**: Sakura Tea Room (`sakura`, 2,000 coins; tatami floor, shoji walls, Mount Fuji and cherry trees outside) and Orbital Space Station (`space`, 2,500; riveted deck plates, hull panels with a lit conduit, stars and a ringed planet outside). Each has 16 desks and comes with some shop decorations already in place (koi tank, bonsai, piano, cat / telescope, vending machine, robot, claw machine, lava lamp, globe); those don't count against what you bought. They're the dearest items in the shop (one each, `PREMIUM_THEMES`, catalog kind `map`).
+- **Locked until bought**: the map list shows them greyed with 🔒 and the price; picking one opens the shop's new **Maps** tab, which previews the whole map and has "Use this map" once bought. In a team office it only changes your own view, so the relay needs nothing beyond selling them.
+- **Fixed — edited layouts of the Garden and Seaside maps weren't saved on the desktop**: the local database only accepted the first three themes (a `CHECK` and a hard-coded list). Migration v3 rebuilds the table without the list, keeping saved layouts; themes are now checked by shape, so a new map never needs a migration.
+
+| Check | Result |
+|---|---|
+| Vitest / typecheck / i18n parity / relay typecheck | ✅ 288 passed (new: hidden maps sold, priced above every decoration, locked until bought) / ✅ / ✅ / ✅ |
+| `cargo test` / clippy | ✅ 43 + 2 passed (new: upgrading an old database keeps layouts and accepts every theme) / ✅ 0 warnings |
+| Browser pane | ✅ map list shows both locked with prices; clicking one opens the Maps tab with previews; both maps rendered in the office (lighting, windows, decorations) |
+| Not verified | Buying a map through the deployed relay (it learns the new items when main is deployed) |
+
+## 16 desks, more furniture and clothes, editor fix in WebKit, 30-minute idle (2026-11-04)
+
+- **16 desks in every built-in office** (was 10): a new six-desk pod in the Loft and Midnight Lab, a wider bottom pod and two desks under the wall whiteboard in the Studio, wider pods in the Garden, a third column and a new pod in the Seaside house. A few plants, a lamp and the Garden dice table moved. Offices someone already edited (and team offices with a saved layout) keep their layout; "reset to default" in the editor brings the new one.
+- **Furniture**: free printer, filing cabinet, coat rack and bike; in the shop a guitar (220), popcorn cart (260), claw machine (600, glows) and hammock (750).
+- **Clothes**: tank top, turtleneck, jersey (with a number), lab coat; ripped jeans, leggings, maxi skirt; sandals, heels; beret, bucket hat, headband; round glasses; bow tie, necklace. In the shop: heart glasses (280), cowboy hat (420), pirate hat (480). Auto-generated looks still pick from the original styles only (`SEED_*` lists), so existing agents keep their clothes (pinned by a test).
+- **Character editors in the desktop app**: the body used `flex-1` in a dialog with only a max height; WebKit (the macOS app) sized it to 0, so the dialog collapsed to its header and buttons. It's `flex-auto` now, checked in a real WKWebView at 1280×800 and 1100×560 and in Chromium.
+- **Idle agents leave after 30 quiet minutes** (was 60); they come back on the next prompt.
+
+| Check | Result |
+|---|---|
+| Vitest / typecheck / i18n parity | ✅ 283 passed / ✅ / ✅ |
+| Browser pane | ✅ sprite sheets of every new top, bottom, shoe and accessory (front, walk, side, back, seated); the 8 new furniture sprites; Loft and Seaside with 16 desks |
+| Not verified | Buying the new shop items through the deployed relay (it learns them when main is deployed) |
+
 ## Office editor framing, drag yourself, walk-in seats (2026-11-04)
 
 - **Office editor no longer hides the bottom of the map**: the camera is framed above the editor panel (`OfficeWorld.setBottomInset`, fed by the panel's measured height), so the last rows can be scrolled into view and decorated. Before, the camera stayed centred on the whole canvas and couldn't pan far enough when the panel covered it.

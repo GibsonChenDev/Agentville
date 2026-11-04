@@ -10,8 +10,6 @@ use std::path::Path;
 use std::sync::Mutex;
 
 const MAX_DOC_BYTES: usize = 256 * 1024;
-const THEMES: [&str; 3] = ["loft", "studio", "midnight"];
-
 /// Ordered migrations; index + 1 is the schema version.
 const MIGRATIONS: &[&str] = &[
     "CREATE TABLE agent_profiles (
@@ -39,6 +37,17 @@ const MIGRATIONS: &[&str] = &[
      );
      CREATE INDEX events_at ON events (at);
      CREATE INDEX sessions_last_seen ON sessions (last_seen);",
+    // v3: any office theme. v1 only allowed the first three, so layouts edited in
+    // newer maps (garden, seaside, …) couldn't be saved. Themes are checked by
+    // shape in `validate_theme` instead, so a new map never needs a migration.
+    "CREATE TABLE office_layouts_v3 (
+        theme TEXT PRIMARY KEY NOT NULL,
+        doc TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+     );
+     INSERT INTO office_layouts_v3 (theme, doc, updated_at) SELECT theme, doc, updated_at FROM office_layouts;
+     DROP TABLE office_layouts;
+     ALTER TABLE office_layouts_v3 RENAME TO office_layouts;",
 ];
 
 /// How long observed history is kept.
@@ -270,8 +279,10 @@ fn validate_key(key: &str) -> Result<(), String> {
     ok.then_some(()).ok_or_else(|| "invalid_key".into())
 }
 
+/// An office theme id as the app and the relay write it: lowercase letters, digits, `_` and `-`.
 fn validate_theme(theme: &str) -> Result<(), String> {
-    THEMES.contains(&theme).then_some(()).ok_or_else(|| "invalid_theme".into())
+    let ok = !theme.is_empty() && theme.len() <= 24 && theme.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-');
+    ok.then_some(()).ok_or_else(|| "invalid_theme".into())
 }
 
 fn validate_doc(doc: &str) -> Result<(), String> {
@@ -310,14 +321,37 @@ mod tests {
     }
 
     #[test]
-    fn stores_layouts_per_known_theme_only() {
+    fn stores_layouts_per_theme() {
         let db = Db::memory();
         db.put_layout("loft", r#"{"furniture":[]}"#, 5).unwrap();
         assert_eq!(db.layout("loft").unwrap().unwrap().updated_at, 5);
         assert!(db.layout("studio").unwrap().is_none());
-        assert_eq!(db.put_layout("castle", "{}", 1).unwrap_err(), "invalid_theme");
+        // Maps added after the first release, including ones bought in the shop.
+        for theme in ["garden", "seaside", "sakura", "space"] {
+            db.put_layout(theme, "{}", 6).unwrap();
+        }
+        for bad in ["", "Loft", "../x", "a b", "x".repeat(25).as_str()] {
+            assert_eq!(db.put_layout(bad, "{}", 1).unwrap_err(), "invalid_theme", "{bad:?}");
+        }
         db.delete_layout("loft").unwrap();
-        assert!(db.layouts().unwrap().is_empty());
+        assert_eq!(db.layouts().unwrap().len(), 4);
+    }
+
+    #[test]
+    fn upgrading_keeps_saved_layouts_and_allows_every_theme() {
+        // A database from before v3, with a layout saved.
+        let conn = Connection::open_in_memory().unwrap();
+        for sql in &MIGRATIONS[..2] {
+            conn.execute_batch(sql).unwrap();
+        }
+        conn.pragma_update(None, "user_version", 2).unwrap();
+        conn.execute("INSERT INTO office_layouts (theme, doc, updated_at) VALUES ('studio', '{}', 3)", []).unwrap();
+        assert!(conn.execute("INSERT INTO office_layouts (theme, doc, updated_at) VALUES ('garden', '{}', 3)", []).is_err());
+        let db = Db::init(conn).unwrap();
+        assert_eq!(db.schema_version(), MIGRATIONS.len() as i64);
+        assert_eq!(db.layout("studio").unwrap().unwrap().updated_at, 3);
+        db.put_layout("garden", "{}", 4).unwrap();
+        assert_eq!(db.layout("garden").unwrap().unwrap().updated_at, 4);
     }
 
     #[test]

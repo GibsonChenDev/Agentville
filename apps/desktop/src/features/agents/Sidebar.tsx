@@ -13,6 +13,8 @@ import { ProviderBadge } from './ProviderBadge';
 import { TeamPanel } from '../team/TeamPanel';
 import { chooseOfficeTheme, useOfficeStyle } from '../../world/officeTheme';
 import { useTeam } from '../../team/teamStore';
+import { mapLocked, useAccount } from '../../account/accountStore';
+import { itemFor } from '@agentville/team-protocol';
 import { StatusDot } from './StatusDot';
 import { AgentChips, ConflictWarnings, ObservedTasks, projectKey, projectLabel, sharedTreeCount } from './TeamPanels';
 
@@ -45,6 +47,7 @@ export function Sidebar() {
   const width = useApp((s) => s.prefs.sidebarWidth);
   const mode = useApp((s) => s.mode);
   const editing = useEditor((s) => s.active);
+  const inventory = useAccount((s) => s.account?.inventory);
   const [showDeparted, setShowDeparted] = useState(false);
   const { select, toggleSettings } = useApp.getState();
 
@@ -80,22 +83,29 @@ export function Sidebar() {
         <SectionTitle>{t('sidebar.office')}</SectionTitle>
         {inTeamOffice && <p className="-mt-1 mb-1.5 px-4 text-[11px] leading-snug text-faint">{t('office:styleOnlyYou')}</p>}
         <div className="mb-4 grid gap-1.5 px-2" role="radiogroup" aria-label={t('sidebar.office')}>
-          {OFFICE_THEMES.map((id) => (
-            <button
-              key={id}
-              role="radio"
-              aria-checked={theme === id}
-              disabled={editing && theme !== id}
-              onClick={() => chooseOfficeTheme(id)}
-              className={`group flex items-center gap-2.5 rounded-md p-1.5 text-left transition-colors ${theme === id ? 'bg-panel-3 ring-1 ring-amber/60' : 'hover:bg-panel-2'} disabled:opacity-40`}
-            >
-              <img src={themeThumb(id)} alt="" className="pixelated h-[30px] w-[45px] shrink-0 rounded-[3px] object-cover" />
-              <span className="min-w-0 text-[12.5px] leading-tight">
-                <span className="block truncate">{t(`office:themeShort.${id}`)}</span>
-                <span className="block truncate text-[11px] text-faint">{t(`office:theme.${id}`)}</span>
-              </span>
-            </button>
-          ))}
+          {OFFICE_THEMES.map((id) => {
+            // Maps sold in the shop show their price until bought; picking one opens the shop.
+            const locked = mapLocked(inventory, id);
+            const price = itemFor('map', id)?.price;
+            return (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={theme === id}
+                disabled={editing && theme !== id}
+                onClick={() => chooseOfficeTheme(id)}
+                title={locked ? t('office:mapLocked', { price: price?.toLocaleString() }) : undefined}
+                className={`group flex items-center gap-2.5 rounded-md p-1.5 text-left transition-colors ${theme === id ? 'bg-panel-3 ring-1 ring-amber/60' : 'hover:bg-panel-2'} disabled:opacity-40`}
+              >
+                <img src={themeThumb(id)} alt="" className={`pixelated h-[30px] w-[45px] shrink-0 rounded-[3px] object-cover ${locked ? 'opacity-50 grayscale' : ''}`} />
+                <span className="min-w-0 flex-1 text-[12.5px] leading-tight">
+                  <span className="block truncate">{t(`office:themeShort.${id}`)}</span>
+                  <span className="block truncate text-[11px] text-faint">{price ? t('office:premiumMap') : t(`office:theme.${id}`)}</span>
+                </span>
+                {locked && <span className="shrink-0 rounded bg-amber/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber tabular-nums">🔒 {price?.toLocaleString()}</span>}
+              </button>
+            );
+          })}
         </div>
 
         <SectionTitle aside={rosterCount ? t('agents:roster.count', { count: rosterCount }) : undefined}>{t('sidebar.team')}</SectionTitle>

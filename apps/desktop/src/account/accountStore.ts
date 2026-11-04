@@ -18,6 +18,8 @@ interface AccountState {
   status: AccountStatus;
   error?: TeamApiError['code'];
   shopOpen: boolean;
+  /** The shop tab to show when it opens (e.g. maps, from a locked map). */
+  shopTab?: ShopTab;
   /** Last coin gain, for the wallet's "+N" flash. */
   lastGain?: { amount: number; at: number };
   start: () => Promise<void>;
@@ -29,8 +31,10 @@ interface AccountState {
   earn: (turns: number, tools: number) => Promise<number>;
   /** One round at the dice table; the server rolls and settles the coins. */
   playDice: (game: DiceGame, bet: number, pick?: DicePick) => Promise<DiceResult>;
-  openShop: (open: boolean) => void;
+  openShop: (open: boolean, tab?: ShopTab) => void;
 }
+
+export type ShopTab = 'look' | 'decor' | 'map';
 
 const KEY = 'agentville.account.v1';
 
@@ -175,7 +179,7 @@ export const useAccount = create<AccountState>((set, get) => {
       return r.result;
     },
 
-    openShop: (shopOpen) => set({ shopOpen }),
+    openShop: (shopOpen, shopTab) => set({ shopOpen, shopTab }),
   };
 });
 
@@ -201,6 +205,11 @@ export function placementAllowance(inventory: readonly string[] | undefined, kin
 
 /** Short, non-secret tag for furniture you place (the start of your account id). */
 export const ownerTag = (accountId: string | undefined) => (accountId ? accountId.slice(0, 8) : undefined);
+
+/** A map sold in the shop that this inventory doesn't hold (the free maps are never locked). */
+export function mapLocked(inventory: readonly string[] | undefined, theme: string): boolean {
+  return !!itemFor('map', theme) && !owns(inventory, 'map', theme);
+}
 
 /** Appearance fields whose options are sold in the shop. */
 export function lockedOption(inventory: readonly string[] | undefined, field: keyof CharacterAppearance, value: string): boolean {

@@ -9,7 +9,7 @@ describe('waiting spots (more agents than desks)', () => {
   for (const scene of Object.values(DEFAULT_SCENES)) {
     it(`${scene.theme}: room for a crowd, all reachable and out of everyone's way`, () => {
       const spots = waitingSpots(scene);
-      // Far more than the 32 agents one person can have, beyond the ~10 desks.
+      // Far more than the 32 agents one person can have, beyond the 16 desks.
       expect(spots.length).toBeGreaterThan(60);
       expect(new Set(spots.map((p) => `${p.x},${p.y}`)).size).toBe(spots.length);
 

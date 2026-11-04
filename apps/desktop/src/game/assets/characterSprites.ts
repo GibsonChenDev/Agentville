@@ -59,6 +59,8 @@ interface Resolved {
 
 /** Plain underwear, shown when the bottoms (briefs) or, on women's characters, the top (bandeau) are off. */
 const UNDERWEAR = '#ebe5da';
+/** A lab coat is always white; the chosen top colour shows underneath. */
+const LAB_COAT = '#eef0f2';
 
 function resolve(a: CharacterAppearance): Resolved {
   return { skin: SKIN[a.skin], hair: HAIR[a.hairColor], top: OUTFIT[a.topColor], bottom: OUTFIT[a.bottomColor], shoes: OUTFIT[a.shoesColor], a };
@@ -102,11 +104,13 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   const b2 = shade(bottom, -0.32);
   const top = 26 + dy;
   const legLen = 7;
-  // A dress's skirt replaces whatever is chosen below; a pleated skirt is a skirt with pleats.
+  // A dress's skirt replaces whatever is chosen below; pleated and maxi skirts are skirts too.
   const dress = r.a.top === 'dress';
-  const kind = dress || r.a.bottom === 'pleated' ? 'skirt' : r.a.bottom;
+  const maxi = !dress && r.a.bottom === 'maxi';
+  const kind = dress || r.a.bottom === 'pleated' || maxi ? 'skirt' : r.a.bottom;
   const skirt = dress ? r.top : b0;
-  const skirtLen = dress ? 5 : 4;
+  // A maxi skirt reaches the ankles.
+  const skirtLen = dress ? 5 : maxi ? legLen : 4;
   const u1 = shade(UNDERWEAR, -0.16);
   /** Briefs over the hips, `w` wide from `x`. */
   const briefs = (x: number, w: number, rows: number) => {
@@ -145,8 +149,13 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       const short = kind === 'shorts' || kind === 'skirt';
       pc.rect(lx, top, 4, short ? 3 : legLen, col);
       if (short) pc.rect(lx + 1, top + 3, 2, legLen - 3, shade(skin, col === b2 ? -0.2 : 0));
-      pc.rect(lx - 1, top + legLen, 5, 2, col === b2 ? shade(shoes, -0.25) : shoes);
+      const shoe = col === b2 ? shade(shoes, -0.25) : shoes;
+      if (r.a.shoes === 'sandals') {
+        pc.rect(lx - 1, top + legLen, 5, 2, shade(skin, col === b2 ? -0.2 : 0));
+        pc.hline(lx, top + legLen + 1, 3, shoe);
+      } else pc.rect(lx - 1, top + legLen, 5, 2, shoe);
       pc.hline(lx - 1, top + legLen + 2, 5, shade(shoes, -0.4));
+      if (r.a.shoes === 'heels') pc.px(lx + 3, top + legLen + 2, shade(shoes, -0.2)); // the heel, at the back
     }
     if (kind === 'skirt') pc.rect(8, top, 8, skirtLen, skirt);
     briefs(9, 6, 2);
@@ -166,14 +175,33 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.rect(x + 1, top + 3, 2, h - 3, skin);
     } else {
       pc.rect(x, top, 4, h, b0);
-      pc.vline(inner, top + 2, h - 2, b1);
-      if (kind === 'jeans') pc.px(x + (inner === x ? 3 : 0), top + h - 1, shade(b0, 0.15));
+      if (kind === 'leggings') pc.vline(inner === x ? x + 1 : x + 2, top + 1, h - 2, shade(b0, 0.14)); // a sheen instead of a seam
+      else pc.vline(inner, top + 2, h - 2, b1);
+      if (kind === 'jeans' || kind === 'ripped') pc.px(x + (inner === x ? 3 : 0), top + h - 1, shade(b0, 0.15));
+      if (kind === 'ripped') {
+        // Torn knees and a nick on the thigh
+        pc.hline(x + 1, top + 4, 2, skin);
+        pc.hline(x + 1, top + 5, 2, WHITE, 0.55);
+        pc.px(inner === x ? x + 2 : x + 1, top + 1, shade(skin, -0.1));
+      }
       if (kind === 'joggers') pc.hline(x, top + h - 1, 4, b1);
       if (kind === 'cargo') pc.rect(inner === x ? x : x + 3, top + 2, 1, 3, b2); // side pocket
     }
     const sy = top + h;
-    pc.rect(x - 1, sy, 5, 2, shoes);
-    pc.hline(x - 1, sy, 5, shade(shoes, 0.18));
+    if (r.a.shoes === 'sandals') {
+      // Toes and a strap on a thin sole
+      pc.rect(x - 1, sy, 5, 2, skin);
+      pc.hline(x - 1, sy, 5, shoes);
+      pc.px(x + (inner === x ? 3 : 0), sy + 1, shade(skin, -0.12));
+    } else if (r.a.shoes === 'heels') {
+      // A slim pointed shoe with a shine
+      pc.rect(x, sy, 4, 2, shoes);
+      pc.px(inner === x ? x - 1 : x + 4, sy + 1, shoes);
+      pc.px(x + 1, sy, shade(shoes, 0.35));
+    } else {
+      pc.rect(x - 1, sy, 5, 2, shoes);
+      pc.hline(x - 1, sy, 5, shade(shoes, 0.18));
+    }
     pc.hline(x - 1, sy + 2, 5, shade(shoes, -0.35));
     if (r.a.shoes === 'sneakers' || r.a.shoes === 'hightops') pc.hline(x - 1, sy + 1, 5, WHITE, 0.85);
     if (r.a.shoes === 'hightops') pc.rect(x, sy - 1, 4, 1, shoes);
@@ -187,7 +215,13 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
     pc.rect(7, top, 10, skirtLen, skirt);
     pc.hline(7, top + skirtLen - 1, 10, s1);
     if (r.a.bottom === 'pleated' && !dress) for (let i = 8; i < 17; i += 2) pc.vline(i, top + 1, skirtLen - 1, s1);
-    else {
+    else if (maxi) {
+      // Flares out at the hem, with soft folds
+      pc.hline(6, top + skirtLen - 2, 12, skirt);
+      pc.hline(6, top + skirtLen - 1, 12, s1);
+      pc.vline(10, top + 2, skirtLen - 3, s1, 0.6);
+      pc.vline(14, top + 3, skirtLen - 4, s1, 0.6);
+    } else {
       pc.px(10, top + 1, s1);
       pc.px(13, top + 1, s1);
     }
@@ -198,7 +232,8 @@ function drawLegs(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
 
 function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   const bare = r.a.top === 'none';
-  const t0 = bare ? r.skin : r.top;
+  const coat = r.a.top === 'lab_coat';
+  const t0 = bare ? r.skin : coat ? LAB_COAT : r.top;
   const t1 = shade(t0, -0.16);
   const t2 = shade(t0, -0.3);
   const hi = shade(t0, 0.14);
@@ -206,7 +241,8 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
   const side = pose.view === 'side';
   const x = side ? 9 : 7;
   const w = side ? 7 : 10;
-  const h = 10;
+  // A lab coat hangs over the hips.
+  const h = coat ? 12 : 10;
 
   pc.round(x, y, w, h, t0);
   pc.vline(x + w - 1, y + 1, h - 2, t1); // right-side shading
@@ -317,6 +353,43 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.hline(10, y, 4, t2);
       pc.hline(x + 1, y + 6, w - 2, t2);
       pc.px(11, y + 2, hi);
+    } else if (kind === 'tank') {
+      // Scoop neck and bare shoulders
+      pc.px(x, y, r.skin);
+      pc.px(x + w - 1, y, r.skin);
+      pc.rect(10, y, 4, 2, r.skin);
+      pc.hline(10, y + 2, 4, t2);
+    } else if (kind === 'turtleneck') {
+      // Rolled collar up the neck, ribbed knit
+      pc.rect(10, y - 2, 4, 3, t0);
+      pc.hline(10, y - 2, 4, hi);
+      pc.hline(10, y, 4, t1);
+      for (let i = 0; i < w - 2; i += 2) pc.vline(x + 1 + i, y + 3, 5, t1, 0.35);
+    } else if (kind === 'jersey') {
+      // V-neck, a big number and side stripes
+      const mark = shade(t0, t0 === WHITE ? -0.5 : 0.55);
+      pc.px(11, y, r.skin);
+      pc.px(12, y, r.skin);
+      pc.px(10, y, t2);
+      pc.px(13, y, t2);
+      pc.px(11, y + 1, t2);
+      pc.px(12, y + 1, t2);
+      pc.hline(10, y + 3, 4, mark);
+      pc.px(13, y + 4, mark);
+      pc.px(12, y + 5, mark);
+      pc.px(12, y + 6, mark);
+      pc.vline(x, y + 2, 6, mark, 0.6);
+      pc.vline(x + w - 1, y + 2, 6, mark, 0.6);
+    } else if (kind === 'lab_coat') {
+      // Open white coat over the chosen top, lapels, a breast pocket with a pen
+      pc.rect(11, y, 2, h - 1, r.top);
+      pc.vline(10, y, 6, t2);
+      pc.vline(13, y, 6, t2);
+      pc.vline(11, y + 6, h - 7, t1);
+      pc.rect(14, y + 3, 2, 2, t1);
+      pc.px(14, y + 2, '#3d6fb5');
+      pc.px(9, y + 8, t2);
+      pc.px(14, y + 8, t2);
     } else {
       // tee
       pc.hline(10, y, 4, t2);
@@ -329,21 +402,36 @@ function drawTorso(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number) {
       pc.hline(10, y + 2, 4, t2);
     } else if (kind === 'blazer') {
       pc.vline(12, y + 5, 4, t2);
+    } else if (kind === 'turtleneck') {
+      pc.rect(10, y - 2, 4, 3, t0);
+      pc.hline(10, y, 4, t1);
+    } else if (kind === 'jersey') {
+      // The number on the back too
+      const mark = shade(t0, t0 === WHITE ? -0.5 : 0.55);
+      pc.hline(10, y + 2, 4, mark);
+      pc.px(13, y + 3, mark);
+      pc.px(12, y + 4, mark);
+      pc.vline(12, y + 5, 2, mark);
+    } else if (kind === 'lab_coat') {
+      pc.vline(12, y + 7, h - 7, t1); // back vent
+      pc.hline(9, y, 6, t1);
     } else {
       pc.hline(9, y, 6, t1);
     }
   } else if (kind === 'hoodie') {
     pc.rect(13, y, 3, 3, t1);
+  } else if (kind === 'turtleneck') {
+    pc.rect(11, y - 2, 2, 3, t0);
   }
 }
 
 // ───────────────────────────────── arms
 
-const SHORT_SLEEVES = new Set(['tee', 'vest', 'polo', 'dress']);
-const SLEEVELESS = new Set(['camisole', 'none']);
+const SHORT_SLEEVES = new Set(['tee', 'vest', 'polo', 'dress', 'jersey']);
+const SLEEVELESS = new Set(['camisole', 'tank', 'none']);
 
 function drawArms(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number, layer: 'behind' | 'front') {
-  const sleeve = r.a.top === 'vest' ? '#ece5d6' : r.a.top === 'camisole' || r.a.top === 'none' ? r.skin : r.top;
+  const sleeve = r.a.top === 'vest' ? '#ece5d6' : r.a.top === 'lab_coat' ? LAB_COAT : SLEEVELESS.has(r.a.top) ? r.skin : r.top;
   const s1 = shade(sleeve, -0.18);
   const skin = r.skin;
   const sk1 = shade(skin, -0.14);
@@ -1102,6 +1190,134 @@ function drawAccessory(pc: PixelCanvas, r: Resolved, pose: Pose, dy: number, acc
       pc.hline(x0 + 2, y0 - 3, 8, gold);
       pc.px(x0 + 1, y0 - 4, gold);
       pc.px(x0 + 10, y0 - 4, gold);
+      return;
+    }
+    case 'beret': {
+      // A soft, tilted beret with a little stalk
+      const felt = '#a8323e';
+      pc.round(x0 - 1, y0 - 3, 12, 4, felt);
+      pc.hline(x0, y0, 11, shade(felt, -0.25));
+      pc.hline(x0 + 1, y0 - 3, 6, shade(felt, 0.18));
+      pc.px(x0 + 5, y0 - 4, shade(felt, -0.2));
+      return;
+    }
+    case 'bucket_hat': {
+      const cloth = '#c9b48a';
+      const c1 = shade(cloth, -0.18);
+      pc.rect(x0 + 1, y0 - 3, 10, 3, cloth);
+      pc.hline(x0 + 2, y0 - 3, 5, shade(cloth, 0.15));
+      pc.hline(x0 + 1, y0 - 1, 10, shade(cloth, -0.3)); // band
+      if (pose.view === 'side') pc.rect(x0 - 3, y0, 15, 2, c1);
+      else pc.rect(x0 - 1, y0, 14, 2, c1);
+      return;
+    }
+    case 'headband': {
+      const band = r.a.topColor === 'coral' ? OUTFIT.teal : '#ff5f8f';
+      if (pose.view === 'side') pc.rect(x0 + 1, y0, 9, 2, band);
+      else pc.rect(x0, y0, 12, 2, band);
+      pc.hline(x0 + 1, y0, pose.view === 'side' ? 8 : 10, shade(band, 0.2));
+      return;
+    }
+    case 'cowboy_hat': {
+      const leather = '#8a5a2b';
+      const l1 = shade(leather, -0.25);
+      pc.hline(x0 - 3, y0, 18, leather);
+      pc.hline(x0 - 2, y0 + 1, 16, l1);
+      pc.px(x0 - 3, y0 - 1, leather); // curled brim
+      pc.px(x0 + 14, y0 - 1, leather);
+      pc.rect(x0 + 2, y0 - 5, 8, 5, leather);
+      pc.hline(x0 + 2, y0 - 5, 3, shade(leather, 0.15));
+      pc.px(x0 + 6, y0 - 5, l1); // dent in the crown
+      pc.hline(x0 + 2, y0 - 1, 8, '#3d2614'); // band
+      return;
+    }
+    case 'pirate_hat': {
+      const felt = '#1c1b22';
+      const gold = '#e0b13d';
+      pc.rect(x0 - 2, y0 - 3, 16, 3, felt);
+      pc.rect(x0 + 1, y0 - 6, 10, 3, felt);
+      pc.px(x0 - 2, y0 - 4, felt);
+      pc.px(x0 + 13, y0 - 4, felt);
+      pc.hline(x0 - 2, y0 - 1, 16, gold);
+      if (pose.view !== 'back') {
+        // Skull and crossbones
+        pc.rect(x0 + 5, y0 - 5, 2, 2, WHITE);
+        pc.px(x0 + 4, y0 - 3, WHITE);
+        pc.px(x0 + 7, y0 - 3, WHITE);
+      }
+      return;
+    }
+    case 'round_glasses': {
+      if (pose.view === 'back') return;
+      const frame = '#b58a3a';
+      const ey = y0 + 5 + (pose.eyes === 'down' ? 1 : 0);
+      if (pose.view === 'side') {
+        pc.hline(x0 + 1, ey, 2, frame);
+        pc.hline(x0 + 1, ey + 3, 2, frame);
+        pc.vline(x0, ey + 1, 2, frame);
+        pc.vline(x0 + 3, ey + 1, 2, frame);
+        pc.hline(x0 + 4, ey + 1, 4, frame);
+        return;
+      }
+      for (const ex of [x0 + 1, x0 + 7]) {
+        pc.hline(ex + 1, ey, 2, frame);
+        pc.hline(ex + 1, ey + 3, 2, frame);
+        pc.vline(ex, ey + 1, 2, frame);
+        pc.vline(ex + 3, ey + 1, 2, frame);
+        pc.px(ex + 2, ey + 1, WHITE, 0.6);
+      }
+      pc.hline(x0 + 5, ey + 1, 2, frame);
+      return;
+    }
+    case 'heart_glasses': {
+      if (pose.view === 'back') return;
+      const lens = '#ff4f7a';
+      const ey = y0 + 4;
+      if (pose.view === 'side') {
+        pc.rect(x0, ey + 1, 3, 3, lens);
+        pc.hline(x0 + 3, ey + 2, 5, '#c0233f');
+        return;
+      }
+      for (const ex of [x0, x0 + 7]) {
+        pc.px(ex + 1, ey, lens);
+        pc.px(ex + 3, ey, lens);
+        pc.hline(ex, ey + 1, 5, lens);
+        pc.hline(ex + 1, ey + 2, 3, lens);
+        pc.px(ex + 2, ey + 3, lens);
+        pc.px(ex + 1, ey + 1, WHITE, 0.7);
+      }
+      return;
+    }
+    case 'bowtie': {
+      if (pose.view === 'back') return;
+      const c = r.a.topColor === 'ruby' || r.a.topColor === 'coral' ? '#1c1b22' : '#c0233f';
+      const y = 15 + dy;
+      if (pose.view === 'side') {
+        pc.rect(11, y, 2, 2, c);
+        return;
+      }
+      pc.rect(9, y, 3, 3, c);
+      pc.rect(13, y, 3, 3, c);
+      pc.rect(11, y + 1, 3, 1, shade(c, -0.3));
+      pc.px(9, y, shade(c, 0.2));
+      return;
+    }
+    case 'necklace': {
+      if (pose.view === 'back') return;
+      const gold = '#e8c25a';
+      const y = 16 + dy;
+      if (pose.view === 'side') {
+        pc.px(10, y + 1, gold);
+        pc.px(10, y + 2, gold);
+        return;
+      }
+      pc.px(9, y, gold);
+      pc.px(10, y + 1, gold);
+      pc.px(14, y, gold);
+      pc.px(13, y + 1, gold);
+      pc.hline(11, y + 2, 2, gold);
+      pc.rect(11, y + 3, 2, 2, '#5cc7e8'); // pendant
+      pc.px(11, y + 3, WHITE, 0.7);
       return;
     }
     case 'lanyard': {

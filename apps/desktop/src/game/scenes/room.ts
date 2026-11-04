@@ -68,6 +68,44 @@ function drawFloor(pc: PixelCanvas, t: ThemeStyle, W: number, H: number, wallH: 
         pc.hline(x + 1, y + 1, size - 1, shade(c, 0.08));
       }
     }
+  } else if (t.floor.kind === 'tatami') {
+    // Mats two tiles by one, laid in the traditional alternating pattern, with dark cloth borders.
+    const u = 32;
+    for (let y = y0, row = 0; y < H; y += u, row++) {
+      for (let x = 0, col = 0; x < W; x += u * 2, col++) {
+        const across = (row + col) % 2 === 0;
+        const mats = across ? [[x, y, u * 2, u]] : [[x, y, u, u], [x + u, y, u, u]];
+        for (const [mx, my, mw, mh] of mats) {
+          const c = rand() < 0.5 ? base : alt;
+          pc.rect(mx!, my!, mw!, mh!, c);
+          // woven rush: fine lines along the mat
+          for (let i = 2; i < (across ? mh! : mw!) - 1; i += 2) {
+            if (across) pc.hline(mx! + 2, my! + i, mw! - 4, shade(c, -0.06));
+            else pc.vline(mx! + i, my! + 2, mh! - 4, shade(c, -0.06));
+          }
+          pc.hline(mx!, my!, mw!, seam);
+          pc.hline(mx!, my! + mh! - 1, mw!, seam);
+          pc.hline(mx!, my! + 1, mw!, shade(seam, 0.25), 0.6);
+          pc.vline(mx!, my!, mh!, shade(c, -0.18));
+        }
+      }
+    }
+  } else if (t.floor.kind === 'metal') {
+    // Riveted deck plates with glowing seams every few panels.
+    const size = 32;
+    for (let y = y0; y < H; y += size) {
+      for (let x = 0; x < W; x += size) {
+        const c = ((x + y) / size) % 2 === 0 ? base : alt;
+        pc.rect(x, y, size, size, c);
+        // diamond tread
+        for (let j = 4; j < size - 2; j += 6) for (let i = 4 + ((j / 6) % 2) * 3; i < size - 2; i += 6) pc.px(x + i, y + j, shade(c, 0.14));
+        pc.hline(x, y, size, seam);
+        pc.vline(x, y, size, seam);
+        pc.hline(x + 1, y + 1, size - 1, shade(c, 0.1));
+        for (const [rx, ry] of [[3, 3], [size - 4, 3], [3, size - 4], [size - 4, size - 4]] as const) pc.px(x + rx, y + ry, shade(c, 0.3));
+      }
+    }
+    for (let y = y0 + size * 2; y < H; y += size * 3) pc.hline(0, y, W, t.accent, 0.45);
   } else {
     const size = 16;
     for (let y = y0; y < H; y += size) {
@@ -168,6 +206,32 @@ function drawWall(pc: PixelCanvas, t: ThemeStyle, W: number, wallH: number) {
       pc.px(x + 1, wallH - 23, '#b08850');
       pc.px(x + 2, wallH - 24, '#c9a46a');
     }
+  } else if (t.wall.kind === 'shoji') {
+    // Paper screens in dark wooden frames, a lattice of small panes.
+    for (let x = 0; x < W; x += 48) {
+      pc.rect(x, 4, 48, wallH - 10, (x / 48) % 2 ? base : alt);
+      for (let gx = x + 8; gx < x + 48; gx += 8) pc.vline(gx, 6, wallH - 14, mortar, 0.55);
+      for (let gy = 12; gy < wallH - 8; gy += 10) pc.hline(x, gy, 48, mortar, 0.55);
+      pc.rect(x, 4, 3, wallH - 10, mortar);
+      pc.vline(x + 3, 4, wallH - 10, shade(mortar, 0.2));
+    }
+    // a lacquered rail along the top
+    pc.rect(0, 4, W, 2, shade(mortar, -0.1));
+  } else if (t.wall.kind === 'hull') {
+    // Bolted hull panels with a lit conduit and status lights.
+    for (let x = 0; x < W; x += 32) {
+      pc.rect(x, 4, 32, wallH - 10, (x / 32) % 2 ? base : alt);
+      pc.vline(x, 4, wallH - 10, mortar);
+      pc.vline(x + 1, 4, wallH - 10, shade(alt, 0.12));
+      for (const ry of [8, wallH - 12]) {
+        pc.px(x + 4, ry, shade(alt, 0.35));
+        pc.px(x + 27, ry, shade(alt, 0.35));
+      }
+      if (rand() < 0.5) pc.px(x + 16, wallH - 14, rand() < 0.5 ? '#43f0d6' : '#ff5fa2');
+    }
+    pc.hline(0, wallH - 20, W, mortar);
+    pc.hline(0, wallH - 19, W, t.accent, 0.7);
+    pc.hline(0, wallH - 18, W, t.accent, 0.2);
   } else {
     for (let x = 0; x < W; x += 24) {
       pc.rect(x, 4, 24, wallH - 10, x % 48 === 0 ? base : alt);
@@ -196,6 +260,12 @@ function drawWindow(pc: PixelCanvas, t: ThemeStyle, x: number, w: number, panes:
     pc.rect(x, y + Math.floor((h * i) / bands), w, Math.ceil(h / bands) + 1, mix(skyTop, skyBottom, i / (bands - 1)));
   }
   const rand = rng(x * 13 + 5);
+  /** A horizontal run clipped to the glass. */
+  const glass = (x1: number, yy: number, len: number, c: Color, alpha?: number) => {
+    const a = Math.max(x, x1);
+    const b = Math.min(x + w, x1 + len);
+    if (b > a && yy >= y && yy < y + h) pc.hline(a, yy, b - a, c, alpha);
+  };
   if (t.window.scenery === 'city') {
     pc.round(x + 8, y + 6, 12, 4, WHITE, 0.8);
     pc.round(x + 12, y + 4, 8, 3, WHITE, 0.8);
@@ -230,6 +300,35 @@ function drawWindow(pc: PixelCanvas, t: ThemeStyle, x: number, w: number, panes:
     pc.vline(tx, y + h - 22, 10, '#6e4a30');
     pc.round(tx - 7, y + h - 32, 15, 12, '#4e8a42');
     for (let i = 0; i < 5; i++) pc.px(tx - 5 + Math.floor(rand() * 11), y + h - 30 + Math.floor(rand() * 8), '#ff7f5f');
+  } else if (t.window.scenery === 'sakura') {
+    // Mount Fuji behind cherry trees in bloom, petals drifting past.
+    const cx = x + Math.round(w * 0.45);
+    for (let i = 0; i < h - 10; i++) glass(cx - i, y + 10 + i, i * 2 + 1, i < 7 ? '#f6f8fb' : '#8aa3c4');
+    pc.rect(x, y + h - 10, w, 10, '#7fa36a');
+    for (let i = 0; i < w - 12; i += 12) {
+      const tx = x + i + Math.floor(rand() * 6);
+      pc.vline(tx + 4, y + h - 14, 8, '#5a3a2a');
+      pc.round(tx - 2, y + h - 24, 13, 11, rand() < 0.5 ? '#f6b6c8' : '#f9c8d5');
+      for (let k = 0; k < 4; k++) pc.px(tx + Math.floor(rand() * 10), y + h - 22 + Math.floor(rand() * 8), '#e889a6');
+    }
+    for (let i = 0; i < 10; i++) pc.px(x + Math.floor(rand() * w), y + Math.floor(rand() * (h - 12)), '#ffd0dc');
+  } else if (t.window.scenery === 'space') {
+    // Deep space: stars, a ringed planet and the curve of a blue world below.
+    for (let i = 0; i < 26; i++) pc.px(x + Math.floor(rand() * w), y + Math.floor(rand() * h), rand() < 0.8 ? '#e8ecff' : '#ffd27a', 0.6 + rand() * 0.4);
+    const px0 = x + Math.round(w * 0.68);
+    pc.ellipse(px0, y + 12, 6, 6, '#e7a86a');
+    pc.hline(px0 - 3, y + 10, 6, '#f5c896');
+    glass(px0 - 11, y + 13, 23, '#cfd6ff', 0.8);
+    glass(px0 - 9, y + 14, 4, '#cfd6ff', 0.6);
+    // the planet below: an ellipse whose top shows over the sill
+    const ecx = x + Math.round(w * 0.3);
+    const ecy = y + h + 18;
+    const rx = Math.round(w * 0.55);
+    for (let yy = ecy - 24; yy < y + h; yy++) {
+      const half = Math.round(rx * Math.sqrt(Math.max(0, 1 - ((yy - ecy) / 24) ** 2)));
+      glass(ecx - half, yy, half * 2, yy - (ecy - 24) < 2 ? '#7fb4ff' : '#3d86e6');
+    }
+    for (let i = 0; i < 5; i++) glass(x + Math.floor(rand() * w * 0.6), y + h - 3 + Math.floor(rand() * 2), 6, '#f4f7f8', 0.7);
   } else if (t.window.scenery === 'hills') {
     pc.round(x + w - 30, y + 5, 14, 4, WHITE, 0.9);
     for (let i = 0; i < w; i++) {

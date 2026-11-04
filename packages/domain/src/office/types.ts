@@ -1,5 +1,7 @@
-export const OFFICE_THEMES = ['loft', 'studio', 'midnight', 'garden', 'seaside'] as const;
+export const OFFICE_THEMES = ['loft', 'studio', 'midnight', 'garden', 'seaside', 'sakura', 'space'] as const;
 export type OfficeTheme = (typeof OFFICE_THEMES)[number];
+/** Maps bought in the shop (see CATALOG in team-protocol); the others are free. */
+export const PREMIUM_THEMES = ['sakura', 'space'] as const satisfies readonly OfficeTheme[];
 
 export type Facing = 'up' | 'down' | 'left' | 'right';
 

@@ -4,10 +4,10 @@ import type { Color } from '../engine/pixel';
 export interface ThemeStyle {
   id: OfficeTheme;
   void: Color;
-  floor: { kind: 'planks' | 'tiles' | 'carpet'; base: Color; alt: Color; seam: Color };
-  wall: { kind: 'brick' | 'plaster' | 'panel' | 'shiplap'; base: Color; alt: Color; mortar: Color; crown: Color; baseboard: Color };
+  floor: { kind: 'planks' | 'tiles' | 'carpet' | 'tatami' | 'metal'; base: Color; alt: Color; seam: Color };
+  wall: { kind: 'brick' | 'plaster' | 'panel' | 'shiplap' | 'shoji' | 'hull'; base: Color; alt: Color; mortar: Color; crown: Color; baseboard: Color };
   cap: Color;
-  window: { skyTop: Color; skyBottom: Color; frame: Color; night: boolean; scenery: 'city' | 'hills' | 'nightcity' | 'garden' | 'sea' };
+  window: { skyTop: Color; skyBottom: Color; frame: Color; night: boolean; scenery: 'city' | 'hills' | 'nightcity' | 'garden' | 'sea' | 'sakura' | 'space' };
   desk: { top: Color; edge: Color; leg: Color; accent?: Color };
   chair: Color;
   rug: { base: Color; border: Color; pattern: Color };
@@ -99,6 +99,39 @@ export const THEMES: Record<OfficeTheme, ThemeStyle> = {
     warmLight: '#ffd9a0',
     screenGlow: '#bfe9ff',
     accent: '#f4845f',
+  },
+  // Bought in the shop (PREMIUM_THEMES).
+  sakura: {
+    id: 'sakura',
+    void: '#1f1618',
+    floor: { kind: 'tatami', base: '#cdbf86', alt: '#c4b67c', seam: '#3f5a3a' },
+    wall: { kind: 'shoji', base: '#f6f0e3', alt: '#ece3d1', mortar: '#7a5034', crown: '#4f3426', baseboard: '#4a3428' },
+    cap: '#3a2a24',
+    window: { skyTop: '#a8d8f5', skyBottom: '#ffe6ee', frame: '#5c4030', night: false, scenery: 'sakura' },
+    desk: { top: '#b98a5e', edge: '#7a5034', leg: '#3a2a24', accent: '#f28fb0' },
+    chair: '#7a5034',
+    rug: { base: '#a33b3b', border: '#e8c25a', pattern: '#f2c9d6' },
+    sofa: '#a33b3b',
+    darkness: { color: '#2a1418', alpha: 0.04 },
+    warmLight: '#ffe2b8',
+    screenGlow: '#c9f2ff',
+    accent: '#f28fb0',
+  },
+  space: {
+    id: 'space',
+    void: '#04050b',
+    floor: { kind: 'metal', base: '#454d5e', alt: '#3e4655', seam: '#232835' },
+    wall: { kind: 'hull', base: '#2b3245', alt: '#333b51', mortar: '#1a1f2c', crown: '#141824', baseboard: '#1b2030' },
+    cap: '#0b0d16',
+    window: { skyTop: '#03040c', skyBottom: '#141a3e', frame: '#9aa3b8', night: true, scenery: 'space' },
+    desk: { top: '#d3d9e4', edge: '#8a93a8', leg: '#2b3245', accent: '#8b6dff' },
+    chair: '#3d4660',
+    rug: { base: '#232a3c', border: '#8b6dff', pattern: '#43f0d6' },
+    sofa: '#5b4fbf',
+    darkness: { color: '#070a24', alpha: 0.4 },
+    warmLight: '#d6e4ff',
+    screenGlow: '#7fe6ff',
+    accent: '#8b6dff',
   },
 };
 
